@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D/3D Map - Taiwan with GPX and Contour Lines</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openlayers/9.2.4/ol.css">
-    <link href="https://cesium.com/downloads/cesiumjs/releases/1.95/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <title>OpenStreetMap 小精靈遊戲</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -14,1272 +14,2375 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f0f2f5;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1500px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            font-family: 'Press Start 2P', cursive;
+            background: #000;
             overflow: hidden;
+            color: #fff;
         }
 
-        .header {
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h1 {
-            font-size: 2rem;
-            font-weight: 300;
-        }
-
-        .header-controls {
-            display: flex;
-            gap: 10px;
-        }
-
-        .upload-button, .save-route-button, .clear-routes-button, 
-        .reset-view-button, .switch-to-3d-button, .switch-to-2d-button,.tracking-button {
-            border: none;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .upload-button {
-            background: linear-gradient(135deg, #4fd1c5, #319795);
-        }
-
-        .save-route-button {
-            background: linear-gradient(135deg, #f6ad55, #ed8936);
-        }
-
-        .clear-routes-button {
-            background: linear-gradient(135deg, #f56565, #e53e3e);
-        }
-
-        .reset-view-button {
-            background: linear-gradient(135deg, #9f7aea, #805ad5);
-        }
-
-        .switch-to-3d-button {
-            background: linear-gradient(135deg, #4299e1, #3182ce);
-        }
-
-        .switch-to-2d-button {
-            background: linear-gradient(135deg, #48bb78, #38a169);
-            display: none; /* Hidden by default */
-        }
-        .tracking-button {
-            background: linear-gradient(135deg, #4299e1, #3182ce);
-        }
-        .upload-button:hover, .save-route-button:hover, 
-        .clear-routes-button:hover, .reset-view-button:hover,
-        .switch-to-3d-button:hover, .switch-to-2d-button:hover, .tracking-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .map-container {
-            height: 700px;
+        .game-container {
             position: relative;
+            width: 100vw;
+            height: 100vh;
         }
 
-        #map2d {
+        #map { /* 主要遊戲地圖 */
             width: 100%;
             height: 100%;
+            z-index: 1;
+            background-color: #111;
+            filter: brightness(150%);
+            transition: filter 2.5s ease-in-out; 
         }
 
-        #map3d {
-            width: 100%;
-            height: 100%;
-            display: none; /* Hidden by default */
+        #map.fading-to-black {
+            filter: brightness(0%) grayscale(100%); 
         }
 
-        .route-selector {
+        #startScreenMap {
             position: absolute;
-            bottom: 15px;
-            right: 15px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 6px;
-            font-size: 14px;
-            z-index: 1000;
-            display: none;
-        }
-
-        .route-selector select {
-            padding: 5px;
-            border-radius: 4px;
-            border: none;
-            margin-left: 10px;
-        }
-
-        #fileInput {
-            display: none;
-        }
-
-        /* Elevation profile modal styles */
-        .elevation-modal {
-            display: none;
-            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 2000;
+            z-index: 998;
+            background-color: #000;
+            filter: brightness(0.35) grayscale(0.1);
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .screen-overlay { /* 通用全螢幕覆蓋層樣式 */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-        }
-
-        .elevation-content {
-            background-color: white;
-            border-radius: 10px;
-            width: 80%;
-            max-width: 800px;
             padding: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .elevation-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .elevation-title {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .close-button {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #7f8c8d;
-        }
-
-        .elevation-chart-container {
-            height: 300px;
-            width: 100%;
-            position: relative;
-        }
-
-        .elevation-stats {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #ecf0f1;
-        }
-
-        .stat-item {
             text-align: center;
+            overflow-y: auto;
+            box-sizing: border-box;
         }
 
-        .stat-label {
-            font-size: 0.8rem;
-            color: #7f8c8d;
-        }
-
-        .stat-value {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #2c3e50;
+        .start-screen {
+            background: rgba(0,0,0,0.3);
+            z-index: 1000; 
         }
         
-
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
-            .header-controls {
-                flex-direction: column;
-                width: 100%;
-            }
-            .upload-button, .save-route-button, 
-            .clear-routes-button, .reset-view-button,
-            .switch-to-3d-button, .switch-to-2d-button ,.tracking-button{
-                width: 100%;
-            }
-            
-            .elevation-content {
-                width: 95%;
-                padding: 10px;
-            }
-            
-            .elevation-chart-container {
-                height: 200px;
-            }
+        .map-selection-screen {
+            background: rgba(0, 0, 0, 0.85); 
+            z-index: 1001; 
+            display: none; 
         }
+        .map-selection-screen h2 {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            color: #ffff00;
+            text-shadow: 2px 2px 0px #ff0000;
+            margin-bottom: 2rem;
+        }
+
+
+        .game-title {
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
+            color: #ffff00;
+            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #ffff00, 0 0 20px #ffff00, 0 0 25px #ffff00, 0 0 30px #ff0000, 0 0 35px #ff0000;
+            margin-bottom: 1.5rem; 
+            animation: gameTitlePulse 2s infinite ease-in-out;
+            letter-spacing: 0.1em;
+        }
+        
+        @keyframes gameTitlePulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.85; }
+        }
+        
+        .start-screen-actions { /* 主畫面按鈕容器 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap; /* 按鈕過多時換行 */
+            margin-bottom: 1rem;
+        }
+
+
+        .pacman-pixel-button {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #2121DE; 
+            color: #FFFF00; 
+            border: 3px solid #000000; 
+            padding: 12px 24px; 
+            font-size: clamp(0.9rem, 3vw, 1.2rem); 
+            text-transform: uppercase;
+            border-radius: 0; 
+            box-shadow: 4px 4px 0px #000000c0; 
+            cursor: pointer;
+            transition: transform 0.05s ease-out, box-shadow 0.05s ease-out, background-color 0.05s ease-out;
+            margin: 10px; 
+            display: inline-block; 
+            outline: none;
+            min-width: 180px; 
+        }
+        .pacman-pixel-button:hover {
+            background-color: #4242FF; 
+            color: #FFFF66; 
+            box-shadow: 2px 2px 0px #000000c0;
+            transform: translate(2px, 2px);
+        }
+        .pacman-pixel-button:active {
+            background-color: #0000B3; 
+            box-shadow: 0px 0px 0px #000000c0;
+            transform: translate(4px, 4px);
+        }
+        
+        .map-button { 
+            margin: 8px;
+        }
+        
+        .map-button.pacman-pixel-button.active {
+            background-color: #FFFF00; 
+            color: #2121DE; 
+            border-color: #000000; 
+            box-shadow: 2px 2px 0px #000000c0; 
+            transform: translate(2px, 2px); 
+        }
+        .map-button.pacman-pixel-button.active:hover {
+            background-color: #FFFF66; 
+            color: #0000B3; 
+        }
+
+        .content-toggle-container { /* 包裹說明和排行榜內容的容器 */
+            width: 100%;
+            max-width: 600px; /* 與內容區塊寬度一致 */
+            margin-top: 1rem;
+        }
+        .instructions, .leaderboard {
+            max-width: 600px;
+            width: 100%; /* 相對於 .content-toggle-container */
+            margin: 0 auto 1rem auto; /* 水平居中，底部留白 */
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.75); /* 稍微加深一點 */
+            border: 3px solid #ffff00; /* 加粗邊框 */
+            border-radius: 0px; 
+            box-shadow: 0 0 10px rgba(255, 255, 0, 0.2);
+            display: none; 
+        }
+        .instructions h3, .leaderboard h3 {
+            color: #ffff00;
+            margin-bottom: 1rem;
+            font-size: clamp(1.2rem, 5vw, 1.8rem);
+            text-shadow: 2px 2px 0px #000; /* 加粗陰影 */
+        }
+        .instructions ul, .leaderboard ol {
+            list-style: none;
+            line-height: 1.8;
+            padding-left: 0;
+            font-size: clamp(0.8rem, 3vw, 1rem);
+        }
+        .instructions li { margin: 10px 0; padding-left: 25px; position: relative; }
+        .instructions li:before { content: ">>"; position: absolute; left: 0; color: #ffff00; font-weight: bold; }
+        
+        .leaderboard ol { padding-left: 0; } /* 確保排行榜列表不內縮 */
+        .leaderboard li { counter-increment: leaderboard; padding: 8px 10px; margin: 6px 0; background: rgba(30, 30, 80, 0.5); border-radius: 0px; border-left: 4px solid #ffff00; }
+        .leaderboard li:before { content: counter(leaderboard) ". "; font-weight: bold; color: #ffff00; margin-right: 10px; }
+
+        .game-ui { position: absolute; top: 20px; left: 20px; z-index: 500; background: rgba(0, 0, 0, 0.8); color: white; padding: 15px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 14px; border: 1px solid #555; }
+        .ui-row { display: flex; justify-content: space-between; margin: 5px 0; min-width: 300px; }
+
+        .pause-screen {
+            background: rgba(10, 10, 30, 0.92); /* 深藍色調背景 */
+            border: 4px solid #FFB84D; /* 鬼怪橙色邊框 */
+            box-shadow: 0 0 25px #FFB84D, inset 0 0 20px rgba(0,0,0,0.5); 
+            z-index: 2500; 
+            color: white;
+        }
+        .pause-screen h2 {
+            font-size: clamp(2.8rem, 8vw, 4.5rem); 
+            color: #FF0000; 
+            text-shadow: 3px 3px 0px #000000, 
+                         0 0 8px #fff, 
+                         0 0 12px #FF0000,
+                         0 0 18px #FFB84D; /* 加入橙色光暈 */
+            margin-bottom: 2.5rem;
+            animation: blinkRed 0.8s infinite steps(1, end); /* 調整閃爍速度 */
+        }
+        @keyframes blinkRed { /* 調整閃爍效果 */
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.02); }
+        }
+        .pause-screen .pacman-pixel-button { margin: 15px; }
+
+
+        .game-over-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 2500; color: white; }
+        .map-selector { margin: 20px 0; } /* 用於地圖選擇界面中的按鈕組 */
+        .countdown { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 5rem; color: #ffff00; text-shadow: 3px 3px 0px #ff6b6b; z-index: 600; display: none; }
+        .pacman-icon { width: 24px; height: 24px; background-color: #ffff00; border-radius: 50%; position: relative; transition: transform 0.05s linear, opacity 0.3s ease-out; }
+        .pacman-icon.hidden { opacity: 0; pointer-events: none; }
+        .pacman-icon::before { content: ''; position: absolute; width: 0; height: 0; top: 50%; left: 12px; transform: translateY(-50%); border-style: solid; border-color: transparent #111 transparent transparent; animation: pacman-mouth-chomp 0.4s infinite; }
+        @keyframes pacman-mouth-chomp { 0%, 100% { border-width: 12px 12px 12px 0; } 50% { border-width: 4px 12px 4px 0; } }
+        .pacman-icon.facing-true-left { transform: rotate(180deg); } 
+        .pacman-icon.facing-true-right { transform: rotate(0deg); }   
+        .pacman-icon.facing-true-up { transform: rotate(-90deg); }  
+        .pacman-icon.facing-true-down { transform: rotate(90deg); } 
+        .ghost-icon { width: 20px; height: 20px; border-radius: 10px 10px 0 0; position: relative; overflow: visible; }
+        .ghost-icon::before, .ghost-icon::after { content: ''; position: absolute; width: 6px; height: 8px; background-color: white; border-radius: 50%; top: 4px; border: 1px solid #555; }
+        .ghost-icon::before { left: 3px; } 
+        .ghost-icon::after { right: 3px; } 
+        .ghost-icon > div.wave1, .ghost-icon > div.wave2, .ghost-icon > div.wave3 { position: absolute; bottom: -6px; width: 33.33%; height: 6px; background-color: inherit; border-radius: 0 0 50% 50% / 0 0 100% 100%; }
+        .ghost-icon > div.wave1 { left: 0; }
+        .ghost-icon > div.wave2 { left: 33.33%; }
+        .ghost-icon > div.wave3 { left: 66.66%; }
+        .ghost-red { background: #ff0000; } .ghost-pink { background: #ffc0cb; } .ghost-cyan { background: #00ffff; } .ghost-orange { background: #ffb84d; } .ghost-purple { background: #800080; } .ghost-green { background: #008000; } .ghost-blue { background: #0000ff; }   
+        .ghost-scared { background: #2222dd; }
+        .ghost-scared::before, .ghost-scared::after { background-color: white; width: 8px; height: 4px; top: 7px; }
+        @keyframes ghost-eaten-fade { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.5) translateY(-15px); } }
+        .ghost-icon.ghost-eaten { animation: ghost-eaten-fade 0.5s forwards; }
+        .wasted-screen-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0); display: none; justify-content: center; align-items: center; z-index: 2000; transition: background-color 2.5s ease-in-out; }
+        .wasted-screen-overlay.active { display: flex; background-color: rgba(0, 0, 0, 1); }
+        .wasted-banner { width: 100%; background-color: #000000; padding: 20px 0; text-align: center; opacity: 0; transform: scale(1) translateY(0); }
+        .wasted-text { font-family: 'Impact', Haettenschweiler, 'Arial Narrow Bold', sans-serif; font-size: 6rem; color: #D32F2F; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 3px 3px 5px rgba(0,0,0,0.5); }
+        .dot { width: 4px; height: 4px; background: #ffff00; border-radius: 50%; }
+        .power-pellet { width: 12px; height: 12px; background: #ffff00; border-radius: 50%; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.3; } }
+        .dev-console { position: absolute; bottom: 0; left: 0; width: 100%; background-color: rgba(0, 0, 0, 0.85); color: #0f0; font-family: 'Courier New', Courier, monospace; font-size: 14px; padding: 10px; z-index: 3000; display: none; border-top: 2px solid #0f0; }
+        .dev-console-output { height: 100px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #0a0; padding: 5px; white-space: pre-wrap; }
+        .dev-console-input { width: calc(100% - 20px); background-color: #111; color: #0f0; border: 1px solid #0a0; padding: 5px; font-family: 'Courier New', Courier, monospace; font-size: 14px; }
+        .dev-console-input:focus { outline: none; border-color: #0f0; }
+
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>MOUNTAIN MAP</h1>
-            <div class="header-controls">
-                <button class="upload-button" onclick="document.getElementById('fileInput').click()">
-                    Upload GPX
-                </button>
-                <button class="save-route-button" onclick="showRouteSelector()" id="saveRouteBtn">
-                    Saved Routes
-                </button>
-                <button class="clear-routes-button" onclick="clearAllRoutes()">
-                    Clear Routes
-                </button>
-                <button class="reset-view-button" onclick="resetToTaiwanView()">
-                    Home
-                </button>
-                  <button class="tracking-button" id="startTrackingBtn" onclick="startTracking()">
-                Start Tracking
-            </button>
-            <button class="tracking-button" id="stopTrackingBtn" onclick="stopTracking()" style="display: none;">
-                Stop Tracking
-            </button>
-                <button class="switch-to-3d-button" id="switchTo3D" onclick="switchTo3D()">
-                    3D View
-                </button>
-                <button class="switch-to-2d-button" id="switchTo2D" onclick="switchTo2D()">
-                    2D View
-                </button>
-                <input type="file" id="fileInput" accept=".gpx,.xml" onchange="handleGPXUpload(event)">
+    <div class="game-container">
+        <div id="startScreenMap"></div>
+        <div id="map"></div>
+
+        <div class="wasted-screen-overlay" id="wastedScreenOverlay">
+            <div class="wasted-banner" id="wastedBanner"> <span class="wasted-text">WASTED</span></div>
+        </div>
+
+        <div class="countdown" id="countdown"></div>
+
+        <div class="game-ui" id="gameUI" style="display: none;">
+            <div class="ui-row">
+                <span>分數: <span id="score">0</span></span>
+                <span>生命: <span id="lives">3</span></span>
+            </div>
+            <div class="ui-row">
+                <span>關卡: <span id="level">1</span></span>
+                <span>時間: <span id="timer">5:00</span></span>
+            </div>
+            <div class="ui-row">
+                <span>剩餘點數: <span id="dotsLeft">0</span></span>
+                <span>最高分: <span id="highScore">0</span></span>
             </div>
         </div>
 
-        <div class="map-container">
-            <div id="map2d"></div>
-            <div id="map3d"></div>
-            <div class="route-selector" id="routeSelector">
-                Select Route: 
-                <select id="routeSelect" onchange="zoomToRoute()">
-                    <option value="">-- Select a route --</option>
-                </select>
+        <div class="screen-overlay start-screen" id="startScreen">
+            <h1 class="game-title">PAC-MAP</h1>
+            <div class="start-screen-actions">
+                <button class="pacman-pixel-button" id="startGameBtn">開始遊戲</button>
+                <button class="pacman-pixel-button" id="instructionsBtn">遊戲說明</button>
+                <button class="pacman-pixel-button" id="leaderboardBtn">排行榜</button>
             </div>
+            <div class="content-toggle-container">
+                <div class="instructions" id="instructionsContent">
+                    <h3> 遊戲說明</h3>
+                    <ul>
+                        <li>使用 WASD 控制小精靈移動</li>
+                        <li>空白鍵暫停遊戲</li>
+                        <li>收集黃色點數 (20分) 和大力丸 (50分)</li>
+                        <li>吃大力丸後可以擊殺鬼怪 (150分)</li>
+                        <li>避免被鬼怪抓到，你有 3 條命</li>
+                        <li>5分鐘內收集完所有點數晉級下一關</li>
+                    </ul>
+                </div>
+                <div class="leaderboard" id="leaderboardContent">
+                    <h3> 排行榜</h3>
+                    <ol id="leaderboardList">
+                        <li>暫無記錄</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen-overlay map-selection-screen" id="mapSelectionScreen">
+            <h2>選擇地圖</h2>
+            <div class="map-selector">
+                <button class="map-button pacman-pixel-button active" data-map-index="0">台北市中心</button>
+                <button class="map-button pacman-pixel-button" data-map-index="1">台中市區</button>
+                <button class="map-button pacman-pixel-button" data-map-index="2">高雄市區</button>
+            </div>
+            <button class="pacman-pixel-button" id="backToStartScreenBtn">返回主選單</button>
+        </div>
+
+        <div class="screen-overlay pause-screen" id="pauseScreen">
+            <h2>遊戲暫停</h2>
+            <button class="pacman-pixel-button" onclick="resumeGame()">繼續遊戲</button>
+            <button class="pacman-pixel-button" onclick="backToMenu()">回到主選單</button> 
+        </div>
+
+        <div class="screen-overlay game-over-screen" id="gameOverScreen">
+            <h2 id="gameOverTitle">遊戲結束</h2>
+            <div class="ui-row" style="justify-content: center; margin: 20px 0;">
+                <span style="font-size: 2rem;">最終分數: <span id="finalScore">0</span></span>
+            </div>
+            <div id="newHighScore" style="display: none; color: #ffff00; font-size: 1.5rem; margin: 10px 0;">
+                🏆 新紀錄！
+            </div>
+            <button class="pacman-pixel-button" onclick="restartGame()">重新開始</button>
+            <button class="pacman-pixel-button" onclick="backToMenu()">回到主選單</button> 
+        </div>
+
+        <div class="dev-console" id="devConsole">
+            <div class="dev-console-output" id="devConsoleOutput">開發者指令視窗已啟用。輸入 'help' 查看可用指令。</div>
+            <input type="text" class="dev-console-input" id="devConsoleInput" placeholder="輸入指令...">
         </div>
     </div>
 
-    <!-- Elevation Profile Modal -->
-    <div class="elevation-modal" id="elevationModal">
-        <div class="elevation-content">
-            <div class="elevation-header">
-                <div class="elevation-title" id="elevationTitle">Elevation Profile</div>
-                <button class="close-button" onclick="closeElevationModal()">&times;</button>
-            </div>
-            <div class="elevation-chart-container">
-                <canvas id="elevationChart"></canvas>
-            </div>
-            <div class="elevation-stats">
-                <div class="stat-item">
-                    <div class="stat-label">Distance</div>
-                    <div class="stat-value" id="totalDistance">0 km</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Min Elevation</div>
-                    <div class="stat-value" id="minElevation">0 m</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Max Elevation</div>
-                    <div class="stat-value" id="maxElevation">0 m</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Elevation Gain</div>
-                    <div class="stat-value" id="elevationGain">0 m</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/openlayers/9.2.4/dist/ol.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cesium.com/downloads/cesiumjs/releases/1.95/Build/Cesium/Cesium.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <script>
-        let map2d;
-        let map3d;
-        let vectorLayer2D;
-        let savedRoutes = [];
-        let routeSelect = document.getElementById('routeSelect');
-        let routeSelector = document.getElementById('routeSelector');
-        let contourLayer;
-        let elevationChart;
-        let currentElevationData = [];
-        let cesiumEntities = [];
-        let currentViewMode = '2d'; // '2d' or '3d'
-        
-        // Taiwan coordinates and view settings
-        const TAIWAN_CENTER = [120.9605, 23.6978];
-        const TAIWAN_ZOOM = 8;
-        const TAIWAN_3D_VIEW = {
-            destination: Cesium.Cartesian3.fromDegrees(120.9605, 23.6978, 2000000),
-            orientation: {
-                heading: 0.0,
-                pitch: -Cesium.Math.PI_OVER_TWO,
-                roll: 0.0
+        // 音效相關
+        let soundsReady = false;
+        let introSynth, dotSynth, powerPelletSynth, eatGhostSynth, deathSynth;
+        let dotSoundTimeout; 
+
+        function setupSounds() {
+            if (typeof Tone !== 'undefined') {
+                introSynth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "triangle8" },
+                    envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.4 },
+                    volume: -10
+                }).toDestination();
+
+                dotSynth = new Tone.MembraneSynth({
+                    pitchDecay: 0.008,
+                    octaves: 2,
+                    oscillator: { type: "square4" },
+                    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.1 },
+                    volume: -25
+                }).toDestination();
+                
+                powerPelletSynth = new Tone.Synth({
+                    oscillator: { type: "sawtooth" },
+                    envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 },
+                    volume: -12
+                }).toDestination();
+
+                eatGhostSynth = new Tone.NoiseSynth({
+                    noise: { type: "white" },
+                    envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 },
+                    volume: -15
+                }).toDestination();
+
+
+                deathSynth = new Tone.PolySynth(Tone.FMSynth, {
+                     harmonicity: 3.01,
+                     modulationIndex: 14,
+                     envelope: { attack: 0.2, decay: 0.3, sustain: 0.1, release: 1.2 },
+                     modulationEnvelope: { attack: 0.01, decay: 0.5, sustain: 0.2, release: 0.1 },
+                     volume: -8
+                }).toDestination();
+                soundsReady = true;
+            } else {
+                console.warn("Tone.js 未載入，音效將不可用。");
             }
+        }
+
+        function playStartSound() {
+            if (!soundsReady || !Tone.now) return;
+            const now = Tone.now();
+            introSynth.triggerAttackRelease(["C4", "E4", "G4"], "8n", now);
+            introSynth.triggerAttackRelease(["E4", "G4", "C5"], "8n", now + 0.25);
+            introSynth.triggerAttackRelease(["G4", "C5", "E5"], "4n", now + 0.5);
+        }
+
+        function playDotSound() {
+            if (!soundsReady || !Tone.now || !dotSynth) return;
+            clearTimeout(dotSoundTimeout); 
+            dotSoundTimeout = setTimeout(() => {
+                if (dotSynth && typeof dotSynth.triggerAttackRelease === 'function') { 
+                    dotSynth.triggerAttackRelease("C4", "32n", Tone.now());
+                }
+            }, 10); 
+        }
+
+        function playPowerPelletSound() {
+            if (!soundsReady || !Tone.now) return;
+            const now = Tone.now();
+            powerPelletSynth.triggerAttackRelease("A4", "16n", now);
+            powerPelletSynth.triggerAttackRelease("C#5", "16n", now + 0.1);
+            powerPelletSynth.triggerAttackRelease("E5", "8n", now + 0.2);
+        }
+
+        function playEatGhostSound() {
+            if (!soundsReady || !Tone.now) return;
+            eatGhostSynth.triggerAttackRelease("0.2n", Tone.now());
+        }
+
+        function playDeathSound() {
+            if (!soundsReady || !Tone.now) return;
+            const now = Tone.now();
+            deathSynth.triggerAttackRelease(["C3", "Eb3", "Gb3"], "1n", now);
+            deathSynth.triggerAttackRelease(["C2", "Eb2", "Gb2"], "1n", now + 0.1); 
+        }
+
+
+        // 遊戲常數
+        const PACMAN_BASE_SPEED = 60; 
+        const GHOST_MOVE_SPEED_METERS_PER_SECOND = 45;
+        const MAX_MAP_ZOOM = 18;
+        const MAX_DELTA_TIME = 100; 
+        const NUMBER_OF_GHOSTS = 7; 
+        let lastFrameTime = 0;
+        let gameLoopRequestId = null;
+        let ghostDecisionInterval = null;
+
+        // 遊戲狀態
+        let gameState = {
+            map: null, 
+            pacman: null,
+            pacmanLevelStartPoint: null,
+            pacmanMovement: {
+                isMoving: false,
+                startPositionLatLng: null,
+                destinationNodeLatLng: null,
+                totalDistanceToDestinationNode: 0,
+                distanceTraveledThisSegment: 0,
+                lastIntendedDirectionKey: null,
+                currentFacingDirection: 'left'
+            },
+            ghosts: [],
+            dots: [],
+            powerPellets: [],
+            score: 0,
+            lives: 3,
+            level: 1,
+            gameTime: 600, 
+            isPaused: false,
+            isGameOver: false,
+            isLosingLife: false, 
+            currentMapIndex: 0,
+            gameTimer: null,
+            powerMode: false,
+            powerModeTimer: null,
+            dotsCollected: 0,
+            totalDots: 0,
+            canMove: false, 
+            roadNetwork: [], 
+            validPositions: [], 
+            roadLayers: [], 
+            adjacencyList: new Map(), 
+            ghostSpawnPoints: [], 
+            baseScatterPoints: [], 
+            gameSpeedMultiplier: 1, 
+            isDevConsoleOpen: false,
+            pacmanSpeedMultiplier: 1.0, 
+            godMode: false, 
+            autoPilotMode: false, 
+            cleverMode: false, 
+            autoPilotPath: [],    
+            autoPilotTarget: null 
         };
 
-        // Initialize 2D Map (OpenLayers)
-        function init2DMap() {
-            // Create vector layer for GPX routes
-            vectorLayer2D = new ol.layer.Vector({
-                source: new ol.source.Vector(),
-                style: new ol.style.Style({
-                    stroke: new ol.style.Stroke({
-                        color: '#ff5722',
-                        width: 3
-                    })
-                })
-            });
+        // 背景地圖相關狀態
+        let startScreenMapState = {
+            map: null,
+            pacman: null,
+            ghosts: [],
+            roadNetwork: [],
+            validPositions: [],
+            adjacencyList: new Map(),
+            animationId: null,
+            lastFrameTime: 0,
+            pacmanMovement: { isMoving: false, startPositionLatLng: null, destinationNodeLatLng: null, totalDistanceToDestinationNode: 0, distanceTraveledThisSegment: 0, currentFacingDirection: 'left', autoPilotPath: [], autoPilotTargetNode: null },
+            ghostMovements: [], 
+            isLoading: false, 
+            isInitialized: false
+        };
+        const BG_PACMAN_SPEED = 40; 
+        const BG_GHOST_SPEED = 30; 
+        const BG_NUMBER_OF_GHOSTS = 3; 
 
-            // Create OpenTopoMap base layer
-            //const openTopoMapLayer = new ol.layer.Tile({
-              //  source: new ol.source.XYZ({
-                //    url: 'https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png',
-                  //  attributions: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
-                //})
-            //});
+        const mapConfigs = [
+            { name: "台北市中心", center: [25.0330, 121.5654], zoom: MAX_MAP_ZOOM },
+            { name: "台中市區", center: [24.1477, 120.6736], zoom: MAX_MAP_ZOOM },
+            { name: "高雄市區", center: [22.6273, 120.3014], zoom: MAX_MAP_ZOOM }
+        ];
 
-            // Create contour lines layer (100m interval)
-            contourLayer = new ol.layer.Vector({
-                source: new ol.source.Vector({
-                    url: 'https://tiles.arcgis.com/tiles/nGt4QxSblgDfeJn9/arcgis/rest/services/World_Contour/VectorTileServer/tile/{z}/{y}/{x}.pbf',
-                    format: new ol.format.MVT(),
-                    attributions: 'Contour lines: &copy; <a href="https://www.arcgis.com/home/item.html?id=1e126e7520f9466c9ca28b8f28b5e500">Esri</a>'
-                }),
-                style: createContourStyle,
-                minResolution: 0, // Show at all zoom levels
-                maxResolution: 100 // Hide when zoomed out too far
-            });
+        let leaderboard = []; 
 
-            map2d = new ol.Map({
-                target: 'map2d',
-                layers: [
-                    //openTopoMapLayer,
-                    new ol.layer.Tile({
-                        source: new ol.source.OSM()
-                    }),
-                    contourLayer,
-                    vectorLayer2D
-                ],
-                view: new ol.View({
-                    center: ol.proj.fromLonLat(TAIWAN_CENTER),
-                    zoom: TAIWAN_ZOOM
-                })
-            });
-
-            // Add click event listener to the map
-            map2d.on('click', function(evt) {
-                // Check if a route was clicked
-                map2d.forEachFeatureAtPixel(evt.pixel, function(feature) {
-                    if (feature.getGeometry().getType() === 'LineString') {
-                        // Get the coordinates of the clicked route
-                        const coords = feature.getGeometry().getCoordinates();
-                        
-                        // Convert back to lon/lat
-                        const lonLatCoords = coords.map(coord => ol.proj.toLonLat(coord));
-                        
-                        // Get elevation data and show profile
-                        getElevationProfile(lonLatCoords);
-                    }
-                });
-            });
+        // --- 通用輔助函數 ---
+        function positionsAreEqual(p1, p2, tolerance = 0.000001) {
+            if (!p1 || !p2 || p1.length !== 2 || p2.length !== 2) return false;
+            return Math.abs(p1[0] - p2[0]) < tolerance && Math.abs(p1[1] - p2[1]) < tolerance;
         }
 
-        // Initialize 3D Map (Cesium)
-        function init3DMap() {
-            // Your Cesium ion access token (replace with your own)
-            Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzMTI4YjE3OC1iNmVlLTRmMjQtODdhYS1kN2FiMzhkZDY1MjEiLCJpZCI6Mjk1ODg3LCJpYXQiOjE3NDUyOTE1NjJ9.ss2YK3CdkwaCvtS0O-AskkrH5yf0OunQnQkYaVysuwM';
-            
-            // Initialize the Cesium Viewer
-            map3d = new Cesium.Viewer('map3d', {
-                terrainProvider: Cesium.createWorldTerrain(),
-                baseLayerPicker: false,
-                sceneModePicker: false,
-                homeButton: false,
-                geocoder: false,
-                navigationHelpButton: false,
-                animation: false,
-                timeline: false,
-                fullscreenButton: false,
-                infoBox: false,
-                selectionIndicator: false,
-            });
+        function heuristic(nodeA, nodeB) { 
+            if (!nodeA || !nodeB) return Infinity;
+            return L.latLng(nodeA[0], nodeA[1]).distanceTo(L.latLng(nodeB[0], nodeB[1]));
+        }
+        
+        function getNeighborsForAdjacencyList(node, adjacencyList) {
+            const nodeStr = node.toString();
+            if (adjacencyList.has(nodeStr)) {
+                return adjacencyList.get(nodeStr);
+            }
+            return [];
+        }
+        
+        function aStarSearch(startNode, goalNode, validPositions, adjacencyList, ghostPositions = [], isCleverMode = false) {
+            if (!startNode || !goalNode || !validPositions || !adjacencyList) return [];
+            const openSet = [startNode];
+            const cameFrom = new Map();
+            const gScore = new Map();
+            validPositions.forEach(node => gScore.set(node.toString(), Infinity));
+            gScore.set(startNode.toString(), 0);
+            const fScore = new Map();
+            validPositions.forEach(node => fScore.set(node.toString(), Infinity));
+            fScore.set(startNode.toString(), heuristic(startNode, goalNode));
 
-            // Set initial view to Taiwan
-            map3d.camera.flyTo(TAIWAN_3D_VIEW);
+            const GHOST_DANGER_RADIUS = 15; 
+            const GHOST_PROXIMITY_PENALTY = 50000; 
+            const GHOST_ON_NODE_PENALTY = 1000000; 
 
-            // Enable lighting effects
-            map3d.scene.globe.enableLighting = true;
-
-            // Add click handler for routes
-            map3d.screenSpaceEventHandler.setInputAction(function(movement) {
-                const pickedObject = map3d.scene.pick(movement.position);
-                if (Cesium.defined(pickedObject) && pickedObject.id && pickedObject.id.routeId !== undefined) {
-                    const route = savedRoutes[pickedObject.id.routeId];
-                    if (route) {
-                        getElevationProfile(route.coordinates);
+            while (openSet.length > 0) {
+                let current = openSet[0];
+                for (let i = 1; i < openSet.length; i++) {
+                    if (fScore.get(openSet[i].toString()) < fScore.get(current.toString())) {
+                        current = openSet[i];
                     }
                 }
-            }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-        }
-
-        // Style function for contour lines
-        function createContourStyle(feature) {
-            const elevation = feature.get('ELEV');
-            const isIndexContour = elevation % 500 === 0; // Thicker lines for 500m intervals
-            
-            return new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    color: isIndexContour ? 'rgba(0, 0, 255, 0.8)' : 'rgba(0, 0, 255, 0.5)',
-                    width: isIndexContour ? 2 : 1
-                })
-            });
-        }
-
-        // Reset view to Taiwan
-        function resetToTaiwanView() {
-            if (currentViewMode === '2d' && map2d) {
-                const taiwanLocation = ol.proj.fromLonLat(TAIWAN_CENTER);
-                map2d.getView().animate({
-                    center: taiwanLocation,
-                    zoom: TAIWAN_ZOOM,
-                    duration: 1000
-                });
-            } else if (currentViewMode === '3d' && map3d) {
-                map3d.camera.flyTo(TAIWAN_3D_VIEW);
-            }
-        }
-
-        // Switch to 3D view
-        function switchTo3D() {
-            if (currentViewMode === '3d') return;
-            
-            // Initialize 3D map if not already done
-            if (!map3d) {
-                init3DMap();
-            }
-            
-            // Hide 2D map and show 3D map
-            document.getElementById('map2d').style.display = 'none';
-            document.getElementById('map3d').style.display = 'block';
-            
-            // Update UI buttons
-            document.getElementById('switchTo3D').style.display = 'none';
-            document.getElementById('switchTo2D').style.display = 'block';
-            
-            currentViewMode = '3d';
-            
-            // Add all saved routes to 3D map
-            update3DRoutes();
-            
-            // Reset view to Taiwan
-            resetToTaiwanView();
-        }
-
-        // Switch to 2D view
-        function switchTo2D() {
-            if (currentViewMode === '2d') return;
-            
-            // Hide 3D map and show 2D map
-            document.getElementById('map3d').style.display = 'none';
-            document.getElementById('map2d').style.display = 'block';
-            
-            // Update UI buttons
-            document.getElementById('switchTo2D').style.display = 'none';
-            document.getElementById('switchTo3D').style.display = 'block';
-            
-            currentViewMode = '2d';
-            
-            // Reset view to Taiwan
-            resetToTaiwanView();
-        }
-
-        // Update 3D routes (add all saved routes to 3D map)
-        function update3DRoutes() {
-            if (!map3d) return;
-            
-            // Remove existing entities
-            cesiumEntities.forEach(entity => {
-                map3d.entities.remove(entity);
-            });
-            cesiumEntities = [];
-            
-            // Add all saved routes
-            savedRoutes.forEach((route, index) => {
-                const positions = Cesium.Cartesian3.fromDegreesArray(
-                    route.coordinates.flat()
-                );
-                
-                const routeEntity = map3d.entities.add({
-                    name: route.name,
-                    polyline: {
-                        positions: positions,
-                        width: 5,
-                        material: new Cesium.PolylineGlowMaterialProperty({
-                            glowPower: 0.2,
-                            color: Cesium.Color.ORANGE
-                        }),
-                        clampToGround: true
-                    },
-                    routeId: index // Custom property to identify the route
-                });
-                
-                cesiumEntities.push(routeEntity);
-            });
-        }
-
-        // Handle GPX file upload
-        function handleGPXUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const gpxContent = e.target.result;
-                const routeName = file.name.replace('.gpx', '').replace('.xml', '');
-                
-                // Parse GPX and add to saved routes
-                parseGPX(gpxContent, routeName);
-                
-                // Save to localStorage
-                saveRoutesToStorage();
-                
-                // Add to route selector
-                updateRouteSelector();
-                
-                // Show the route selector if it's hidden
-                routeSelector.style.display = 'block';
-                
-                // Zoom to the newly added route
-                zoomToRoute(savedRoutes.length - 1);
-            };
-            reader.readAsText(file);
-        }
-
-        // Parse GPX file and add to map
-        function parseGPX(gpxContent, routeName) {
-            try {
-                // Parse XML
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(gpxContent, "text/xml");
-                
-                // Check for parsing errors
-                const parserErrors = xmlDoc.getElementsByTagName("parsererror");
-                if (parserErrors.length > 0) {
-                    throw new Error("Invalid GPX file format");
+                if (positionsAreEqual(current, goalNode)) {
+                    const path = [current];
+                    let temp = current;
+                    while (cameFrom.has(temp.toString())) {
+                        temp = cameFrom.get(temp.toString());
+                        path.unshift(temp);
+                    }
+                    return path;
                 }
-
-                // Extract coordinates from GPX
-                const trackPoints = xmlDoc.getElementsByTagName("trkpt");
-                const coordinates = [];
+                const indexToRemove = openSet.findIndex(node => positionsAreEqual(node, current));
+                if (indexToRemove > -1) openSet.splice(indexToRemove, 1);
                 
-                for (let i = 0; i < trackPoints.length; i++) {
-                    const pt = trackPoints[i];
-                    const lon = parseFloat(pt.getAttribute("lon"));
-                    const lat = parseFloat(pt.getAttribute("lat"));
+                const neighbors = getNeighborsForAdjacencyList(current, adjacencyList);
+                for (const neighbor of neighbors) {
+                    let costToNeighbor = L.latLng(current[0], current[1]).distanceTo(L.latLng(neighbor[0], neighbor[1]));
                     
-                    // Skip invalid coordinates
-                    if (isNaN(lon) || isNaN(lat)) continue;
-                    
-                    coordinates.push([lon, lat]);
+                    if (isCleverMode && ghostPositions.length > 0) {
+                        for (const ghostPos of ghostPositions) {
+                            if (positionsAreEqual(neighbor, ghostPos)) {
+                                costToNeighbor += GHOST_ON_NODE_PENALTY; 
+                                break; 
+                            }
+                            if (heuristic(neighbor, ghostPos) < GHOST_DANGER_RADIUS) {
+                                costToNeighbor += GHOST_PROXIMITY_PENALTY; 
+                            }
+                        }
+                    }
+
+                    const tentativeGScore = gScore.get(current.toString()) + costToNeighbor; 
+                    if (tentativeGScore < gScore.get(neighbor.toString())) {
+                        cameFrom.set(neighbor.toString(), current);
+                        gScore.set(neighbor.toString(), tentativeGScore);
+                        fScore.set(neighbor.toString(), tentativeGScore + heuristic(neighbor, goalNode));
+                        if (!openSet.find(node => positionsAreEqual(node, neighbor))) {
+                            openSet.push(neighbor);
+                        }
+                    }
                 }
-                
-                if (coordinates.length === 0) {
-                    throw new Error("No valid coordinates found in GPX file");
-                }
-                
-                // Save route data
-                const routeIndex = savedRoutes.length;
-                savedRoutes.push({
-                    name: routeName,
-                    coordinates: coordinates
-                });
-                
-                // Add to map
-                addRouteToMap(coordinates);
-                
-                return true;
-            } catch (error) {
-                alert("Error parsing GPX file: " + error.message);
-                return false;
             }
+            return []; 
+        }
+        
+        function findNearestRoadPositionGeneric(targetLat, targetLng, validPositionsList) {
+            if (!validPositionsList || validPositionsList.length === 0) { 
+                console.warn("findNearestRoadPositionGeneric with no valid positions."); 
+                return [targetLat, targetLng]; 
+            }
+            let nearestPos = validPositionsList[0], minDistanceSq = Infinity;
+            for (const pos of validPositionsList) { 
+                const dy = pos[0] - targetLat, dx = pos[1] - targetLng, distanceSq = dy * dy + dx * dx; 
+                if (distanceSq < minDistanceSq) { 
+                    minDistanceSq = distanceSq; 
+                    nearestPos = pos; 
+                } 
+            }
+            return nearestPos;
         }
 
-        // Add route to map
-        function addRouteToMap(coordinates) {
-            // Add to 2D map
-            const lineString = new ol.geom.LineString(coordinates);
-            lineString.transform('EPSG:4326', 'EPSG:3857');
-            
-            const feature = new ol.Feature({
-                geometry: lineString,
-                name: savedRoutes[savedRoutes.length - 1].name
-            });
-            
-            vectorLayer2D.getSource().addFeature(feature);
-            
-            // Add to 3D map if in 3D mode
-            if (currentViewMode === '3d' && map3d) {
-                update3DRoutes();
-            }
-        }
+        // --- 背景地圖動畫邏輯 ---
+        async function initStartScreenBackground() {
+            if (startScreenMapState.isLoading || startScreenMapState.isInitialized) return;
+            startScreenMapState.isLoading = true;
+            console.log("Initializing start screen background map...");
 
-        // Show route selector dropdown
-        function showRouteSelector() {
-            if (savedRoutes.length === 0) {
-                alert("No routes available. Please upload a GPX file first.");
+            const startScreenMapElement = document.getElementById('startScreenMap');
+            if (!startScreenMapElement) {
+                console.error("Start screen map container not found!");
+                startScreenMapState.isLoading = false;
                 return;
             }
-            
-            routeSelector.style.display = routeSelector.style.display === 'block' ? 'none' : 'block';
-        }
+            startScreenMapElement.style.opacity = '1'; 
 
-        // Zoom to selected route
-        function zoomToRoute(index) {
-            if (index === undefined) {
-                index = routeSelect.value;
-                if (index === "") return;
-            }
-            
-            const route = savedRoutes[index];
-            if (!route) return;
-            
-            if (currentViewMode === '2d') {
-                // Calculate bounds for 2D map
-                const extent = ol.extent.boundingExtent(
-                    route.coordinates.map(coord => ol.proj.fromLonLat(coord))
-                );
-                
-                // Add some padding
-                ol.extent.scaleFromCenter(extent, 1.2);
-                
-                map2d.getView().fit(extent, {
-                    padding: [50, 50, 50, 50],
-                    duration: 1000
-                });
-            } else {
-                // Fly to route in 3D
-                const positions = Cesium.Cartesian3.fromDegreesArray(
-                    route.coordinates.flat()
-                );
-                
-                // Calculate bounding sphere
-                const boundingSphere = Cesium.BoundingSphere.fromPoints(positions);
-                
-                // Fly to the route with some offset
-                map3d.camera.flyTo({
-                destination: Cesium.Cartesian3.fromElements(
-                        boundingSphere.center.x-boundingSphere.radius * 3,
-                        boundingSphere.center.y+boundingSphere.radius * 5.5,
-                        boundingSphere.center.z -boundingSphere.radius * 4),
-                orientation: {
-                    heading: 0.0,
-                    pitch: -0.5,
-                    roll: 0.0
-                },
-        });
-            }
-        }
-
-        // Save routes to localStorage
-        function saveRoutesToStorage() {
-            localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
-        }
-
-        // Load routes from localStorage
-        function loadSavedRoutes() {
-            const storedRoutes = localStorage.getItem('savedRoutes');
-            if (storedRoutes) {
-                savedRoutes = JSON.parse(storedRoutes);
-                
-                // Clear existing routes from map
-                vectorLayer2D.getSource().clear();
-                
-                // Add all saved routes to map
-                savedRoutes.forEach(route => {
-                    addRouteToMap(route.coordinates);
-                });
-                
-                // Update route selector
-                updateRouteSelector();
-                
-                // Show selector if there are routes
-                if (savedRoutes.length > 0) {
-                    routeSelector.style.display = 'block';
-                }
-            }
-        }
-
-        // Update the route selector dropdown
-        function updateRouteSelector() {
-            // Clear existing options
-            routeSelect.innerHTML = '<option value="">-- Select a route --</option>';
-            
-            // Add all saved routes
-            savedRoutes.forEach((route, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = route.name;
-                routeSelect.appendChild(option);
+            const bgMapConfig = mapConfigs[0]; 
+            startScreenMapState.map = L.map('startScreenMap', {
+                center: bgMapConfig.center,
+                zoom: bgMapConfig.zoom,
+                minZoom: bgMapConfig.zoom, 
+                maxZoom: bgMapConfig.zoom,
+                zoomControl: false,
+                attributionControl: false,
+                scrollWheelZoom: false,
+                dragging: false,
+                touchZoom: false,
+                doubleClickZoom: false,
+                keyboard: false 
             });
-        }
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                 maxZoom: MAX_MAP_ZOOM + 1 
+            }).addTo(startScreenMapState.map);
 
-        // Clear all saved routes
-        function clearAllRoutes() {
-            if (savedRoutes.length === 0) {
-                alert("No routes to clear.");
-                return;
-            }
+            startScreenMapState.map.invalidateSize();
+
+            const bounds = startScreenMapState.map.getBounds();
+            const roadData = await fetchRoadData(bounds); 
             
-            if (confirm("Are you sure you want to delete all saved routes?")) {
-                // Clear from map
-                vectorLayer2D.getSource().clear();
-                
-                // Clear from 3D map if active
-                if (map3d) {
-                    cesiumEntities.forEach(entity => {
-                        map3d.entities.remove(entity);
+            await generateRoadNetworkGeneric(bounds, roadData, startScreenMapState, 15); 
+
+            if (startScreenMapState.validPositions.length === 0) {
+                console.warn("Background Map: Could not generate road network. Animated background entities will be disabled.");
+                startScreenMapState.isLoading = false;
+                startScreenMapState.isInitialized = true; 
+                return; 
+            }
+
+            const pacmanIconBg = L.divIcon({ className: 'pacman-icon', iconSize: [24, 24], iconAnchor: [12, 12] });
+            const bgPacmanStartPos = startScreenMapState.validPositions[Math.floor(Math.random() * startScreenMapState.validPositions.length)];
+            startScreenMapState.pacman = L.marker(bgPacmanStartPos, { icon: pacmanIconBg }).addTo(startScreenMapState.map);
+            startScreenMapState.pacmanMovement.startPositionLatLng = L.latLng(bgPacmanStartPos[0], bgPacmanStartPos[1]);
+
+
+            startScreenMapState.ghosts = [];
+            startScreenMapState.ghostMovements = [];
+            const bgGhostColors = ['red', 'pink', 'cyan']; 
+            for (let i = 0; i < BG_NUMBER_OF_GHOSTS; i++) {
+                const colorName = bgGhostColors[i % bgGhostColors.length];
+                const ghostIconBg = L.divIcon({
+                    className: `ghost-icon ghost-${colorName}`,
+                    iconSize: [20, 20], iconAnchor: [10, 16],
+                    html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>'
+                });
+                const spawnIndex = Math.floor(Math.random() * startScreenMapState.validPositions.length);
+                const ghostStartPos = startScreenMapState.validPositions[spawnIndex];
+                if (ghostStartPos) {
+                    const ghostMarker = L.marker(ghostStartPos, { icon: ghostIconBg }).addTo(startScreenMapState.map);
+                    startScreenMapState.ghosts.push(ghostMarker);
+                    startScreenMapState.ghostMovements.push({
+                        isMoving: false, startPositionLatLng: L.latLng(ghostStartPos[0], ghostStartPos[1]),
+                        destinationNodeLatLng: null, totalDistanceToDestinationNode: 0,
+                        distanceTraveledThisSegment: 0, autoPilotPath: [], autoPilotTargetNode: null
                     });
-                    cesiumEntities = [];
                 }
-                
-                // Clear from memory and storage
-                savedRoutes = [];
-                localStorage.removeItem('savedRoutes');
-                
-                // Update UI
-                routeSelect.innerHTML = '<option value="">-- Select a route --</option>';
-                routeSelector.style.display = 'none';
+            }
+            
+            startScreenMapState.isLoading = false;
+            startScreenMapState.isInitialized = true;
+            console.log("Start screen background map initialized with entities.");
+            if (startScreenMapState.pacman && startScreenMapState.ghosts.length > 0) {
+                startBackgroundAnimationLoop();
+            } else {
+                 console.warn("Background animation loop not started as entities could not be created.");
             }
         }
 
-        // Get elevation profile for a route
-        async function getElevationProfile(coordinates) {
-// Show loading state
-document.getElementById('elevationTitle').textContent = "Loading elevation data...";
-document.getElementById('totalDistance').textContent = "Calculating...";
-document.getElementById('minElevation').textContent = "";
-document.getElementById('maxElevation').textContent = "";
-document.getElementById('elevationGain').textContent = "";
-
-        // Open the modal
-        const modal = document.getElementById('elevationModal');
-        modal.style.display = 'flex';
-        
-        try {
-            // Simplify the coordinates to reduce API calls
-            const simplifiedCoords = simplifyCoordinates(coordinates, 0.0001);
-            
-            // Get elevations for each point
-            const elevationData = await getElevations(simplifiedCoords);
-            
-            // Calculate distance between points
-            const distances = calculateDistances(simplifiedCoords);
-            
-            // Calculate cumulative distance
-            const cumulativeDistances = calculateCumulativeDistances(distances);
-            
-            // Calculate elevation gain
-            const elevationGain = calculateElevationGain(elevationData);
-            
-            // Update the chart
-            updateElevationChart(cumulativeDistances, elevationData);
-            
-            // Update stats
-            document.getElementById('elevationTitle').textContent = "Elevation Profile";
-            document.getElementById('totalDistance').textContent = (cumulativeDistances[cumulativeDistances.length - 1] / 1000).toFixed(2) + " km";
-            document.getElementById('minElevation').textContent = Math.min(...elevationData) + " m";
-            document.getElementById('maxElevation').textContent = Math.max(...elevationData) + " m";
-            document.getElementById('elevationGain').textContent = elevationGain + " m";
-            
-            // Save current elevation data for chart reference
-            currentElevationData = {
-                distances: cumulativeDistances,
-                elevations: elevationData
-            };
-            
-        } catch (error) {
-            console.error("Error getting elevation data:", error);
-            document.getElementById('elevationTitle').textContent = "Error Loading Elevation Data";
-            alert("Failed to load elevation data. Please try again.");
-        }
-    }
-
-    // Simplify coordinates using Douglas-Peucker algorithm
-    function simplifyCoordinates(coordinates, tolerance) {
-        if (coordinates.length <= 2) return coordinates;
-        
-        // Find the point with the maximum distance
-        let maxDist = 0;
-        let maxIndex = 0;
-        const start = coordinates[0];
-        const end = coordinates[coordinates.length - 1];
-        
-        for (let i = 1; i < coordinates.length - 1; i++) {
-            const dist = perpendicularDistance(coordinates[i], start, end);
-            if (dist > maxDist) {
-                maxDist = dist;
-                maxIndex = i;
+        function animateStartScreenBackground(timestamp) {
+            if (!startScreenMapState.isInitialized || startScreenMapState.isLoading || 
+                (document.getElementById('startScreen').style.display === 'none' && document.getElementById('mapSelectionScreen').style.display === 'none')) {
+                if (startScreenMapState.animationId) cancelAnimationFrame(startScreenMapState.animationId);
+                startScreenMapState.animationId = null;
+                return;
             }
-        }
-        
-        // If max distance is greater than tolerance, recursively simplify
-        if (maxDist > tolerance) {
-            const left = coordinates.slice(0, maxIndex + 1);
-            const right = coordinates.slice(maxIndex);
-            
-            const simplifiedLeft = simplifyCoordinates(left, tolerance);
-            const simplifiedRight = simplifyCoordinates(right, tolerance);
-            
-            return simplifiedLeft.slice(0, simplifiedLeft.length - 1).concat(simplifiedRight);
-        } else {
-            return [start, end];
-        }
-    }
+            if (!startScreenMapState.pacman) {
+                startScreenMapState.animationId = requestAnimationFrame(animateStartScreenBackground); 
+                return;
+            }
 
-    // Calculate perpendicular distance from point to line
-    function perpendicularDistance(point, lineStart, lineEnd) {
-        const [x, y] = point;
-        const [x1, y1] = lineStart;
-        const [x2, y2] = lineEnd;
-        
-        if (x1 === x2 && y1 === y2) {
-            return Math.sqrt(Math.pow(x - x1, 2) + Math.pow(y - y1, 2));
-        }
-        
-        const area = Math.abs(0.5 * (x1 * y2 + x2 * y + x * y1 - x2 * y1 - x * y2 - x1 * y));
-        const bottom = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
-        return (2 * area) / bottom;
-    }
+            if (!startScreenMapState.lastFrameTime) startScreenMapState.lastFrameTime = timestamp;
+            let deltaTime = timestamp - startScreenMapState.lastFrameTime;
+            if (deltaTime > MAX_DELTA_TIME) deltaTime = MAX_DELTA_TIME;
+            startScreenMapState.lastFrameTime = timestamp;
 
-    // Get elevations for coordinates using OpenTopoMap API
-    async function getElevations(coordinates) {
-        // OpenTopoMap doesn't have a direct elevation API, so we'll use Open-Elevation API
-        const locations = coordinates.map(coord => ({
-            latitude: coord[1],
-            longitude: coord[0]
-        }));
-        
-        // Split into chunks to avoid too many points in one request
-        const chunkSize = 100;
-        const chunks = [];
-        for (let i = 0; i < locations.length; i += chunkSize) {
-            chunks.push(locations.slice(i, i + chunkSize));
-        }
-        
-        const allElevations = [];
-        
-        for (const chunk of chunks) {
-            const response = await fetch('https://api.open-elevation.com/api/v1/lookup', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    locations: chunk
-                })
+            updateBackgroundPacman(deltaTime);
+            startScreenMapState.ghosts.forEach((ghost, index) => {
+                updateBackgroundGhost(ghost, startScreenMapState.ghostMovements[index], deltaTime);
             });
             
-            if (!response.ok) {
-                throw new Error("Failed to get elevation data");
+            startScreenMapState.animationId = requestAnimationFrame(animateStartScreenBackground);
+        }
+        
+        function updateBackgroundPacman(deltaTime) {
+            const pm = startScreenMapState.pacmanMovement;
+            const pacmanObj = startScreenMapState.pacman;
+            if (!pacmanObj || startScreenMapState.validPositions.length === 0) return; 
+
+            if (!pm.isMoving) { 
+                const currentPacmanNode = findNearestRoadPositionGeneric(pacmanObj.getLatLng().lat, pacmanObj.getLatLng().lng, startScreenMapState.validPositions);
+                
+                if (!pm.autoPilotTargetNode || positionsAreEqual(currentPacmanNode, pm.autoPilotTargetNode)) {
+                    let attempts = 0;
+                    do {
+                        pm.autoPilotTargetNode = startScreenMapState.validPositions[Math.floor(Math.random() * startScreenMapState.validPositions.length)];
+                        attempts++;
+                    } while (startScreenMapState.validPositions.length > 1 && positionsAreEqual(currentPacmanNode, pm.autoPilotTargetNode) && attempts < 10);
+                     if (startScreenMapState.validPositions.length === 1) pm.autoPilotTargetNode = currentPacmanNode; 
+                }
+
+                pm.autoPilotPath = aStarSearch(currentPacmanNode, pm.autoPilotTargetNode, startScreenMapState.validPositions, startScreenMapState.adjacencyList);
+                
+                if (!pm.autoPilotPath || pm.autoPilotPath.length <= 1) { 
+                    const neighbors = getNeighborsForAdjacencyList(currentPacmanNode, startScreenMapState.adjacencyList);
+                    if (neighbors.length > 0) {
+                        pm.autoPilotPath = [currentPacmanNode, neighbors[Math.floor(Math.random() * neighbors.length)]];
+                    } else {
+                        return; 
+                    }
+                }
+
+                if (pm.autoPilotPath.length > 1) {
+                    pm.startPositionLatLng = L.latLng(pm.autoPilotPath[0][0], pm.autoPilotPath[0][1]);
+                    pm.destinationNodeLatLng = L.latLng(pm.autoPilotPath[1][0], pm.autoPilotPath[1][1]);
+                    pm.totalDistanceToDestinationNode = pm.startPositionLatLng.distanceTo(pm.destinationNodeLatLng);
+                    if (pm.totalDistanceToDestinationNode > 0.1) {
+                        pm.distanceTraveledThisSegment = 0;
+                        pm.isMoving = true;
+                        
+                        const dy = pm.destinationNodeLatLng.lat - pm.startPositionLatLng.lat;
+                        const dx = pm.destinationNodeLatLng.lng - pm.startPositionLatLng.lng;
+                        if (Math.abs(dx) > Math.abs(dy)) pm.currentFacingDirection = dx > 0 ? 'right' : 'left';
+                        else pm.currentFacingDirection = dy < 0 ? 'up' : 'down'; 
+                        updateBgPacmanIconRotation();
+                    }
+                }
             }
-            
-            const data = await response.json();
-            const elevations = data.results.map(result => result.elevation);
-            allElevations.push(...elevations);
-        }
-        
-        return allElevations;
-    }
 
-    // Calculate distances between consecutive points (in meters)
-    function calculateDistances(coordinates) {
-        const distances = [];
-        
-        for (let i = 1; i < coordinates.length; i++) {
-            const prev = coordinates[i - 1];
-            const curr = coordinates[i];
-            
-            // Haversine formula for distance between two points on a sphere
-            const R = 6371000; // Earth radius in meters
-            const φ1 = prev[1] * Math.PI / 180;
-            const φ2 = curr[1] * Math.PI / 180;
-            const Δφ = (curr[1] - prev[1]) * Math.PI / 180;
-            const Δλ = (curr[0] - prev[0]) * Math.PI / 180;
-            
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            
-            distances.push(R * c);
-        }
-        
-        return distances;
-    }
-
-    // Calculate cumulative distances
-    function calculateCumulativeDistances(distances) {
-        const cumulative = [0];
-        let sum = 0;
-        
-        for (const dist of distances) {
-            sum += dist;
-            cumulative.push(sum);
-        }
-        
-        return cumulative;
-    }
-
-    // Calculate total elevation gain
-    function calculateElevationGain(elevations) {
-        let gain = 0;
-        
-        for (let i = 1; i < elevations.length; i++) {
-            const diff = elevations[i] - elevations[i - 1];
-            if (diff > 0) {
-                gain += diff;
+            if (pm.isMoving) {
+                const moveAmount = BG_PACMAN_SPEED * (deltaTime / 1000);
+                pm.distanceTraveledThisSegment += moveAmount;
+                if (pm.distanceTraveledThisSegment >= pm.totalDistanceToDestinationNode) {
+                    pacmanObj.setLatLng(pm.destinationNodeLatLng);
+                    pm.isMoving = false;
+                } else {
+                    const fraction = pm.distanceTraveledThisSegment / pm.totalDistanceToDestinationNode;
+                    const newLat = pm.startPositionLatLng.lat + (pm.destinationNodeLatLng.lat - pm.startPositionLatLng.lat) * fraction;
+                    const newLng = pm.startPositionLatLng.lng + (pm.destinationNodeLatLng.lng - pm.startPositionLatLng.lng) * fraction;
+                    pacmanObj.setLatLng([newLat, newLng]);
+                }
+                if (startScreenMapState.map) startScreenMapState.map.setView(pacmanObj.getLatLng(), startScreenMapState.map.getZoom(), { animate: false });
             }
         }
-        
-        return Math.round(gain);
-    }
 
-    // Update elevation chart
-    function updateElevationChart(distances, elevations) {
-        const ctx = document.getElementById('elevationChart').getContext('2d');
-        
-        // Destroy previous chart if it exists
-        if (elevationChart) {
-            elevationChart.destroy();
-        }
-        
-        elevationChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: distances.map(d => (d / 1000).toFixed(1) + ' km'),
-                datasets: [{
-                    label: 'Elevation (m)',
-                    data: elevations,
-                    borderColor: '#ff5722',
-                    backgroundColor: 'rgba(255, 87, 34, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Distance'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Elevation (m)'
+        function updateBackgroundGhost(ghostObj, gm, deltaTime) {
+            if (!ghostObj || !startScreenMapState.pacman || startScreenMapState.validPositions.length === 0) return; 
+
+            if (!gm.isMoving) {
+                const currentGhostNode = findNearestRoadPositionGeneric(ghostObj.getLatLng().lat, ghostObj.getLatLng().lng, startScreenMapState.validPositions);
+                const pacmanCurrentNode = findNearestRoadPositionGeneric(startScreenMapState.pacman.getLatLng().lat, startScreenMapState.pacman.getLatLng().lng, startScreenMapState.validPositions);
+                
+                gm.autoPilotPath = aStarSearch(currentGhostNode, pacmanCurrentNode, startScreenMapState.validPositions, startScreenMapState.adjacencyList);
+
+                if (gm.autoPilotPath && gm.autoPilotPath.length > 1) {
+                    gm.startPositionLatLng = L.latLng(gm.autoPilotPath[0][0], gm.autoPilotPath[0][1]);
+                    gm.destinationNodeLatLng = L.latLng(gm.autoPilotPath[1][0], gm.autoPilotPath[1][1]);
+                    gm.totalDistanceToDestinationNode = gm.startPositionLatLng.distanceTo(gm.destinationNodeLatLng);
+                    if (gm.totalDistanceToDestinationNode > 0.1) {
+                        gm.distanceTraveledThisSegment = 0;
+                        gm.isMoving = true;
+                    }
+                } else { 
+                    const neighbors = getNeighborsForAdjacencyList(currentGhostNode, startScreenMapState.adjacencyList);
+                     if (neighbors.length > 0) {
+                        const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        gm.startPositionLatLng = L.latLng(currentGhostNode[0], currentGhostNode[1]);
+                        gm.destinationNodeLatLng = L.latLng(randomNeighbor[0], randomNeighbor[1]);
+                        gm.totalDistanceToDestinationNode = gm.startPositionLatLng.distanceTo(gm.destinationNodeLatLng);
+                        if (gm.totalDistanceToDestinationNode > 0.1) {
+                           gm.distanceTraveledThisSegment = 0;
+                           gm.isMoving = true;
                         }
                     }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `Elevation: ${context.parsed.y} m`;
+                }
+            }
+            
+            if (gm.isMoving) {
+                const moveAmount = BG_GHOST_SPEED * (deltaTime / 1000);
+                gm.distanceTraveledThisSegment += moveAmount;
+                if (gm.distanceTraveledThisSegment >= gm.totalDistanceToDestinationNode) {
+                    ghostObj.setLatLng(gm.destinationNodeLatLng);
+                    gm.isMoving = false;
+                } else {
+                    const fraction = gm.distanceTraveledThisSegment / gm.totalDistanceToDestinationNode;
+                    const newLat = gm.startPositionLatLng.lat + (gm.destinationNodeLatLng.lat - gm.startPositionLatLng.lat) * fraction;
+                    const newLng = gm.startPositionLatLng.lng + (gm.destinationNodeLatLng.lng - gm.startPositionLatLng.lng) * fraction;
+                    ghostObj.setLatLng([newLat, newLng]);
+                }
+            }
+        }
+        
+        function updateBgPacmanIconRotation() {
+            if (!startScreenMapState.pacman || !startScreenMapState.pacman.getElement()) return;
+            const pacmanElement = startScreenMapState.pacman.getElement();
+            pacmanElement.classList.remove('facing-true-left', 'facing-true-right', 'facing-true-up', 'facing-true-down');
+            switch (startScreenMapState.pacmanMovement.currentFacingDirection) {
+                case 'left': pacmanElement.classList.add('facing-true-left'); break;
+                case 'right': pacmanElement.classList.add('facing-true-right'); break;
+                case 'up': pacmanElement.classList.add('facing-true-up'); break;
+                case 'down': pacmanElement.classList.add('facing-true-down'); break;
+                default: pacmanElement.classList.add('facing-true-left'); break;
+            }
+        }
+
+
+        function startBackgroundAnimationLoop() {
+            if (startScreenMapState.animationId) cancelAnimationFrame(startScreenMapState.animationId);
+            startScreenMapState.lastFrameTime = 0; 
+            animateStartScreenBackground(performance.now());
+            console.log("Background animation loop started.");
+        }
+
+        function stopBackgroundAnimation() {
+            if (startScreenMapState.animationId) {
+                cancelAnimationFrame(startScreenMapState.animationId);
+                startScreenMapState.animationId = null;
+            }
+            if (startScreenMapState.map) {
+                startScreenMapState.map.remove();
+                startScreenMapState.map = null;
+            }
+            startScreenMapState.pacman = null;
+            startScreenMapState.ghosts = [];
+            startScreenMapState.roadNetwork = [];
+            startScreenMapState.validPositions = [];
+            startScreenMapState.adjacencyList.clear();
+            startScreenMapState.pacmanMovement = { isMoving: false, startPositionLatLng: null, destinationNodeLatLng: null, totalDistanceToDestinationNode: 0, distanceTraveledThisSegment: 0, currentFacingDirection: 'left', autoPilotPath: [], autoPilotTargetNode: null };
+            startScreenMapState.ghostMovements = [];
+            startScreenMapState.isInitialized = false;
+            startScreenMapState.isLoading = false; 
+            
+            const startScreenMapElement = document.getElementById('startScreenMap');
+            if (startScreenMapElement) startScreenMapElement.style.opacity = '0'; 
+
+            console.log("Background animation stopped and resources cleaned up.");
+        }
+        
+        async function generateRoadNetworkGeneric(bounds, osmData, targetState, maxSegmentLength = 25) {
+            targetState.validPositions = []; 
+            targetState.roadNetwork = []; 
+            targetState.adjacencyList.clear();
+            const MAX_SEGMENT_LENGTH_METERS = maxSegmentLength; 
+
+            if (!osmData || !osmData.elements || osmData.elements.length === 0) {
+                console.warn(`未獲取到有效的 OSM 數據或數據為空 (${targetState === gameState ? '主遊戲' : '背景'})。路網可能無法正常生成。`);
+                if (targetState === startScreenMapState) { 
+                     targetState.validPositions = []; 
+                     targetState.roadNetwork = [];
+                     targetState.adjacencyList.clear();
+                     return; 
+                }
+            }
+            
+            const nodes = {}; 
+            const ways = [];
+            if (osmData && osmData.elements) { 
+                osmData.elements.forEach(element => {
+                    if (element.type === 'node' && element.lat && element.lon) {
+                        nodes[element.id] = [element.lat, element.lon];
+                    } else if (element.type === 'way' && element.tags && element.tags.highway && element.nodes) {
+                        const roadTypes = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'living_street', 'pedestrian', 'road', 'path', 'footway', 'cycleway', 'track'];
+                        if (roadTypes.includes(element.tags.highway)) {
+                            ways.push(element.nodes);
+                        }
+                    }
+                });
+            }
+
+
+            const initialRoadNetwork = [];
+            const uniqueNodesMap = new Map(); 
+
+            ways.forEach(nodeIds => {
+                const wayPoints = [];
+                for (let i = 0; i < nodeIds.length; i++) {
+                    if (nodes[nodeIds[i]]) {
+                        const pos = nodes[nodeIds[i]];
+                        wayPoints.push(pos);
+                        if (!uniqueNodesMap.has(pos.toString())) {
+                            uniqueNodesMap.set(pos.toString(), pos);
+                        }
+                    }
+                }
+                if (wayPoints.length > 1) {
+                    for (let i = 0; i < wayPoints.length - 1; i++) {
+                        initialRoadNetwork.push([wayPoints[i], wayPoints[i+1]]);
+                    }
+                }
+            });
+            
+            const subdividedRoadNetwork = [];
+            initialRoadNetwork.forEach(segment => {
+                const nodeA = segment[0];
+                const nodeB = segment[1];
+
+                if (!uniqueNodesMap.has(nodeA.toString())) uniqueNodesMap.set(nodeA.toString(), nodeA);
+                if (!uniqueNodesMap.has(nodeB.toString())) uniqueNodesMap.set(nodeB.toString(), nodeB);
+
+                const latLngA = L.latLng(nodeA[0], nodeA[1]);
+                const latLngB = L.latLng(nodeB[0], nodeB[1]);
+                const distance = latLngA.distanceTo(latLngB);
+
+                if (distance > MAX_SEGMENT_LENGTH_METERS) {
+                    const numNewPoints = Math.ceil(distance / MAX_SEGMENT_LENGTH_METERS) - 1;
+                    let lastPoint = nodeA;
+                    for (let i = 1; i <= numNewPoints; i++) {
+                        const fraction = i / (numNewPoints + 1);
+                        const interpolatedLat = nodeA[0] + fraction * (nodeB[0] - nodeA[0]);
+                        const interpolatedLng = nodeA[1] + fraction * (nodeB[1] - nodeA[1]);
+                        const newNode = [interpolatedLat, interpolatedLng];
+                        
+                        if (!uniqueNodesMap.has(newNode.toString())) {
+                            uniqueNodesMap.set(newNode.toString(), newNode);
+                        }
+                        subdividedRoadNetwork.push([lastPoint, newNode]);
+                        lastPoint = newNode;
+                    }
+                    subdividedRoadNetwork.push([lastPoint, nodeB]);
+                } else {
+                    subdividedRoadNetwork.push(segment);
+                }
+            });
+
+            targetState.roadNetwork = subdividedRoadNetwork;
+            targetState.validPositions = Array.from(uniqueNodesMap.values());
+            if (targetState.validPositions.length === 0 && osmData && osmData.elements && osmData.elements.length > 0) { 
+                 console.error(`OSM data processing for ${targetState === gameState ? 'main game' : 'background'} resulted in 0 valid positions despite having OSM data.`);
+            }
+            
+            targetState.validPositions.forEach(node => {
+                const nodeStr = node.toString();
+                if (!targetState.adjacencyList.has(nodeStr)) {
+                    targetState.adjacencyList.set(nodeStr, []);
+                }
+            });
+
+            targetState.roadNetwork.forEach(segment => {
+                if (segment && segment.length === 2 && segment[0] && segment[1]) {
+                    const nodeA = segment[0];
+                    const nodeB = segment[1];
+                    const nodeAStr = nodeA.toString();
+                    const nodeBStr = nodeB.toString();
+
+                    if (!targetState.adjacencyList.has(nodeAStr)) targetState.adjacencyList.set(nodeAStr, []);
+                    if (!targetState.adjacencyList.has(nodeBStr)) targetState.adjacencyList.set(nodeBStr, []);
+                    
+                    if (!targetState.adjacencyList.get(nodeAStr).some(n => positionsAreEqual(n, nodeB))) {
+                        targetState.adjacencyList.get(nodeAStr).push(nodeB);
+                    }
+                    if (!targetState.adjacencyList.get(nodeBStr).some(n => positionsAreEqual(n, nodeA))) {
+                        targetState.adjacencyList.get(nodeBStr).push(nodeA);
+                    }
+                }
+            });
+            if (targetState === gameState && targetState.validPositions.length > 0) { 
+                connectDeadEnds(targetState);
+            }
+        }
+        
+        function connectDeadEnds(targetState) {
+            console.log('Attempting to connect dead ends for main game...');
+            let deadEndsFixedInIterationTotal = 0;
+            let iterations = 0;
+            const maxIterations = Math.max(15, Math.floor(targetState.adjacencyList.size / 10));
+            let deadEndsFixedInThisPass = 0;
+
+            do {
+                deadEndsFixedInThisPass = 0;
+                iterations++;
+                if (iterations > maxIterations && maxIterations > 0) {
+                    console.warn("Max iterations reached for connecting dead ends. Breaking.");
+                    break;
+                }
+
+                const nodesToProcessThisPass = Array.from(targetState.adjacencyList.keys());
+
+                for (const nodeStr of nodesToProcessThisPass) {
+                    const deadEndNodeArray = nodeStr.split(',').map(Number);
+                    const neighbors = targetState.adjacencyList.get(nodeStr) || [];
+
+                    if (neighbors.length === 1) {
+                        const singleNeighborArray = neighbors[0];
+                        let closestNodeArray = null;
+                        let minDistanceSq = Infinity;
+                        let foundSuitableCandidate = false;
+
+                        for (const potentialTargetPosArray of targetState.validPositions) {
+                            if (positionsAreEqual(potentialTargetPosArray, deadEndNodeArray) ||
+                                positionsAreEqual(potentialTargetPosArray, singleNeighborArray)) {
+                                continue;
+                            }
+
+                            let isAlreadyConnectedToDeadEnd = false;
+                            const potentialTargetNeighbors = targetState.adjacencyList.get(potentialTargetPosArray.toString()) || [];
+                            for (const ptn of potentialTargetNeighbors) {
+                                if (positionsAreEqual(ptn, deadEndNodeArray)) {
+                                    isAlreadyConnectedToDeadEnd = true;
+                                    break;
+                                }
+                            }
+                            if (isAlreadyConnectedToDeadEnd) continue;
+
+                            const dy = potentialTargetPosArray[0] - deadEndNodeArray[0];
+                            const dx = potentialTargetPosArray[1] - deadEndNodeArray[1];
+                            const distanceSq = dy * dy + dx * dx;
+
+                            if (distanceSq < minDistanceSq) {
+                                minDistanceSq = distanceSq;
+                                closestNodeArray = potentialTargetPosArray;
+                                foundSuitableCandidate = true;
+                            }
+                        }
+
+                        if (foundSuitableCandidate && closestNodeArray && Math.sqrt(minDistanceSq) < (25 * 2.5)) { 
+                            let segmentExists = targetState.roadNetwork.some(segment =>
+                                (positionsAreEqual(segment[0], deadEndNodeArray) && positionsAreEqual(segment[1], closestNodeArray)) ||
+                                (positionsAreEqual(segment[0], closestNodeArray) && positionsAreEqual(segment[1], deadEndNodeArray))
+                            );
+
+                            if (!segmentExists) {
+                                targetState.roadNetwork.push([deadEndNodeArray, closestNodeArray]);
+
+                                const deadEndNodeCurrentNeighbors = targetState.adjacencyList.get(deadEndNodeArray.toString());
+                                if (deadEndNodeCurrentNeighbors && !deadEndNodeCurrentNeighbors.some(n => positionsAreEqual(n, closestNodeArray))) {
+                                    deadEndNodeCurrentNeighbors.push(closestNodeArray);
+                                }
+
+                                const closestNodeStr = closestNodeArray.toString();
+                                let closestNodeCurrentNeighbors = targetState.adjacencyList.get(closestNodeStr);
+                                if (!closestNodeCurrentNeighbors) {
+                                    closestNodeCurrentNeighbors = [];
+                                    targetState.adjacencyList.set(closestNodeStr, closestNodeCurrentNeighbors);
+                                }
+                                if (!closestNodeCurrentNeighbors.some(n => positionsAreEqual(n, deadEndNodeArray))) {
+                                    closestNodeCurrentNeighbors.push(deadEndNodeArray);
+                                }
+                                deadEndsFixedInThisPass++;
+                                deadEndsFixedInIterationTotal++;
                             }
                         }
                     }
                 }
-            }
-        });
-    }
-
-    // Close elevation modal
-    function closeElevationModal() {
-        document.getElementById('elevationModal').style.display = 'none';
-    }
-    // 新增變數用於GPS追蹤
-let isTracking = false;
-let trackingInterval;
-let currentTrack = {
-    name: '',
-    coordinates: [],
-    timestamps: [],
-    elevations: []
-};
-let trackingLayer2D;
-let trackingLayer3D;
-let trackingLine;
-
-// 初始化追蹤圖層
-function initTrackingLayers() {
-    // 2D追蹤圖層
-    trackingLayer2D = new ol.layer.Vector({
-        source: new ol.source.Vector(),
-        style: new ol.style.Style({
-            stroke: new ol.style.Stroke({
-                color: '#4299e1',
-                width: 4,
-                lineDash: [10, 5]
-            })
-        })
-    });
-    map2d.addLayer(trackingLayer2D);
-    
-    // 3D追蹤圖層（如果3D地圖已初始化）
-    if (map3d) {
-        trackingLayer3D = new Cesium.CustomDataSource('tracking');
-        map3d.dataSources.add(trackingLayer3D);
-    }
-}
-
-// 開始GPS追蹤
-function startTracking() {
-    if (isTracking) return;
-    
-    // 提示用戶輸入路線名稱
-    const routeName = prompt("Enter a name for this track:", 
-                           "Track " + new Date().toLocaleString());
-    if (!routeName) return;
-    
-    // 初始化新路線
-    currentTrack = {
-        name: routeName,
-        coordinates: [],
-        timestamps: [],
-        elevations: []
-    };
-    
-    // 更新UI
-    document.getElementById('startTrackingBtn').style.display = 'none';
-    document.getElementById('stopTrackingBtn').style.display = 'block';
-    
-    isTracking = true;
-    
-    // 清除之前的追蹤路線
-    if (trackingLayer2D) {
-        trackingLayer2D.getSource().clear();
-    }
-    if (trackingLayer3D) {
-        trackingLayer3D.entities.removeAll();
-    }
-    
-    // 開始獲取位置
-    if (navigator.geolocation) {
-        trackingInterval = setInterval(() => {
-            navigator.geolocation.getCurrentPosition(
-                position => updateTrackPosition(position),
-                error => handleTrackingError(error),
-                {
-                    enableHighAccuracy: true,
-                    maximumAge: 30000,
-                    timeout: 27000
+                // console.log(`Main game dead end fix iteration ${iterations}: Fixed ${deadEndsFixedInThisPass}. Total fixed: ${deadEndsFixedInIterationTotal}`);
+                if (deadEndsFixedInThisPass === 0 && iterations > 1) {
+                    // console.log("Main game dead end fixing stabilized.");
+                    break;
                 }
-            );
-        }, 500); // 每5秒記錄一個點
-    } else {
-        alert("Geolocation is not supported by this browser.");
-        stopTracking();
-    }
-}
+            } while (iterations < maxIterations && (deadEndsFixedInThisPass > 0 || iterations === 1));
 
-// 更新追蹤位置
-function updateTrackPosition(position) {
-    const coords = position.coords;
-    const point = [coords.longitude, coords.latitude];
-    
-    // 添加到當前路線
-    currentTrack.coordinates.push(point);
-    currentTrack.timestamps.push(new Date(position.timestamp));
-    currentTrack.elevations.push(coords.altitude || 0);
-    
-    // 更新地圖顯示
-    updateTrackingDisplay();
-}
+            if (iterations >= maxIterations && maxIterations > 0) {
+                console.warn("Main game dead end fixing reached max iterations.");
+            }
+            // console.log('Main game dead end fixing attempt complete. Final adjacency list size:', targetState.adjacencyList.size, `Total dead ends fixed: ${deadEndsFixedInIterationTotal}`);
+        }
 
-// 更新追蹤顯示
-function updateTrackingDisplay() {
-    if (currentTrack.coordinates.length === 0) return;
-    
-    // 2D地圖更新
-    if (currentViewMode === '2d' && trackingLayer2D) {
-        const lineString = new ol.geom.LineString(currentTrack.coordinates);
-        lineString.transform('EPSG:4326', 'EPSG:3857');
-        
-        trackingLayer2D.getSource().clear();
-        trackingLayer2D.getSource().addFeature(new ol.Feature({
-            geometry: lineString
-        }));
-    }
-    
-    // 3D地圖更新
-    if (currentViewMode === '3d' && trackingLayer3D) {
-        trackingLayer3D.entities.removeAll();
-        
-        if (currentTrack.coordinates.length > 1) {
-            const positions = Cesium.Cartesian3.fromDegreesArray(
-                currentTrack.coordinates.flat()
-            );
+
+        // --- 主遊戲邏輯 ---
+        async function initGame() { 
+            stopBackgroundAnimation(); 
+
+            const config = mapConfigs[gameState.currentMapIndex];
+            if (gameState.map) { 
+                gameState.map.remove();
+                gameState.map = null; 
+            }
+
+            gameState.map = L.map('map', { 
+                center: config.center,
+                zoom: config.zoom,
+                minZoom: MAX_MAP_ZOOM,
+                maxZoom: MAX_MAP_ZOOM,
+                zoomControl: false,
+                attributionControl: false,
+                scrollWheelZoom: false,
+                dragging: false,
+                touchZoom: false,
+                doubleClickZoom: false
+            });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                 maxZoom: MAX_MAP_ZOOM + 1
+            }).addTo(gameState.map);
+
+            if (gameState.map) {
+                gameState.map.invalidateSize();
+            }
+
+            resetGameState(); 
+            showLoadingScreen('正在獲取地圖資料...');
+
+            const bounds = gameState.map.getBounds(); 
+            const roadData = await fetchRoadData(bounds);
+            await generateRoadNetworkGeneric(bounds, roadData, gameState); 
+
+            setTimeout(() => {
+                hideLoadingScreen();
+                if (gameState.validPositions.length === 0) {
+                    showLoadingScreen('地圖數據載入失敗，請檢查網絡或稍後重試。');
+                    console.error('無法初始化遊戲元素，因為沒有有效的道路位置。');
+                    return;
+                }
+                initGameElements(); 
+                startGameCountdown();
+            }, 1000); 
+        }
+
+        function resetGameState() { 
+            if (gameLoopRequestId) cancelAnimationFrame(gameLoopRequestId);
+            if (gameState.gameTimer) clearInterval(gameState.gameTimer);
+            if (ghostDecisionInterval) clearInterval(ghostDecisionInterval);
+            if (gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer);
+            gameLoopRequestId = null; ghostDecisionInterval = null; lastFrameTime = 0;
+            gameState.score = 0; gameState.lives = 3; gameState.gameTime =600; 
+            gameState.isPaused = false; gameState.isGameOver = false; gameState.isLosingLife = false; 
+            gameState.powerMode = false; gameState.dotsCollected = 0;
+            gameState.ghostSpawnPoints = []; gameState.pacmanLevelStartPoint = null;
+            gameState.baseScatterPoints = []; 
+            gameState.pacmanMovement = { isMoving: false, startPositionLatLng: null, destinationNodeLatLng: null, totalDistanceToDestinationNode: 0, distanceTraveledThisSegment: 0, lastIntendedDirectionKey: null, currentFacingDirection: 'left' };
+            gameState.gameSpeedMultiplier = 1; 
+            gameState.pacmanSpeedMultiplier = 1.0; 
+            gameState.godMode = false; 
+            gameState.autoPilotMode = false; 
+            gameState.cleverMode = false; 
+            gameState.autoPilotPath = [];
+            gameState.autoPilotTarget = null;
             
-            trackingLine = trackingLayer3D.entities.add({
-                polyline: {
-                    positions: positions,
-                    width: 5,
-                    material: new Cesium.PolylineGlowMaterialProperty({
-                        glowPower: 0.3,
-                        color: Cesium.Color.BLUE
-                    }),
-                    clampToGround: true
+            if (gameState.map) { 
+                gameState.dots.forEach(dot => {if(gameState.map.hasLayer(dot)) gameState.map.removeLayer(dot)});
+                gameState.powerPellets.forEach(pellet => {if(gameState.map.hasLayer(pellet)) gameState.map.removeLayer(pellet)});
+                gameState.ghosts.forEach(ghostObj => { if (ghostObj.marker && gameState.map.hasLayer(ghostObj.marker)) gameState.map.removeLayer(ghostObj.marker); }); 
+                if (gameState.pacman && gameState.map.hasLayer(gameState.pacman)) gameState.map.removeLayer(gameState.pacman);
+            }
+            gameState.dots = []; gameState.powerPellets = []; 
+            gameState.ghosts = []; 
+            gameState.pacman = null;
+
+
+            const wastedScreen = document.getElementById('wastedScreenOverlay');
+            const wastedBanner = document.getElementById('wastedBanner');
+            if (wastedScreen) {
+                wastedScreen.style.display = 'none';
+                wastedScreen.classList.remove('active');
+            }
+            if (wastedBanner) {
+                wastedBanner.style.opacity = '0'; 
+            }
+            const mapElement = document.getElementById('map'); 
+            if (mapElement) {
+                 mapElement.classList.remove('fading-to-black');
+                 mapElement.style.filter = 'brightness(75%) grayscale(0%)'; 
+            }
+        }
+        
+        function getNeighbors(node) {
+            return getNeighborsForAdjacencyList(node, gameState.adjacencyList);
+        }
+        
+        function aStar(startNode, goalNode, ghostPositions = []) {
+            return aStarSearch(startNode, goalNode, gameState.validPositions, gameState.adjacencyList, ghostPositions, gameState.cleverMode);
+        }
+
+        function findNearestRoadPosition(targetLat, targetLng) {
+            return findNearestRoadPositionGeneric(targetLat, targetLng, gameState.validPositions);
+        }
+
+
+        function initGameElements() { 
+            const center = gameState.map.getCenter();
+            const bounds = gameState.map.getBounds();
+            
+            if (gameState.validPositions.length === 0) { console.error("No valid positions to place game elements."); return; }
+
+            gameState.ghostSpawnPoints = [];
+            const spawnPointCandidates = [ 
+                [bounds.getNorthWest().lat, bounds.getNorthWest().lng],
+                [bounds.getNorthEast().lat, bounds.getNorthEast().lng],
+                [bounds.getSouthWest().lat, bounds.getSouthWest().lng],
+                [bounds.getSouthEast().lat, bounds.getSouthEast().lng],
+                [bounds.getCenter().lat + (bounds.getNorth() - bounds.getCenter().lat) * 0.5, bounds.getCenter().lng], 
+                [bounds.getCenter().lat - (bounds.getCenter().lat - bounds.getSouth()) * 0.5, bounds.getCenter().lng], 
+                [bounds.getCenter().lat, bounds.getCenter().lng - (bounds.getCenter().lng - bounds.getWest()) * 0.5], 
+                [bounds.getCenter().lat, bounds.getCenter().lng + (bounds.getEast() - bounds.getCenter().lng) * 0.5], 
+            ];
+
+            let uniqueSpawnPointsFound = 0;
+            for (const coord of spawnPointCandidates) {
+                if (uniqueSpawnPointsFound >= NUMBER_OF_GHOSTS) break;
+                const roadPos = findNearestRoadPosition(coord[0], coord[1]); 
+                if (roadPos && !gameState.ghostSpawnPoints.some(p => positionsAreEqual(p, roadPos))) {
+                    gameState.ghostSpawnPoints.push(roadPos);
+                    uniqueSpawnPointsFound++;
+                }
+            }
+            let attempts = 0;
+            while (gameState.ghostSpawnPoints.length < NUMBER_OF_GHOSTS && attempts < 50 && gameState.validPositions.length > gameState.ghostSpawnPoints.length) {
+                const randomIndex = Math.floor(Math.random() * gameState.validPositions.length);
+                const randomPos = gameState.validPositions[randomIndex];
+                if (!gameState.ghostSpawnPoints.some(p => positionsAreEqual(p, randomPos))) {
+                    gameState.ghostSpawnPoints.push(randomPos);
+                }
+                attempts++;
+            }
+            if (gameState.ghostSpawnPoints.length === 0 && gameState.validPositions.length > 0) {
+                 gameState.ghostSpawnPoints.push(gameState.validPositions[0]); 
+                 console.warn("鬼怪出生點數量不足，將重複使用。")
+            }
+
+
+            gameState.baseScatterPoints = [];
+            const midLat = (bounds.getNorth() + bounds.getSouth()) / 2;
+            const midLng = (bounds.getEast() + bounds.getWest()) / 2;
+            const latOffset = (bounds.getNorth() - bounds.getSouth()) * 0.25; 
+            const lngOffset = (bounds.getEast() - bounds.getWest()) * 0.25;
+
+            const potentialScatterCoords = [
+                [bounds.getNorth() - latOffset, bounds.getWest() + lngOffset],   
+                [bounds.getNorth() - latOffset, bounds.getEast() - lngOffset],  
+                [bounds.getSouth() + latOffset, bounds.getWest() + lngOffset], 
+                [bounds.getSouth() + latOffset, bounds.getEast() - lngOffset],  
+                [midLat + latOffset * 0.5, midLng - lngOffset * 0.5],
+                [midLat - latOffset * 0.5, midLng + lngOffset * 0.5],
+                [midLat + latOffset * 0.5, midLng + lngOffset * 0.5],
+                [midLat - latOffset * 0.5, midLng - lngOffset * 0.5],
+            ];
+            for (const coord of potentialScatterCoords) {
+                const roadPos = findNearestRoadPosition(coord[0], coord[1]); 
+                if (roadPos && 
+                    !gameState.baseScatterPoints.some(p => positionsAreEqual(p, roadPos)) &&
+                    !gameState.ghostSpawnPoints.some(sp => sp && positionsAreEqual(sp, roadPos, 0.0005))) { 
+                    gameState.baseScatterPoints.push(roadPos);
+                }
+            }
+            attempts = 0;
+            const desiredScatterPoints = Math.min(Math.max(4, NUMBER_OF_GHOSTS), gameState.validPositions.length, 8); 
+            while (gameState.baseScatterPoints.length < desiredScatterPoints && attempts < 50 && gameState.validPositions.length > gameState.baseScatterPoints.length) {
+                const randomIndex = Math.floor(Math.random() * gameState.validPositions.length);
+                const randomPos = gameState.validPositions[randomIndex];
+                if (!gameState.baseScatterPoints.some(p => positionsAreEqual(p, randomPos)) && 
+                    !gameState.ghostSpawnPoints.some(sp => sp && positionsAreEqual(sp, randomPos, 0.0005))) { 
+                    gameState.baseScatterPoints.push(randomPos);
+                }
+                attempts++;
+            }
+            if (gameState.baseScatterPoints.length === 0 && gameState.validPositions.length > 0) {
+                let fallbackScatter = gameState.validPositions.find(vp => !gameState.ghostSpawnPoints.some(sp => sp && positionsAreEqual(sp, vp)));
+                if (fallbackScatter) gameState.baseScatterPoints.push(fallbackScatter);
+                else gameState.baseScatterPoints.push(gameState.validPositions[0]); 
+            }
+
+            drawVisualRoads(); 
+            createPacman(center); 
+            createGhosts(); 
+            generateDots(gameState.map.getBounds()); 
+            updateUI();
+        }
+
+
+        function createPacman(center) { 
+            if (gameState.validPositions.length === 0) return;
+            const pacmanCustomIcon = L.divIcon({ className: 'pacman-icon', iconSize: [24, 24], iconAnchor: [12, 12] });
+            const roadPos = findNearestRoadPosition(center.lat, center.lng); 
+            gameState.pacman = L.marker(roadPos, { icon: pacmanCustomIcon }).addTo(gameState.map);
+            gameState.pacmanLevelStartPoint = roadPos; gameState.pacmanMovement.currentFacingDirection = 'left'; updatePacmanIconRotation();
+        }
+
+        function createGhosts() { 
+            if (gameState.validPositions.length === 0 || gameState.ghostSpawnPoints.length === 0) {
+                console.error("Cannot create ghosts: No valid positions or ghost spawn points defined.");
+                return;
+            }
+            const baseGhostColors = ['red', 'pink', 'cyan', 'orange', 'purple', 'green', 'blue']; 
+            gameState.ghosts = []; 
+            
+            let assignedScatterIndices = new Set(); 
+
+            for (let i = 0; i < NUMBER_OF_GHOSTS; i++) {
+                const colorName = baseGhostColors[i % baseGhostColors.length];
+                const ghostIcon = L.divIcon({
+                    className: `ghost-icon ghost-${colorName}`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 16], 
+                    html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>'
+                });
+
+                const spawnPointToUse = gameState.ghostSpawnPoints[i % gameState.ghostSpawnPoints.length];
+
+                if (!spawnPointToUse || !Array.isArray(spawnPointToUse) || spawnPointToUse.length !== 2) {
+                    console.error(` 無效的鬼怪出生點索引 ${i}: `, spawnPointToUse, "將使用地圖中心作為備用方案");
+                    const mapCenter = gameState.map.getCenter();
+                    const fallbackSpawn = findNearestRoadPosition(mapCenter.lat, mapCenter.lng); 
+                    if (!fallbackSpawn) { 
+                         console.error("無法為鬼怪找到有效的出生點 " + i + "，跳過此鬼怪。");
+                         continue; 
+                    }
+                    spawnPointToUse = fallbackSpawn;
+                }
+                const marker = L.marker(spawnPointToUse, { icon: ghostIcon }).addTo(gameState.map);
+                
+                let scatterTarget = null;
+                if (gameState.baseScatterPoints.length > 0) {
+                    let scatterIndex = -1;
+                    let attempts = 0;
+                    const availableBasePoints = gameState.baseScatterPoints.length;
+                    
+                    if (assignedScatterIndices.size < availableBasePoints) { 
+                        do {
+                            scatterIndex = Math.floor(Math.random() * availableBasePoints);
+                            attempts++;
+                        } while (assignedScatterIndices.has(scatterIndex) && attempts < availableBasePoints * 2); 
+                         if (!assignedScatterIndices.has(scatterIndex)) { 
+                             assignedScatterIndices.add(scatterIndex);
+                         } else { 
+                             scatterIndex = Math.floor(Math.random() * availableBasePoints);
+                         }
+                    } else { 
+                        scatterIndex = Math.floor(Math.random() * availableBasePoints);
+                    }
+                    
+                    if (scatterIndex !== -1 && gameState.baseScatterPoints[scatterIndex]) {
+                         scatterTarget = gameState.baseScatterPoints[scatterIndex];
+                    } else { 
+                        scatterTarget = gameState.baseScatterPoints[i % availableBasePoints];
+                    }
+                }
+
+                gameState.ghosts.push({ 
+                    marker: marker,
+                    originalPos: [...spawnPointToUse], 
+                    color: colorName,
+                    isScared: false,
+                    isScattering: !!scatterTarget, 
+                    scatterTargetNode: scatterTarget ? [...scatterTarget] : null, 
+                    movement: { 
+                        isMoving: false,
+                        startPositionLatLng: L.latLng(spawnPointToUse[0], spawnPointToUse[1]), 
+                        destinationNodeLatLng: null,
+                        totalDistanceToDestinationNode: 0,
+                        distanceTraveledThisSegment: 0
+                    }
+                });
+            }
+        }
+
+        function generateDots(bounds) { 
+            if (gameState.validPositions.length === 0) { console.warn('沒有有效的道路位置，無法生成點數和道具。'); gameState.totalDots = 0; updateUI(); return; }
+            gameState.dots.forEach(dot => {if(gameState.map.hasLayer(dot)) gameState.map.removeLayer(dot)}); 
+            gameState.powerPellets.forEach(pellet => {if(gameState.map.hasLayer(pellet)) gameState.map.removeLayer(pellet)}); 
+            gameState.dots = []; gameState.powerPellets = []; 
+            let availablePositions = [...gameState.validPositions];
+            if (gameState.pacman) { const pacmanCurrentNode = findNearestRoadPosition(gameState.pacman.getLatLng().lat, gameState.pacman.getLatLng().lng); availablePositions = availablePositions.filter(p => !positionsAreEqual(p, pacmanCurrentNode)); }
+            gameState.ghostSpawnPoints.forEach(spawnPoint => { if(spawnPoint) availablePositions = availablePositions.filter(p => !positionsAreEqual(p, spawnPoint)); });
+            const desiredItemDensityFactor = 0.70, maxTotalItems = 25000; let numTotalItemsToPlace = Math.min(Math.floor(availablePositions.length * desiredItemDensityFactor), maxTotalItems);
+            if (availablePositions.length < numTotalItemsToPlace) numTotalItemsToPlace = availablePositions.length;
+            const numPowerPellets = Math.min(Math.floor(numTotalItemsToPlace * 0.07), 10); 
+            let numNormalDots = numTotalItemsToPlace - numPowerPellets; 
+            if (numNormalDots < 0) numNormalDots = 0;
+            for (let i = 0; i < numPowerPellets; i++) { if (availablePositions.length === 0) break; const randomIndex = Math.floor(Math.random() * availablePositions.length); const position = availablePositions.splice(randomIndex, 1)[0]; const pelletIcon = L.divIcon({ className: 'power-pellet', iconSize: [12, 12], iconAnchor: [6, 6] }); const pellet = L.marker(position, { icon: pelletIcon }).addTo(gameState.map); pellet.type = 'power'; pellet.points = 50; gameState.powerPellets.push(pellet); }
+            for (let i = 0; i < numNormalDots; i++) { if (availablePositions.length === 0) break; const randomIndex = Math.floor(Math.random() * availablePositions.length); const position = availablePositions.splice(randomIndex, 1)[0]; const dotIcon = L.divIcon({ className: 'dot', iconSize: [4, 4], iconAnchor: [2, 2] }); const dot = L.marker(position, { icon: dotIcon }).addTo(gameState.map); dot.type = 'dot'; dot.points = 20; gameState.dots.push(dot); }
+            gameState.totalDots = gameState.dots.length + gameState.powerPellets.length; 
+            gameState.dotsCollected = 0; updateUI();
+        }
+
+        function startGameCountdown() { 
+            const countdown = document.getElementById('countdown'); countdown.style.display = 'block'; let count = 3; gameState.canMove = false;
+            const countInterval = setInterval(() => { countdown.textContent = count; count--; if (count < 0) { clearInterval(countInterval); countdown.style.display = 'none'; gameState.canMove = true; startGame(); } }, 1000);
+        }
+
+        async function startGame() { 
+            document.getElementById('gameUI').style.display = 'block';
+            
+            if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
+                await Tone.start();
+                console.log("音訊內容已啟動");
+            }
+            if (!soundsReady) { 
+                setupSounds();
+            }
+            playStartSound();
+
+
+            gameState.gameTimer = setInterval(() => { if (!gameState.isPaused && !gameState.isGameOver) { gameState.gameTime--; updateUI(); if (gameState.gameTime <= 0) endGame(false); } }, 1000);
+            startGhostDecisionMaking();
+            lastFrameTime = performance.now(); if (gameLoopRequestId) cancelAnimationFrame(gameLoopRequestId); gameLoopRequestId = requestAnimationFrame(gameLoop);
+        }
+
+        function startGhostDecisionMaking() { 
+            const decisionIntervalTime = 600; 
+            if (ghostDecisionInterval) clearInterval(ghostDecisionInterval);
+            ghostDecisionInterval = setInterval(() => {
+                if (!gameState.isPaused && !gameState.isGameOver && !gameState.isLosingLife && gameState.pacman) {
+                    decideNextGhostMoves();
+                }
+            }, decisionIntervalTime);
+        }
+
+        function decideNextGhostMoves() { 
+            if (!gameState.pacman) return;
+            const pacmanCurrentNode = findNearestRoadPosition(gameState.pacman.getLatLng().lat, gameState.pacman.getLatLng().lng);
+
+            gameState.ghosts.forEach(ghost => {
+                if (!ghost.marker || (ghost.marker.getElement() && ghost.marker.getElement().classList.contains('ghost-eaten')) || ghost.movement.isMoving) {
+                    return;
+                }
+
+                let ghostCurrentLatLng = ghost.marker.getLatLng();
+                let ghostCurrentNode = findNearestRoadPosition(ghostCurrentLatLng.lat, ghostCurrentLatLng.lng);
+                if (!positionsAreEqual([ghostCurrentLatLng.lat, ghostCurrentLatLng.lng], ghostCurrentNode)) {
+                    ghost.marker.setLatLng(ghostCurrentNode);
+                }
+                ghostCurrentLatLng = L.latLng(ghostCurrentNode[0], ghostCurrentNode[1]);
+
+                const neighbors = getNeighbors(ghostCurrentNode); 
+                if (neighbors.length === 0) {
+                    ghost.movement.isMoving = false;
+                    return;
+                }
+                
+                const cameFromNode = ghost.movement.startPositionLatLng ? 
+                                     [ghost.movement.startPositionLatLng.lat, ghost.movement.startPositionLatLng.lng] : 
+                                     null;
+                let bestNextNode = null;
+                let targetNodeForThisGhost;
+                let isFleeingFromTarget; 
+
+                if (ghost.isScattering && ghost.scatterTargetNode) {
+                    if (heuristic(ghostCurrentNode, ghost.scatterTargetNode) < 10) { 
+                        ghost.isScattering = false;
+                        ghost.scatterTargetNode = null;
+                    } else {
+                        targetNodeForThisGhost = ghost.scatterTargetNode;
+                        isFleeingFromTarget = false; 
+                    }
+                }
+
+                if (!ghost.isScattering) { 
+                    targetNodeForThisGhost = pacmanCurrentNode;
+                    isFleeingFromTarget = ghost.isScared;
+                }
+                
+                if (targetNodeForThisGhost) { 
+                    let bestScore = isFleeingFromTarget ? -Infinity : Infinity;
+
+                    for (const neighbor of neighbors) {
+                        if (neighbors.length > 1 && cameFromNode && positionsAreEqual(neighbor, cameFromNode)) {
+                            continue;
+                        }
+                        const distanceToTarget = heuristic(neighbor, targetNodeForThisGhost);
+                        if (isFleeingFromTarget) { 
+                            if (distanceToTarget > bestScore) {
+                                bestScore = distanceToTarget;
+                                bestNextNode = neighbor;
+                            }
+                        } else { 
+                            if (distanceToTarget < bestScore) {
+                                bestScore = distanceToTarget;
+                                bestNextNode = neighbor;
+                            }
+                        }
+                    }
+
+                    if (bestNextNode) {
+                        const equallyGood = neighbors.filter(n => {
+                            if (neighbors.length > 1 && cameFromNode && positionsAreEqual(n, cameFromNode)) return false;
+                            const distance = heuristic(n, targetNodeForThisGhost);
+                            return isFleeingFromTarget ? (distance === bestScore) : (distance === bestScore);
+                        });
+                        if (equallyGood.length > 0) {
+                            bestNextNode = equallyGood[Math.floor(Math.random() * equallyGood.length)];
+                        }
+                    }
+                    
+                    if (!bestNextNode && neighbors.length > 0) {
+                         const filteredNeighbors = neighbors.filter(n => !(neighbors.length > 1 && cameFromNode && positionsAreEqual(n, cameFromNode)));
+                         bestNextNode = filteredNeighbors.length > 0 ? filteredNeighbors[Math.floor(Math.random() * filteredNeighbors.length)] : neighbors[Math.floor(Math.random() * neighbors.length)];
+                    }
+                }
+
+
+                if (bestNextNode) {
+                    const gm = ghost.movement;
+                    gm.startPositionLatLng = ghostCurrentLatLng;
+                    gm.destinationNodeLatLng = L.latLng(bestNextNode[0], bestNextNode[1]);
+                    gm.totalDistanceToDestinationNode = gm.startPositionLatLng.distanceTo(gm.destinationNodeLatLng);
+                    if (gm.totalDistanceToDestinationNode > 0.1) {
+                        gm.distanceTraveledThisSegment = 0;
+                        gm.isMoving = true;
+                    } else {
+                        gm.isMoving = false;
+                        if (ghost.isScattering && ghost.scatterTargetNode && positionsAreEqual(ghostCurrentNode, ghost.scatterTargetNode, 10)) {
+                           ghost.isScattering = false;
+                           ghost.scatterTargetNode = null;
+                        }
+                    }
+                } else {
+                    ghost.movement.isMoving = false;
                 }
             });
         }
-    }
-}
 
-// 處理追蹤錯誤
-function handleTrackingError(error) {
-    console.error("Geolocation error:", error);
-    if (error.code === error.PERMISSION_DENIED) {
-        alert("Geolocation permission denied. Please enable location services.");
-        stopTracking();
-    } else if (error.code === error.POSITION_UNAVAILABLE) {
-        console.log("Position unavailable, will retry...");
-    } else if (error.code === error.TIMEOUT) {
-        console.log("Geolocation timeout, will retry...");
-    }
-}
+        function manageAutoPilot() { 
+            if (!gameState.autoPilotMode || gameState.pacmanMovement.isMoving || !gameState.pacman || gameState.isPaused || gameState.isGameOver || gameState.isLosingLife) {
+                return;
+            }
 
-// 停止GPS追蹤
-function stopTracking() {
-    if (!isTracking) return;
-    
-    clearInterval(trackingInterval);
-    isTracking = false;
-    
-    // 更新UI
-    document.getElementById('stopTrackingBtn').style.display = 'none';
-    document.getElementById('startTrackingBtn').style.display = 'block';
-    
-    // 如果有足夠的點，詢問是否保存
-    if (currentTrack.coordinates.length > 1) {
-        if (confirm(`Save this track with ${currentTrack.coordinates.length} points?`)) {
-            saveCurrentTrack();
+            if (gameState.cleverMode && gameState.autoPilotPath.length > 0) {
+                const nextStepNode = gameState.autoPilotPath[0];
+                const ghostPositions = gameState.ghosts
+                    .filter(g => !g.isScared && g.marker && gameState.map.hasLayer(g.marker) && !(g.marker.getElement() && g.marker.getElement().classList.contains('ghost-eaten')))
+                    .map(g => findNearestRoadPosition(g.marker.getLatLng().lat, g.marker.getLatLng().lng));
+                
+                for (const ghostPos of ghostPositions) {
+                    if (heuristic(nextStepNode, ghostPos) < 15) { 
+                        logToDevConsole("聰明模式：偵測到路徑危險，重新規劃...", "warn");
+                        gameState.autoPilotPath = []; 
+                        gameState.autoPilotTarget = null;
+                        break;
+                    }
+                }
+            }
+
+            if (!gameState.autoPilotPath || gameState.autoPilotPath.length === 0) {
+                findNextAutoPilotTargetAndPath();
+                if (gameState.autoPilotPath.length === 0 && gameState.autoPilotMode) { 
+                    logToDevConsole("自動模式：找不到有效路徑或目標，自動模式已暫時關閉以避免卡住。", "warn");
+                    gameState.autoPilotMode = false; 
+                    gameState.cleverMode = false; 
+                    return;
+                }
+            }
+
+            if (gameState.autoPilotPath && gameState.autoPilotPath.length > 0) {
+                const nextNode = gameState.autoPilotPath[0]; 
+                let currentPacmanNode = findNearestRoadPosition(gameState.pacman.getLatLng().lat, gameState.pacman.getLatLng().lng);
+
+                const pm = gameState.pacmanMovement;
+                pm.startPositionLatLng = L.latLng(currentPacmanNode[0], currentPacmanNode[1]);
+                pm.destinationNodeLatLng = L.latLng(nextNode[0], nextNode[1]);
+                pm.totalDistanceToDestinationNode = pm.startPositionLatLng.distanceTo(pm.destinationNodeLatLng);
+
+                if (pm.totalDistanceToDestinationNode > 0.1) {
+                    pm.distanceTraveledThisSegment = 0;
+                    pm.isMoving = true;
+                    
+                    const dx = nextNode[1] - currentPacmanNode[1]; 
+                    const dy = nextNode[0] - currentPacmanNode[0]; 
+
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        pm.currentFacingDirection = dx > 0 ? 'right' : 'left';
+                    } else {
+                        pm.currentFacingDirection = dy > 0 ? 'up' : 'down'; 
+                    }
+                    updatePacmanIconRotation();
+                    gameState.autoPilotPath.shift(); 
+                } else {
+                    gameState.autoPilotPath.shift(); 
+                }
+            }
         }
-    }
-    
-    // 生成GPX文件並提供下載
-    generateGPX();
-}
 
-// 保存當前追蹤路線
-function saveCurrentTrack() {
-    if (currentTrack.coordinates.length < 2) return;
-    
-    // 添加到保存的路線
-    savedRoutes.push({
-        name: currentTrack.name,
-        coordinates: currentTrack.coordinates
-    });
-    
-    // 保存到本地存儲
-    saveRoutesToStorage();
-    
-    // 更新路線選擇器
-    updateRouteSelector();
-    
-    // 添加到地圖
-    addRouteToMap(currentTrack.coordinates);
-}
+        function findNextAutoPilotTargetAndPath() { 
+            if (!gameState.pacman) return;
+            const pacmanPos = gameState.pacman.getLatLng();
+            const pacmanCurrentNode = findNearestRoadPosition(pacmanPos.lat, pacmanPos.lng);
+            
+            let collectibles = [];
+            gameState.dots.forEach(dot => { if(gameState.map.hasLayer(dot)) collectibles.push({item: dot, pos: dot.getLatLng()}); });
+            gameState.powerPellets.forEach(pellet => { if(gameState.map.hasLayer(pellet)) collectibles.push({item: pellet, pos: pellet.getLatLng()}); });
 
-// 生成GPX文件
-function generateGPX() {
-    if (currentTrack.coordinates.length < 1) return;
-    
-    // 創建GPX文件內容
-    let gpxContent = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="MountainMap" xmlns="http://www.topografix.com/GPX/1/1" 
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-    xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
-    <metadata>
-        <name>${currentTrack.name}</name>
-        <time>${new Date().toISOString()}</time>
-    </metadata>
-    <trk>
-        <name>${currentTrack.name}</name>
-        <trkseg>`;
-    
-    // 添加所有追蹤點
-    for (let i = 0; i < currentTrack.coordinates.length; i++) {
-        const [lon, lat] = currentTrack.coordinates[i];
-        const time = currentTrack.timestamps[i].toISOString();
-        const ele = currentTrack.elevations[i] || 0;
+            if (collectibles.length === 0) {
+                logToDevConsole("自動模式：沒有可收集的物品了，自動模式已關閉。", "success");
+                gameState.autoPilotMode = false;
+                gameState.cleverMode = false;
+                gameState.autoPilotPath = [];
+                gameState.autoPilotTarget = null;
+                return;
+            }
+
+            let closestItem = null;
+            let minDistance = Infinity;
+
+            collectibles.forEach(collectible => {
+                const distance = pacmanPos.distanceTo(collectible.pos);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestItem = collectible.item;
+                }
+            });
+
+            if (closestItem) {
+                const targetNode = findNearestRoadPosition(closestItem.getLatLng().lat, closestItem.getLatLng().lng);
+                gameState.autoPilotTarget = targetNode; 
+                
+                let ghostNodesForPathfinding = [];
+                if (gameState.cleverMode) {
+                    ghostNodesForPathfinding = gameState.ghosts
+                        .filter(g => !g.isScared && g.marker && gameState.map.hasLayer(g.marker) && !(g.marker.getElement() && g.marker.getElement().classList.contains('ghost-eaten')))
+                        .map(g => findNearestRoadPosition(g.marker.getLatLng().lat, g.marker.getLatLng().lng));
+                }
+                const path = aStar(pacmanCurrentNode, targetNode, ghostNodesForPathfinding);
+
+                if (path && path.length > 0) {
+                    path.shift(); 
+                    gameState.autoPilotPath = path;
+                    if (path.length > 0) {
+                         logToDevConsole(`自動模式：前往 ${path.length} 步外的目標 (${targetNode.map(n => n.toFixed(4)).join(',')})`, "info");
+                    } else {
+                         logToDevConsole(`自動模式：已在目標點或找不到路徑至 ${targetNode.map(n => n.toFixed(4)).join(',')}`, "info");
+                         gameState.autoPilotPath = []; 
+                    }
+                } else {
+                    logToDevConsole(`自動模式：找不到路徑至最近的物品 ${targetNode.map(n => n.toFixed(4)).join(',')}`, "warn");
+                    gameState.autoPilotPath = [];
+                    gameState.autoPilotTarget = null;
+                    if (gameState.cleverMode) { 
+                        logToDevConsole("聰明模式：由於找不到安全路徑，已暫時關閉聰明模式。", "warn");
+                        gameState.cleverMode = false;
+                    }
+                }
+            } else {
+                logToDevConsole("自動模式：找不到最近的物品。", "warn");
+                gameState.autoPilotMode = false; 
+                gameState.cleverMode = false;
+            }
+        }
+
+
+        function gameLoop(timestamp) { 
+            if (gameState.isGameOver || gameState.isPaused) {
+                lastFrameTime = timestamp; 
+                gameLoopRequestId = requestAnimationFrame(gameLoop);
+                return;
+            }
+            
+            manageAutoPilot(); 
+
+            let rawDeltaTime = timestamp - lastFrameTime;
+            if (rawDeltaTime > MAX_DELTA_TIME) {
+                rawDeltaTime = MAX_DELTA_TIME;
+            }
+            lastFrameTime = timestamp;
+
+            let deltaTime = rawDeltaTime * gameState.gameSpeedMultiplier; 
+
+            updatePacmanSmoothMovement(deltaTime); 
+            gameState.ghosts.forEach(ghost => {
+                const ghostElement = ghost.marker ? ghost.marker.getElement() : null;
+                if (!(ghostElement && ghostElement.classList.contains('ghost-eaten'))) {
+                    updateGhostSmoothMovement(ghost, deltaTime); 
+                }
+            });
+
+            gameLoopRequestId = requestAnimationFrame(gameLoop);
+        }
+
+        function updateGhostSmoothMovement(ghost, deltaTime) { 
+            const gm = ghost.movement;
+            if (!gm.isMoving || !ghost.marker || deltaTime <= 0 || !gm.startPositionLatLng || !gm.destinationNodeLatLng) {
+                 if (gm.isMoving && (!gm.startPositionLatLng || !gm.destinationNodeLatLng)) {
+                    gm.isMoving = false;
+                }
+                return;
+            }
+            let currentGhostSpeed = GHOST_MOVE_SPEED_METERS_PER_SECOND; if (ghost.isScared) currentGhostSpeed *= 0.7;
+            const moveAmountThisFrame = currentGhostSpeed * (deltaTime / 1000);
+            gm.distanceTraveledThisSegment += moveAmountThisFrame;
+            if (gm.distanceTraveledThisSegment >= gm.totalDistanceToDestinationNode || gm.totalDistanceToDestinationNode < 0.1) {
+                ghost.marker.setLatLng(gm.destinationNodeLatLng); gm.isMoving = false;
+                if (ghost.isScattering && ghost.scatterTargetNode && positionsAreEqual([gm.destinationNodeLatLng.lat, gm.destinationNodeLatLng.lng], ghost.scatterTargetNode, 10)) { 
+                    ghost.isScattering = false;
+                    ghost.scatterTargetNode = null;
+                }
+            } else {
+                const fraction = gm.distanceTraveledThisSegment / gm.totalDistanceToDestinationNode;
+                const newLat = gm.startPositionLatLng.lat + (gm.destinationNodeLatLng.lat - gm.startPositionLatLng.lat) * fraction;
+                const newLng = gm.startPositionLatLng.lng + (gm.destinationNodeLatLng.lng - gm.startPositionLatLng.lng) * fraction;
+                ghost.marker.setLatLng([newLat, newLng]);
+            }
+        }
+
+        function updatePacmanIconRotation() { 
+            if (!gameState.pacman || !gameState.pacman.getElement()) return; const pacmanElement = gameState.pacman.getElement(); if (!pacmanElement) return;
+            if (pacmanElement.classList.contains('hidden')) return; 
+            pacmanElement.classList.remove('facing-true-left', 'facing-true-right', 'facing-true-up', 'facing-true-down');
+            switch (gameState.pacmanMovement.currentFacingDirection) {
+                case 'left': pacmanElement.classList.add('facing-true-left'); break;
+                case 'right': pacmanElement.classList.add('facing-true-right'); break;
+                case 'up': pacmanElement.classList.add('facing-true-up'); break;
+                case 'down': pacmanElement.classList.add('facing-true-down'); break;
+                default: pacmanElement.classList.add('facing-true-left'); break;
+            }
+        }
+
+        function updatePacmanSmoothMovement(deltaTime) { 
+            const pm = gameState.pacmanMovement; if (!gameState.pacman) return;
+            if (!pm.isMoving || deltaTime <= 0) { 
+                if (!gameState.autoPilotMode && !pm.isMoving && pm.lastIntendedDirectionKey && gameState.canMove && !gameState.isPaused) {
+                     tryStartMovementInDirection(pm.lastIntendedDirectionKey);
+                }
+                if (gameState.pacman && gameState.map) gameState.map.setView(gameState.pacman.getLatLng(), MAX_MAP_ZOOM, { animate: false }); 
+                return; 
+            }
+            const currentPacmanSpeed = PACMAN_BASE_SPEED * gameState.pacmanSpeedMultiplier;
+            const moveAmountThisFrame = currentPacmanSpeed * (deltaTime / 1000); 
+            pm.distanceTraveledThisSegment += moveAmountThisFrame; 
+            let newPacmanLatLng;
+            if (pm.distanceTraveledThisSegment >= pm.totalDistanceToDestinationNode || pm.totalDistanceToDestinationNode < 0.1) { 
+                newPacmanLatLng = pm.destinationNodeLatLng; 
+                gameState.pacman.setLatLng(newPacmanLatLng); 
+                pm.isMoving = false; 
+                if (!gameState.autoPilotMode && pm.lastIntendedDirectionKey && gameState.canMove && !gameState.isPaused) {
+                     tryStartMovementInDirection(pm.lastIntendedDirectionKey);
+                }
+            } else { 
+                const fraction = pm.distanceTraveledThisSegment / pm.totalDistanceToDestinationNode; 
+                const newLat = pm.startPositionLatLng.lat + (pm.destinationNodeLatLng.lat - pm.startPositionLatLng.lat) * fraction; 
+                const newLng = pm.startPositionLatLng.lng + (pm.destinationNodeLatLng.lng - pm.startPositionLatLng.lng) * fraction; 
+                newPacmanLatLng = L.latLng(newLat, newLng); 
+                gameState.pacman.setLatLng(newPacmanLatLng); 
+            }
+            if (gameState.map && newPacmanLatLng) gameState.map.setView(newPacmanLatLng, MAX_MAP_ZOOM, { animate: false });
+            checkCollisions();
+        }
+
+        function tryStartMovementInDirection(directionKey) { 
+            if (!gameState.pacman || gameState.pacmanMovement.isMoving) return;
+            let currentPacmanLatLng = gameState.pacman.getLatLng(); let currentPacmanNode = findNearestRoadPosition(currentPacmanLatLng.lat, currentPacmanLatLng.lng); gameState.pacman.setLatLng(currentPacmanNode); currentPacmanLatLng = L.latLng(currentPacmanNode[0], currentPacmanNode[1]);
+            const stepDistanceForDirection = 0.0001; let desiredLat = currentPacmanNode[0], desiredLng = currentPacmanNode[1];
+            switch(directionKey) { case 'KeyW': desiredLat += stepDistanceForDirection; break; case 'KeyS': desiredLat -= stepDistanceForDirection; break; case 'KeyA': desiredLng -= stepDistanceForDirection; break; case 'KeyD': desiredLng += stepDistanceForDirection; break; default: return; }
+            let bestCandidateNode = null, minAngleDiff = Math.PI;
+            const neighbors = getNeighbors(currentPacmanNode); 
+            for (const neighborNode of neighbors) { 
+                 if (positionsAreEqual(currentPacmanNode, neighborNode)) continue; 
+                 const vecToNeighborY = neighborNode[0] - currentPacmanNode[0], vecToNeighborX = neighborNode[1] - currentPacmanNode[1]; 
+                 const desiredVecY = desiredLat - currentPacmanNode[0], desiredVecX = desiredLng - currentPacmanNode[1]; 
+                 const angleToNeighbor = Math.atan2(vecToNeighborY, vecToNeighborX), angleDesired = Math.atan2(desiredVecY, desiredVecX); 
+                 let angleDifference = Math.abs(angleToNeighbor - angleDesired); 
+                 if (angleDifference > Math.PI) angleDifference = 2 * Math.PI - angleDifference; 
+                 if (angleDifference < minAngleDiff && angleDifference < (Math.PI / 2 + 0.1)) { minAngleDiff = angleDifference; bestCandidateNode = neighborNode; } 
+            }
+            let newFacingDirection = gameState.pacmanMovement.currentFacingDirection;
+            if (bestCandidateNode) { const pm = gameState.pacmanMovement; pm.startPositionLatLng = currentPacmanLatLng; pm.destinationNodeLatLng = L.latLng(bestCandidateNode[0], bestCandidateNode[1]); pm.totalDistanceToDestinationNode = pm.startPositionLatLng.distanceTo(pm.destinationNodeLatLng); if (pm.totalDistanceToDestinationNode > 0.1) { pm.distanceTraveledThisSegment = 0; pm.isMoving = true; const dy = bestCandidateNode[0] - currentPacmanNode[0], dx = bestCandidateNode[1] - currentPacmanNode[1]; if (Math.abs(dx) > Math.abs(dy)) newFacingDirection = dx > 0 ? 'right' : 'left'; else newFacingDirection = dy > 0 ? 'up' : 'down'; } else pm.isMoving = false; }
+            else { switch(directionKey) { case 'KeyW': newFacingDirection = 'up'; break; case 'KeyS': newFacingDirection = 'down'; break; case 'KeyA': newFacingDirection = 'left'; break; case 'KeyD': newFacingDirection = 'right'; break; } gameState.pacmanMovement.isMoving = false; }
+            if (newFacingDirection !== gameState.pacmanMovement.currentFacingDirection || !gameState.pacmanMovement.isMoving) { gameState.pacmanMovement.currentFacingDirection = newFacingDirection; updatePacmanIconRotation(); }
+        }
+
+        function checkCollisions() { 
+            if (!gameState.pacman || gameState.isLosingLife) return; 
+            const pacmanPos = gameState.pacman.getLatLng();
+            
+            const allItems = [...gameState.dots, ...gameState.powerPellets]; 
+            allItems.forEach((item) => { 
+                if (!gameState.map.hasLayer(item)) return; 
+                const itemPos = item.getLatLng();
+                if (pacmanPos.distanceTo(itemPos) < 10) { 
+                    collectItem(item);
+                }
+            });
+            
+            gameState.ghosts.forEach(ghost => { 
+                if (!ghost.marker || !gameState.map.hasLayer(ghost.marker)) return; 
+                const ghostElement = ghost.marker.getElement();
+                if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return; 
+
+                const ghostPos = ghost.marker.getLatLng();
+                if (pacmanPos.distanceTo(ghostPos) < 6) { 
+                    if (gameState.powerMode && ghost.isScared) {
+                        eatGhost(ghost);
+                    } else if (!ghost.isScared) {
+                        loseLife(); 
+                    }
+                }
+            });
+        }
+
+        function collectItem(item) { 
+            gameState.score += item.points; if(gameState.map.hasLayer(item)) gameState.map.removeLayer(item); let itemArray;
+            if (item.type === 'dot') {
+                itemArray = gameState.dots;
+                playDotSound();
+            } else if (item.type === 'power') {
+                itemArray = gameState.powerPellets;
+                activatePowerMode();
+                playPowerPelletSound();
+            } 
+
+            if (itemArray) { const indexInArray = itemArray.indexOf(item); if (indexInArray > -1) itemArray.splice(indexInArray, 1); }
+            gameState.dotsCollected++; updateUI();
+            if (gameState.dots.length === 0 && gameState.powerPellets.length === 0 ) { 
+                 if (gameState.totalDots > 0) nextLevel(); 
+            }
+        }
+
+        function activatePowerMode() { 
+            gameState.powerMode = true;
+            gameState.ghosts.forEach(ghost => { 
+                if (!ghost.marker) return;
+                const ghostElement = ghost.marker.getElement(); 
+                if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return; 
+                ghost.isScared = true; 
+                const scaredIcon = L.divIcon({ 
+                    className: `ghost-icon ghost-scared ghost-${ghost.color}`, 
+                    iconSize: [20, 20], 
+                    iconAnchor: [10, 16], 
+                    html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' 
+                }); 
+                ghost.marker.setIcon(scaredIcon); 
+            });
+            if (gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer); gameState.powerModeTimer = setTimeout(deactivatePowerMode, 10000);
+        }
+
+        function deactivatePowerMode() { 
+            gameState.powerMode = false;
+            gameState.ghosts.forEach(ghost => { 
+                if (!ghost.marker) return;
+                ghost.isScared = false; 
+                const ghostElement = ghost.marker.getElement(); 
+                if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return; 
+                const normalIcon = L.divIcon({ 
+                    className: `ghost-icon ghost-${ghost.color}`, 
+                    iconSize: [20, 20], 
+                    iconAnchor: [10, 16], 
+                    html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' 
+                }); 
+                ghost.marker.setIcon(normalIcon); 
+            });
+        }
+
+        function eatGhost(ghost) { 
+            if (!ghost || !ghost.marker) return;
+            const ghostElement = ghost.marker.getElement();
+            if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return; 
+            
+            playEatGhostSound();
+            gameState.score += 150;
+            if (ghostElement) ghostElement.classList.add('ghost-eaten'); 
+            ghost.movement.isMoving = false;
+            
+            setTimeout(() => { 
+                if (ghostElement) ghostElement.classList.remove('ghost-eaten'); 
+                if (ghost.marker && ghost.originalPos) { 
+                    ghost.marker.setLatLng(ghost.originalPos); 
+                    
+                    if (gameState.powerMode) { 
+                        ghost.isScared = true;
+                        const scaredIcon = L.divIcon({ 
+                            className: `ghost-icon ghost-scared ghost-${ghost.color}`, 
+                            iconSize: [20, 20], 
+                            iconAnchor: [10, 16], 
+                            html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' 
+                        }); 
+                        ghost.marker.setIcon(scaredIcon);
+                    } else {
+                        ghost.isScared = false; 
+                        const normalIcon = L.divIcon({ 
+                            className: `ghost-icon ghost-${ghost.color}`, 
+                            iconSize: [20, 20], 
+                            iconAnchor: [10, 16], 
+                            html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' 
+                        }); 
+                        ghost.marker.setIcon(normalIcon); 
+                    }
+                } 
+            }, 500);
+            updateUI();
+        }
+
+        function loseLife() { 
+            if (gameState.isLosingLife || gameState.isGameOver) return;
+            if (gameState.godMode) { 
+                logToDevConsole("神模式啟動中，小精靈不會失去生命。", "info");
+                return; 
+            }
+
+            gameState.isLosingLife = true;
+            gameState.canMove = false;
+            gameState.pacmanMovement.isMoving = false;
+
+            if (ghostDecisionInterval) {
+                clearInterval(ghostDecisionInterval);
+                ghostDecisionInterval = null;
+            }
+            playDeathSound();
+            gameState.lives--;
+            updateUI();
+
+            gameState.gameSpeedMultiplier = 0.2; 
+
+            const pacmanElement = gameState.pacman ? gameState.pacman.getElement() : null;
+            if (pacmanElement) {
+                pacmanElement.classList.add('hidden'); 
+            }
+
+            const wastedScreen = document.getElementById('wastedScreenOverlay');
+            const wastedBanner = document.getElementById('wastedBanner'); 
+            const mapElement = document.getElementById('map'); 
+            
+            wastedBanner.style.opacity = '0'; 
+            wastedScreen.style.display = 'flex'; 
+            if (mapElement) mapElement.classList.add('fading-to-black'); 
+
+            setTimeout(() => { 
+                wastedScreen.classList.add('active'); 
+            }, 100); 
+
+            setTimeout(() => {
+                if (wastedBanner) wastedBanner.style.opacity = '1'; 
+            }, 1000); 
+
+            const wastedDuration = 3000; 
+
+            setTimeout(() => {
+                gameState.gameSpeedMultiplier = 1; 
+
+                wastedScreen.style.display = 'none';
+                wastedScreen.classList.remove('active');
+                if(wastedBanner) wastedBanner.style.opacity = '0'; 
+                if (mapElement) {
+                    mapElement.classList.remove('fading-to-black');
+                    mapElement.style.filter = 'brightness(75%) grayscale(0%)'; 
+                }
+
+                if (pacmanElement) {
+                    pacmanElement.classList.remove('hidden'); 
+                }
+
+                if (gameState.lives <= 0) {
+                    endGame(false);
+                } else {
+                    if (gameState.pacman && gameState.pacmanLevelStartPoint) {
+                        gameState.pacman.setLatLng(gameState.pacmanLevelStartPoint);
+                    } else if (gameState.pacman && gameState.validPositions.length > 0) {
+                        const center = gameState.map.getCenter();
+                        gameState.pacman.setLatLng(findNearestRoadPosition(center.lat, center.lng));
+                    }
+                    if (gameState.pacman) {
+                        gameState.pacmanMovement.isMoving = false;
+                        gameState.pacmanMovement.lastIntendedDirectionKey = null;
+                        gameState.pacmanMovement.currentFacingDirection = 'left';
+                        updatePacmanIconRotation();
+                    }
+                    
+                    let assignedScatterIndicesRespawn = new Set();
+                    gameState.ghosts.forEach((ghost, index) => { 
+                        if (ghost.marker && ghost.originalPos) { 
+                            ghost.marker.setLatLng(ghost.originalPos); 
+                            ghost.isScared = false; 
+                            ghost.movement.isMoving = false; 
+                            ghost.movement.startPositionLatLng = L.latLng(ghost.originalPos[0], ghost.originalPos[1]); 
+                            ghost.movement.destinationNodeLatLng = null;
+
+                            const ghostElem = ghost.marker.getElement(); 
+                            if(ghostElem) ghostElem.classList.remove('ghost-eaten'); 
+                            const normalIcon = L.divIcon({ 
+                                className: `ghost-icon ghost-${ghost.color}`, 
+                                iconSize: [20, 20], 
+                                iconAnchor: [10, 16], 
+                                html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' 
+                            }); 
+                            ghost.marker.setIcon(normalIcon); 
+
+                            ghost.scatterTargetNode = null;
+                            if (gameState.baseScatterPoints.length > 0) {
+                                let scatterIndex = -1;
+                                let attempts = 0;
+                                const availableBasePoints = gameState.baseScatterPoints.length;
+                                if (assignedScatterIndicesRespawn.size < availableBasePoints) {
+                                    do {
+                                        scatterIndex = Math.floor(Math.random() * availableBasePoints);
+                                        attempts++;
+                                    } while (assignedScatterIndicesRespawn.has(scatterIndex) && attempts < availableBasePoints * 2);
+                                     if (!assignedScatterIndicesRespawn.has(scatterIndex)) {
+                                         assignedScatterIndicesRespawn.add(scatterIndex);
+                                     } else { 
+                                         scatterIndex = Math.floor(Math.random() * availableBasePoints);
+                                     }
+                                } else {
+                                     scatterIndex = Math.floor(Math.random() * availableBasePoints);
+                                }
+                                
+                                if (scatterIndex !== -1 && gameState.baseScatterPoints[scatterIndex]) {
+                                    ghost.scatterTargetNode = [...gameState.baseScatterPoints[scatterIndex]]; 
+                                } else { 
+                                     ghost.scatterTargetNode = [...gameState.baseScatterPoints[index % availableBasePoints]]; 
+                                }
+                            }
+                            ghost.isScattering = !!ghost.scatterTargetNode;
+                        } 
+                    });
+                    setTimeout(() => { 
+                        gameState.canMove = true; 
+                        gameState.isLosingLife = false; 
+                        if (!gameState.isGameOver) startGhostDecisionMaking(); 
+                    }, 500);
+                }
+            }, wastedDuration);
+        }
+
+        function nextLevel() { 
+            gameState.level++; gameState.gameTime =600; gameState.canMove = false; gameState.pacmanMovement.isMoving = false; gameState.pacmanMovement.lastIntendedDirectionKey = null; gameState.pacmanMovement.currentFacingDirection = 'left';
+            if (gameState.pacman && gameState.map.hasLayer(gameState.pacman)) { gameState.map.removeLayer(gameState.pacman); gameState.pacman = null; }
+            gameState.ghosts.forEach(ghostObj => { if (ghostObj.marker && gameState.map.hasLayer(ghostObj.marker)) gameState.map.removeLayer(ghostObj.marker); }); gameState.ghosts = [];
+            initGameElements(); 
+            deactivatePowerMode(); updateUI(); if(gameState.pacman) updatePacmanIconRotation(); startGameCountdown();
+        }
+
+        function endGame(victory) { 
+            gameState.isGameOver = true; gameState.canMove = false; if (gameLoopRequestId) cancelAnimationFrame(gameLoopRequestId); gameLoopRequestId = null; if(gameState.gameTimer) clearInterval(gameState.gameTimer); if (ghostDecisionInterval) clearInterval(ghostDecisionInterval); ghostDecisionInterval = null; if(gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer);
+            gameState.pacmanMovement.isMoving = false; gameState.pacmanMovement.lastIntendedDirectionKey = null; gameState.ghosts.forEach(g => { if(g.movement) g.movement.isMoving = false; }); 
+            gameState.autoPilotMode = false; 
+            gameState.cleverMode = false;
+            gameState.autoPilotPath = [];
+            gameState.autoPilotTarget = null;
+            updateLeaderboard(gameState.score); document.getElementById('finalScore').textContent = gameState.score; document.getElementById('gameOverTitle').textContent = victory ? '🎉 過關成功!' : ' 遊戲結束'; document.getElementById('newHighScore').style.display = isNewRecord(gameState.score) ? 'block' : 'none'; document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        function updateLeaderboard(score) { if (typeof score === 'number') { leaderboard.push(score); leaderboard.sort((a, b) => b - a); leaderboard = leaderboard.slice(0, 5); } const list = document.getElementById('leaderboardList'); list.innerHTML = ''; if (leaderboard.length === 0) list.innerHTML = '<li>暫無記錄</li>'; else leaderboard.forEach(s => { const li = document.createElement('li'); li.textContent = `${s} 分`; list.appendChild(li); }); }
+        function isNewRecord(score) { if (leaderboard.length === 0 && score > 0) return true; return score > 0 && score > Math.max(...leaderboard.filter(s => typeof s === 'number').concat(0)); }
+        function updateUI() { 
+            document.getElementById('score').textContent = gameState.score; 
+            document.getElementById('lives').textContent = gameState.lives; 
+            document.getElementById('level').textContent = gameState.level; 
+            const remainingItems = gameState.dots.length + gameState.powerPellets.length; 
+            document.getElementById('dotsLeft').textContent = remainingItems; 
+            document.getElementById('highScore').textContent = leaderboard.length > 0 ? Math.max(0, ...leaderboard.filter(s => typeof s === 'number').concat(0)) : 0; 
+            const minutes = Math.floor(gameState.gameTime / 60), seconds = gameState.gameTime % 60; 
+            document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`; 
+        }
         
-        gpxContent += `
-            <trkpt lat="${lat}" lon="${lon}">
-                <ele>${ele}</ele>
-                <time>${time}</time>
-            </trkpt>`;
-    }
-    
-    gpxContent += `
-        </trkseg>
-    </trk>
-</gpx>`;
-    
-    // 創建下載鏈接
-    const blob = new Blob([gpxContent], {type: 'application/xml'});
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentTrack.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().slice(0, 10)}.gpx`;
-    document.body.appendChild(a);
-    a.click();
-    
-    // 清理
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
-}
-    // Initialize the application
-    document.addEventListener('DOMContentLoaded', function() {
-        init2DMap();
-        initTrackingLayers();
-        // Load any saved routes
-        loadSavedRoutes();
+        function pauseGame() { 
+            if (gameState.isGameOver || gameState.isLosingLife) return; 
+            gameState.isPaused = true; 
+            if (ghostDecisionInterval) clearInterval(ghostDecisionInterval); 
+            ghostDecisionInterval = null; 
+            document.getElementById('pauseScreen').style.display = 'flex'; 
+        }
+        function resumeGame() { 
+            gameState.isPaused = false; 
+            lastFrameTime = performance.now(); 
+            if (!gameState.isGameOver && !gameState.isLosingLife) startGhostDecisionMaking(); 
+            document.getElementById('pauseScreen').style.display = 'none'; 
+        }
+        function restartGame() { document.getElementById('gameOverScreen').style.display = 'none'; document.getElementById('gameUI').style.display = 'none'; gameState.level = 1; initGame();  }
+        function backToMenu() { 
+            document.getElementById('pauseScreen').style.display = 'none'; 
+            document.getElementById('gameOverScreen').style.display = 'none'; 
+            document.getElementById('gameUI').style.display = 'none'; 
+            document.getElementById('mapSelectionScreen').style.display = 'none'; 
+            document.getElementById('instructionsContent').style.display = 'none'; 
+            document.getElementById('leaderboardContent').style.display = 'none'; // 確保排行榜也隱藏
+            document.getElementById('startScreen').style.display = 'flex'; 
+            
+            if (gameLoopRequestId) cancelAnimationFrame(gameLoopRequestId); gameLoopRequestId = null; 
+            if(gameState.gameTimer) clearInterval(gameState.gameTimer); 
+            if (ghostDecisionInterval) clearInterval(ghostDecisionInterval); ghostDecisionInterval = null; 
+            if(gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer); 
+            gameState.pacmanMovement.isMoving = false; gameState.pacmanMovement.lastIntendedDirectionKey = null; 
+            gameState.ghosts.forEach(g => {if(g.movement) g.movement.isMoving = false;}); 
+            if (gameState.map) { gameState.map.remove(); gameState.map = null; } 
+
+            initStartScreenBackground(); 
+        }
         
-        // Animate to Taiwan after a short delay
-        setTimeout(() => {
-            resetToTaiwanView();
-        }, 500);
-    });
-</script>
+        // --- Developer Console Logic ---
+        const devConsole = document.getElementById('devConsole');
+        const devConsoleInput = document.getElementById('devConsoleInput');
+        const devConsoleOutput = document.getElementById('devConsoleOutput');
+
+        function toggleDevConsole() {
+            gameState.isDevConsoleOpen = !gameState.isDevConsoleOpen;
+            devConsole.style.display = gameState.isDevConsoleOpen ? 'block' : 'none';
+            if (gameState.isDevConsoleOpen) {
+                devConsoleInput.focus();
+                 if (!gameState.isPaused && !gameState.isGameOver && !gameState.isLosingLife) { 
+                    pauseGame();
+                }
+            } else {
+                 if (gameState.isPaused && !gameState.isGameOver && !gameState.isLosingLife) { 
+                    resumeGame();
+                }
+            }
+        }
+
+        function logToDevConsole(message, type = 'info') {
+            const p = document.createElement('p');
+            p.textContent = `[${type.toUpperCase()}] ${message}`;
+            if (type === 'error') p.style.color = '#f00'; 
+            else if (type === 'warn') p.style.color = '#ff0'; 
+            else if (type === 'success') p.style.color = '#0f0'; 
+            else if (type === 'input') p.style.color = '#88f'; 
+            else p.style.color = '#ccc'; 
+            devConsoleOutput.appendChild(p);
+            devConsoleOutput.scrollTop = devConsoleOutput.scrollHeight; 
+        }
+
+        function processDevCommand(command) {
+            logToDevConsole(`${command}`, 'input'); 
+            const args = command.trim().split(' ');
+            const cmd = args[0].toLowerCase();
+            const param1 = args[1] ? args[1].toLowerCase() : null;
+
+            switch(cmd) {
+                case 'nl':
+                    if (gameState.isGameOver) { logToDevConsole("遊戲已經結束。", 'warn'); break; }
+                    logToDevConsole("執行指令: nl (直接獲勝)", 'success');
+                    endGame(true); 
+                    break;
+                case 'speed':
+                    let newMultiplier = parseFloat(param1);
+                    if (isNaN(newMultiplier)) { 
+                        gameState.pacmanSpeedMultiplier = (gameState.pacmanSpeedMultiplier === 1.0) ? 2.0 : 1.0;
+                        logToDevConsole(`小精靈速度調整為 ${gameState.pacmanSpeedMultiplier}x`, "success");
+                    } else {
+                        if (newMultiplier >= 0.1 && newMultiplier <= 10) { 
+                            gameState.pacmanSpeedMultiplier = newMultiplier;
+                            logToDevConsole(`小精靈速度設定為 ${gameState.pacmanSpeedMultiplier}x`, "success");
+                        } else {
+                            logToDevConsole("無效的速度倍率 (0.1 - 10)", "error");
+                        }
+                    }
+                    break;
+                case 'godmode':
+                    gameState.godMode = !gameState.godMode;
+                    logToDevConsole(`無敵模式 ${gameState.godMode ? '已開啟' : '已關閉'}`, "success");
+                    break;
+                case 'score':
+                    let amount = parseInt(param1);
+                    if (isNaN(amount) || amount <= 0)  amount = 10000; 
+                    gameState.score += amount; updateUI();
+                    logToDevConsole(`分數已增加 ${amount}。目前分數: ${gameState.score}`, "success");
+                    break;
+                case 'noobmode':
+                    if (ghostDecisionInterval) clearInterval(ghostDecisionInterval);
+                    ghostDecisionInterval = null;
+                    gameState.ghosts.forEach(ghost => { if (ghost.marker && gameState.map.hasLayer(ghost.marker)) gameState.map.removeLayer(ghost.marker); });
+                    gameState.ghosts = [];
+                    logToDevConsole("所有鬼怪已移除 (新手模式啟動！)", "success");
+                    break;
+                case 'auto':
+                    gameState.cleverMode = false; 
+                    gameState.autoPilotMode = !gameState.autoPilotMode;
+                    if (gameState.autoPilotMode) {
+                        logToDevConsole("基本自動吃點模式已開啟。", "success");
+                        gameState.autoPilotPath = []; gameState.autoPilotTarget = null;
+                    } else {
+                        logToDevConsole("基本自動吃點模式已關閉。", "success");
+                        gameState.autoPilotPath = []; gameState.autoPilotTarget = null;
+                    }
+                    break;
+                case 'clever':
+                    gameState.autoPilotMode = false; 
+                    gameState.cleverMode = !gameState.cleverMode;
+                     if (gameState.cleverMode) {
+                        gameState.autoPilotMode = true; 
+                        logToDevConsole("聰明自動吃點模式已開啟。", "success");
+                        gameState.autoPilotPath = []; gameState.autoPilotTarget = null;
+                    } else {
+                        gameState.autoPilotMode = false; 
+                        logToDevConsole("聰明自動吃點模式已關閉。", "success");
+                        gameState.autoPilotPath = []; gameState.autoPilotTarget = null;
+                    }
+                    break;
+                case 'filldots':
+                    logToDevConsole("重新生成所有點數...", "info");
+                    gameState.dots.forEach(dot => {if(gameState.map.hasLayer(dot)) gameState.map.removeLayer(dot)}); 
+                    gameState.powerPellets.forEach(pellet => {if(gameState.map.hasLayer(pellet)) gameState.map.removeLayer(pellet)}); 
+                    gameState.dots = []; gameState.powerPellets = []; 
+                    let tempAvailablePositions = [...gameState.validPositions];
+                    if (gameState.pacman) { const pacmanCurrentNode = findNearestRoadPosition(gameState.pacman.getLatLng().lat, gameState.pacman.getLatLng().lng); tempAvailablePositions = tempAvailablePositions.filter(p => !positionsAreEqual(p, pacmanCurrentNode)); }
+                    gameState.ghostSpawnPoints.forEach(spawnPoint => { if(spawnPoint) tempAvailablePositions = tempAvailablePositions.filter(p => !positionsAreEqual(p, spawnPoint)); });
+                    
+                    const numPowerPelletsToFill = Math.min(Math.floor(tempAvailablePositions.length * 0.05), 8); 
+                    for (let i = 0; i < numPowerPelletsToFill; i++) { if (tempAvailablePositions.length === 0) break; const randomIndex = Math.floor(Math.random() * tempAvailablePositions.length); const position = tempAvailablePositions.splice(randomIndex, 1)[0]; const pelletIcon = L.divIcon({ className: 'power-pellet', iconSize: [12, 12], iconAnchor: [6, 6] }); const pellet = L.marker(position, { icon: pelletIcon }).addTo(gameState.map); pellet.type = 'power'; pellet.points = 50; gameState.powerPellets.push(pellet); }
+                    tempAvailablePositions.forEach(position => { const dotIcon = L.divIcon({ className: 'dot', iconSize: [4, 4], iconAnchor: [2, 2] }); const dot = L.marker(position, { icon: dotIcon }).addTo(gameState.map); dot.type = 'dot'; dot.points = 20; gameState.dots.push(dot); });
+                    gameState.totalDots = gameState.dots.length + gameState.powerPellets.length; 
+                    gameState.dotsCollected = 0; updateUI();
+                    logToDevConsole("地圖點數已重新填滿。", "success");
+                    break;
+                case 'default':
+                    logToDevConsole("重設所有開發者指令效果...", "info");
+                    gameState.pacmanSpeedMultiplier = 1.0;
+                    gameState.godMode = false;
+                    gameState.autoPilotMode = false;
+                    gameState.cleverMode = false;
+                    gameState.autoPilotPath = [];
+                    gameState.autoPilotTarget = null;
+                    logToDevConsole("速度、無敵、自動模式已重設。", "success");
+
+                    if (gameState.ghosts.length === 0 && NUMBER_OF_GHOSTS > 0 && !gameState.isGameOver && !gameState.isLosingLife) {
+                        logToDevConsole("嘗試恢復鬼怪...", "info");
+                        createGhosts(); 
+                        startGhostDecisionMaking(); 
+                        logToDevConsole("鬼怪已恢復 (Noob模式效果已移除)。", "success");
+                    } else if (gameState.ghosts.length > 0 && !ghostDecisionInterval && !gameState.isGameOver && !gameState.isLosingLife) {
+                        startGhostDecisionMaking();
+                        logToDevConsole("鬼怪AI已重新啟動。", "success");
+                    }
+                    if (gameState.isPaused && devConsole.style.display === 'none' && !gameState.isGameOver && !gameState.isLosingLife) {
+                        resumeGame();
+                    }
+                    break;
+                case 'help':
+                    logToDevConsole("可用指令:", 'info');
+                    logToDevConsole("  nl - 直接獲勝", 'info');
+                    logToDevConsole("  speed [倍數] - 調整小精靈速度 (預設1x/2x切換)", 'info');
+                    logToDevConsole("  godmode - 切換無敵模式", 'info');
+                    logToDevConsole("  score [分數] - 增加分數 (預設+10000)", 'info');
+                    logToDevConsole("  noobmode - 移除所有鬼怪", 'info');
+                    logToDevConsole("  auto - 切換基本自動吃點", 'info');
+                    logToDevConsole("  clever - 切換聰明自動吃點 (避開鬼怪)", 'info');
+                    logToDevConsole("  filldots - 重新填滿所有豆子", 'info');
+                    logToDevConsole("  default - 重設所有指令效果", 'info');
+                    logToDevConsole("  help - 顯示此幫助訊息", 'info');
+                    break;
+                default:
+                    logToDevConsole(`未知指令: ${cmd}`, 'error');
+                    break;
+            }
+        }
+
+        devConsoleInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const command = devConsoleInput.value;
+                if (command.trim() !== '') {
+                    processDevCommand(command);
+                }
+                devConsoleInput.value = ''; 
+            } else if (e.key === '`') { 
+                e.stopPropagation();
+            }
+        });
+
+        // --- End Developer Console Logic ---
+
+        document.addEventListener('DOMContentLoaded', () => { 
+            setupSounds();
+            updateLeaderboard(); 
+            
+            // 確保初始時只有主畫面和背景地圖是可見的
+            document.getElementById('startScreen').style.display = 'flex';
+            document.getElementById('mapSelectionScreen').style.display = 'none';
+            document.getElementById('pauseScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('gameUI').style.display = 'none';
+            document.getElementById('instructionsContent').style.display = 'none';
+            document.getElementById('leaderboardContent').style.display = 'none';
+
+            initStartScreenBackground(); 
+
+            document.getElementById('startGameBtn').addEventListener('click', () => {
+                document.getElementById('startScreen').style.display = 'none';
+                document.getElementById('instructionsContent').style.display = 'none'; // 隱藏說明
+                document.getElementById('leaderboardContent').style.display = 'none'; // 隱藏排行榜
+                document.getElementById('mapSelectionScreen').style.display = 'flex';
+            });
+
+            const instructionsBtn = document.getElementById('instructionsBtn');
+            const instructionsContent = document.getElementById('instructionsContent');
+            instructionsBtn.addEventListener('click', () => {
+                const isInstructionsVisible = instructionsContent.style.display === 'block';
+                instructionsContent.style.display = isInstructionsVisible ? 'none' : 'block';
+                if (!isInstructionsVisible) { // 如果要顯示說明，則隱藏排行榜
+                    document.getElementById('leaderboardContent').style.display = 'none';
+                }
+            });
+
+            const leaderboardBtn = document.getElementById('leaderboardBtn');
+            const leaderboardContent = document.getElementById('leaderboardContent');
+            leaderboardBtn.addEventListener('click', () => {
+                const isLeaderboardVisible = leaderboardContent.style.display === 'block';
+                leaderboardContent.style.display = isLeaderboardVisible ? 'none' : 'block';
+                 if (!isLeaderboardVisible) { // 如果要顯示排行榜，則隱藏說明
+                    document.getElementById('instructionsContent').style.display = 'none';
+                }
+            });
+            
+            document.querySelectorAll('#mapSelectionScreen .map-button').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    document.querySelectorAll('#mapSelectionScreen .map-button').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    gameState.currentMapIndex = parseInt(e.target.dataset.mapIndex); 
+                    
+                    document.getElementById('mapSelectionScreen').style.display = 'none';
+                    
+                    if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
+                        await Tone.start(); 
+                        console.log("音訊內容已由使用者互動啟動 (地圖選擇)");
+                    }
+                    if (!soundsReady) { 
+                        setupSounds();
+                    }
+                    initGame(); 
+                });
+            });
+            
+            document.getElementById('backToStartScreenBtn').addEventListener('click', () => {
+                document.getElementById('mapSelectionScreen').style.display = 'none';
+                document.getElementById('instructionsContent').style.display = 'none'; 
+                document.getElementById('leaderboardContent').style.display = 'none';
+                document.getElementById('startScreen').style.display = 'flex';
+            });
+
+        });
+        
+        document.addEventListener('keydown', (e) => { 
+            if (e.key === '`') { 
+                e.preventDefault();
+                toggleDevConsole();
+                return;
+            }
+
+            if (gameState.isDevConsoleOpen || gameState.autoPilotMode || gameState.cleverMode) return; 
+
+            if (gameState.isGameOver || !gameState.canMove || gameState.isLosingLife) return; 
+            if (e.code === 'Space') { e.preventDefault(); if (gameState.isPaused) resumeGame(); else pauseGame(); return; } 
+            if (gameState.isPaused || !gameState.pacman) return; 
+            const validMoveKeys = ['KeyW', 'KeyS', 'KeyA', 'KeyD']; 
+            if (validMoveKeys.includes(e.code)) gameState.pacmanMovement.lastIntendedDirectionKey = e.code; else return; 
+            if (!gameState.pacmanMovement.isMoving) tryStartMovementInDirection(gameState.pacmanMovement.lastIntendedDirectionKey); 
+        });
+
+        console.log('OpenStreetMap 小精靈遊戲已載入完成！');
+        
+        function drawVisualRoads() { 
+            if (gameState.roadLayers) gameState.roadLayers.forEach(layer => {if(gameState.map && gameState.map.hasLayer(layer)) gameState.map.removeLayer(layer)}); 
+            gameState.roadLayers = []; 
+            gameState.roadNetwork.forEach(segment => { 
+                if (segment && segment.length > 1 && gameState.map) { 
+                    const blueBorder = L.polyline(segment, { color: 'blue', weight: 14, opacity: 0.8 }); 
+                    gameState.roadLayers.push(blueBorder); 
+                    gameState.map.addLayer(blueBorder); 
+                    const blackRoad = L.polyline(segment, { color: 'black', weight: 10, opacity: 1 }); 
+                    gameState.roadLayers.push(blackRoad); 
+                    gameState.map.addLayer(blackRoad); 
+                    blueBorder.bringToBack(); 
+                    blackRoad.bringToFront(); 
+                } 
+            }); 
+        }
+        async function fetchRoadData(bounds) { const south = bounds.getSouth(), west = bounds.getWest(), north = bounds.getNorth(), east = bounds.getEast(); const query = `[out:json][timeout:25];(way["highway"]["highway"!~"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|razed|abandoned)$"]["area"!~"yes"]["access"!~"private"]["service"!~"^(driveway|parking_aisle|alley)$"](${south},${west},${north},${east}););out body;>;out skel qt;`; const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`; console.log('正在從 Overpass API 獲取道路數據...', url); try { const response = await fetch(url); if (!response.ok) { console.error(`HTTP error! status: ${response.status}, message: ${await response.text()}`); return null; } const data = await response.json(); console.log('成功獲取到道路數據：', data.elements.length, 'elements'); return data; } catch (error) { console.error('獲取道路數據失敗：', error); return null; } }
+        function showLoadingScreen(message) { let loadingScreen = document.getElementById('loadingScreen'); if (!loadingScreen) { loadingScreen = document.createElement('div'); loadingScreen.id = 'loadingScreen'; loadingScreen.style.position = 'absolute'; loadingScreen.style.top = '0'; loadingScreen.style.left = '0'; loadingScreen.style.width = '100%'; loadingScreen.style.height = '100%'; loadingScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'; loadingScreen.style.color = 'white'; loadingScreen.style.fontSize = '1.5rem'; loadingScreen.style.display = 'flex'; loadingScreen.style.flexDirection = 'column'; loadingScreen.style.justifyContent = 'center'; loadingScreen.style.alignItems = 'center'; loadingScreen.style.zIndex = '3000';  loadingScreen.style.textAlign = 'center'; document.body.appendChild(loadingScreen); } loadingScreen.innerHTML = `<h2>${message}</h2><p style="font-size: 1rem; margin-top: 10px;">請稍候...</p>`; loadingScreen.style.display = 'flex'; }
+        function hideLoadingScreen() { const loadingScreen = document.getElementById('loadingScreen'); if (loadingScreen) loadingScreen.style.display = 'none'; }
+    </script>
+</body>
+</html>
+
+
