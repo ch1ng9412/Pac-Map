@@ -142,6 +142,35 @@ function processDevCommand(command) {
                 resumeGame();
             }
             break;
+        case 'ghosts':
+            if (gameState.ghosts && gameState.ghosts.length > 0) {
+                logToDevConsole("Current ghost states:", 'info');
+
+                // 準備一個陣列來儲存要輸出的資訊
+                const ghostInfo = gameState.ghosts.map((ghost, index) => {
+                    if (!ghost.marker) {
+                        return { index, color: ghost.color, error: "Marker not available" };
+                    }
+                    // 使用 getLatLng() 獲取鬼怪的即時位置
+                    const position = ghost.marker.getLatLng();
+                    return {
+                        index: index,
+                        color: ghost.color,
+                        lat: position.lat, // 緯度 (通常對應 Y)
+                        lng: position.lng, // 經度 (通常對應 X)
+                        isScared: ghost.isScared
+                    };
+                });
+
+                // 使用 console.table() 來生成一個漂亮的表格輸出
+                // 這是比 console.log 更清晰的選擇
+                console.table(ghostInfo);
+                
+                logToDevConsole("Ghost states have been printed to the browser's main console.", 'success');
+            } else {
+                logToDevConsole("No ghosts are currently in the game.", 'warn');
+            }
+            break;
         case 'help':
             logToDevConsole("可用指令:", 'info');
             logToDevConsole("  nl - 直接獲勝", 'info');
@@ -153,6 +182,7 @@ function processDevCommand(command) {
             logToDevConsole("  clever - 切換聰明自動吃點 (避開鬼怪)", 'info');
             logToDevConsole("  filldots - 重新填滿所有豆子", 'info');
             logToDevConsole("  default - 重設所有指令效果", 'info');
+            logToDevConsole("  ghosts - 觀察每個鬼怪的XY座標", 'info');
             logToDevConsole("  help - 顯示此幫助訊息", 'info');
             break;
         default:

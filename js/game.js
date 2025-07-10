@@ -199,6 +199,27 @@ function createPacman(center) {
     updatePacmanIconRotation();
 }
 
+
+function createGhostIcon(ghost, isScared = false) {
+    // 根據是否害怕，組合不同的 CSS class
+    let classNames = `ghost-icon ghost-${ghost.color}`;
+    if (isScared) {
+        classNames += ' ghost-scared';
+    }
+
+    // 返回一個統一結構和設定的 divIcon 物件
+    return L.divIcon({
+        className: 'ghost-icon-container', // 使用外層容器 class
+        iconSize: [20, 20],
+        iconAnchor: [10, 16], // 使用統一、正確的錨點
+        html: `<div class="${classNames}">
+                 <div class="wave1"></div>
+                 <div class="wave2"></div>
+                 <div class="wave3"></div>
+               </div>`
+    });
+}
+
 export function createGhosts() { 
     if (gameState.validPositions.length === 0 || gameState.ghostSpawnPoints.length === 0) {
         console.error("Cannot create ghosts: No valid positions or ghost spawn points defined.");
@@ -211,12 +232,8 @@ export function createGhosts() {
 
     for (let i = 0; i < NUMBER_OF_GHOSTS; i++) {
         const colorName = baseGhostColors[i % baseGhostColors.length];
-        const ghostIcon = L.divIcon({
-            className: `ghost-icon ghost-${colorName}`,
-            iconSize: [20, 20],
-            iconAnchor: [10, 16], 
-            html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>'
-        });
+        const tempGhostForIcon = { color: colorName };
+        const ghostIcon = createGhostIcon(tempGhostForIcon);
 
         const spawnPointToUse = gameState.ghostSpawnPoints[i % gameState.ghostSpawnPoints.length];
 
@@ -374,7 +391,7 @@ async function startGame() {
 }
 
 export function startGhostDecisionMaking() { 
-    const decisionIntervalTime = 600; 
+    const decisionIntervalTime = 300; 
     if (ghostDecisionInterval) clearInterval(ghostDecisionInterval);
     setGhostDecisionInterval(setInterval(() => {
         if (!gameState.isPaused && !gameState.isGameOver && !gameState.isLosingLife && gameState.pacman) {
@@ -537,7 +554,7 @@ function checkCollisions() {
     allItems.forEach((item) => { 
         if (!gameState.map.hasLayer(item)) return; 
         const itemPos = item.getLatLng();
-        if (pacmanPos.distanceTo(itemPos) < 10) { 
+        if (pacmanPos.distanceTo(itemPos) < 5) { 
             collectItem(item);
         }
     });
@@ -548,7 +565,7 @@ function checkCollisions() {
         if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return; 
 
         const ghostPos = ghost.marker.getLatLng();
-        if (pacmanPos.distanceTo(ghostPos) < 6) { 
+        if (pacmanPos.distanceTo(ghostPos) < 3) { 
             if (gameState.powerMode && ghost.isScared) {
                 eatGhost(ghost);
             } else if (!ghost.isScared) {
@@ -589,12 +606,7 @@ function activatePowerMode() {
         const ghostElement = ghost.marker.getElement(); 
         if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return; 
         ghost.isScared = true; 
-        const scaredIcon = L.divIcon({ 
-            className: `ghost-icon ghost-scared ghost-${ghost.color}`, 
-            iconSize: [20, 20], 
-            iconAnchor: [10, 16], 
-            html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' 
-        }); 
+        const scaredIcon = createGhostIcon(ghost, true);
         ghost.marker.setIcon(scaredIcon); 
     });
     if (gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer);
@@ -608,12 +620,7 @@ function deactivatePowerMode() {
         ghost.isScared = false; 
         const ghostElement = ghost.marker.getElement(); 
         if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return; 
-        const normalIcon = L.divIcon({ 
-            className: `ghost-icon ghost-${ghost.color}`, 
-            iconSize: [20, 20], 
-            iconAnchor: [10, 16], 
-            html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' 
-        }); 
+        const normalIcon = createGhostIcon(ghost, false);
         ghost.marker.setIcon(normalIcon); 
     });
 }
@@ -633,15 +640,9 @@ function eatGhost(ghost) {
         if (ghost.marker && ghost.originalPos) { 
             ghost.marker.setLatLng(ghost.originalPos); 
             
-            if (gameState.powerMode) { 
-                ghost.isScared = true;
-                const scaredIcon = L.divIcon({ className: `ghost-icon ghost-scared ghost-${ghost.color}`, iconSize: [20, 20], iconAnchor: [10, 16], html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' }); 
-                ghost.marker.setIcon(scaredIcon);
-            } else {
-                ghost.isScared = false; 
-                const normalIcon = L.divIcon({ className: `ghost-icon ghost-${ghost.color}`, iconSize: [20, 20], iconAnchor: [10, 16], html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' }); 
-                ghost.marker.setIcon(normalIcon); 
-            }
+            // 判斷應該恢復成害怕圖示還是正常圖示
+            const iconToSet = createGhostIcon(ghost, gameState.powerMode); // <--- 使用新函數
+            ghost.marker.setIcon(iconToSet);
         } 
     }, 500);
     updateUI();
@@ -729,7 +730,7 @@ function loseLife() {
 
                     const ghostElem = ghost.marker.getElement(); 
                     if(ghostElem) ghostElem.classList.remove('ghost-eaten'); 
-                    const normalIcon = L.divIcon({ className: `ghost-icon ghost-${ghost.color}`, iconSize: [20, 20], iconAnchor: [10, 16], html: '<div class="wave1"></div><div class="wave2"></div><div class="wave3"></div>' }); 
+                    const normalIcon = createGhostIcon(ghost, false);
                     ghost.marker.setIcon(normalIcon); 
 
                     ghost.scatterTargetNode = null;

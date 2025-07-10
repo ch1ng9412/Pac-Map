@@ -130,6 +130,7 @@ export async function generateRoadNetworkGeneric(bounds, osmData, targetState, m
 
     if (targetState === gameState && targetState.validPositions.length > 0) { 
         connectDeadEnds(targetState);
+        removeDisconnectedIslands(targetState);
     }
 }
 
@@ -180,60 +181,135 @@ function connectDeadEnds(targetState) {
             console.warn("Max iterations reached for connecting dead ends. Breaking.");
             break;
         }
-        const nodesToProcessThisPass = Array.from(targetState.adjacencyList.keys());
-        for (const nodeStr of nodesToProcessThisPass) {
-            const deadEndNodeArray = nodeStr.split(',').map(Number);
-            const neighbors = targetState.adjacencyList.get(nodeStr) || [];
-            if (neighbors.length === 1) {
-                const singleNeighborArray = neighbors[0];
-                let closestNodeArray = null;
-                let minDistanceSq = Infinity;
-                let foundSuitableCandidate = false;
-                for (const potentialTargetPosArray of targetState.validPositions) {
-                    if (positionsAreEqual(potentialTargetPosArray, deadEndNodeArray) || positionsAreEqual(potentialTargetPosArray, singleNeighborArray)) continue;
-                    let isAlreadyConnectedToDeadEnd = false;
-                    const potentialTargetNeighbors = targetState.adjacencyList.get(potentialTargetPosArray.toString()) || [];
-                    for (const ptn of potentialTargetNeighbors) {
-                        if (positionsAreEqual(ptn, deadEndNodeArray)) { isAlreadyConnectedToDeadEnd = true; break; }
-                    }
-                    if (isAlreadyConnectedToDeadEnd) continue;
-                    const dy = potentialTargetPosArray[0] - deadEndNodeArray[0];
-                    const dx = potentialTargetPosArray[1] - deadEndNodeArray[1];
-                    const distanceSq = dy * dy + dx * dx;
-                    if (distanceSq < minDistanceSq) {
-                        minDistanceSq = distanceSq;
-                        closestNodeArray = potentialTargetPosArray;
-                        foundSuitableCandidate = true;
-                    }
-                }
-                if (foundSuitableCandidate && closestNodeArray && Math.sqrt(minDistanceSq) < (25 * 2.5)) { 
-                    let segmentExists = targetState.roadNetwork.some(segment =>
-                        (positionsAreEqual(segment[0], deadEndNodeArray) && positionsAreEqual(segment[1], closestNodeArray)) ||
-                        (positionsAreEqual(segment[0], closestNodeArray) && positionsAreEqual(segment[1], deadEndNodeArray))
+        while (true) {
+            // 取得所有 degree == 1 的節點
+            const deadEndNodes = Array.from(targetState.adjacencyList.entries())
+                .filter(([_, neighbors]) => neighbors.length === 1)
+                .map(([nodeStr]) => nodeStr.split(',').map(Number));
+
+            if (deadEndNodes.length < 2) break; // 沒有足夠的死路節點來對接
+
+            let foundConnection = false;
+
+            // 嘗試找出最近的一對死路節點
+            let minDistanceSq = Infinity;
+            let pairToConnect = null;
+
+            for (let i = 0; i < deadEndNodes.length; i++) {
+                for (let j = i + 1; j < deadEndNodes.length; j++) {
+                    const a = deadEndNodes[i];
+                    const b = deadEndNodes[j];
+
+                    // 確保這兩節點目前還沒連接
+                    const alreadyConnected = targetState.roadNetwork.some(
+                        segment =>
+                            (positionsAreEqual(segment[0], a) && positionsAreEqual(segment[1], b)) ||
+                            (positionsAreEqual(segment[0], b) && positionsAreEqual(segment[1], a))
                     );
-                    if (!segmentExists) {
-                        targetState.roadNetwork.push([deadEndNodeArray, closestNodeArray]);
-                        const deadEndNodeCurrentNeighbors = targetState.adjacencyList.get(deadEndNodeArray.toString());
-                        if (deadEndNodeCurrentNeighbors && !deadEndNodeCurrentNeighbors.some(n => positionsAreEqual(n, closestNodeArray))) {
-                            deadEndNodeCurrentNeighbors.push(closestNodeArray);
-                        }
-                        const closestNodeStr = closestNodeArray.toString();
-                        let closestNodeCurrentNeighbors = targetState.adjacencyList.get(closestNodeStr);
-                        if (!closestNodeCurrentNeighbors) {
-                            closestNodeCurrentNeighbors = [];
-                            targetState.adjacencyList.set(closestNodeStr, closestNodeCurrentNeighbors);
-                        }
-                        if (!closestNodeCurrentNeighbors.some(n => positionsAreEqual(n, deadEndNodeArray))) {
-                            closestNodeCurrentNeighbors.push(deadEndNodeArray);
-                        }
-                        deadEndsFixedInThisPass++;
-                        deadEndsFixedInIterationTotal++;
+                    if (alreadyConnected) continue;
+
+                    const dy = a[0] - b[0];
+                    const dx = a[1] - b[1];
+                    const distSq = dy * dy + dx * dx;
+
+                    if (distSq < minDistanceSq) {
+                        minDistanceSq = distSq;
+                        pairToConnect = [a, b];
                     }
                 }
             }
+
+            if (pairToConnect) {
+                const [a, b] = pairToConnect;
+
+                // 建立連線
+                targetState.roadNetwork.push([a, b]);
+
+                // 更新 a 的鄰居
+                const aKey = a.toString();
+                let aNeighbors = targetState.adjacencyList.get(aKey);
+                if (!aNeighbors) {
+                    aNeighbors = [];
+                    targetState.adjacencyList.set(aKey, aNeighbors);
+                }
+                if (!aNeighbors.some(n => positionsAreEqual(n, b))) {
+                    aNeighbors.push(b);
+                }
+
+                // 更新 b 的鄰居
+                const bKey = b.toString();
+                let bNeighbors = targetState.adjacencyList.get(bKey);
+                if (!bNeighbors) {
+                    bNeighbors = [];
+                    targetState.adjacencyList.set(bKey, bNeighbors);
+                }
+                if (!bNeighbors.some(n => positionsAreEqual(n, a))) {
+                    bNeighbors.push(a);
+                }
+
+                deadEndsFixedInIterationTotal++;
+                foundConnection = true;
+            }
+
+            if (!foundConnection) break; // 無法再連任何死路
+
         }
         if (deadEndsFixedInThisPass === 0 && iterations > 1) break;
     } while (iterations < maxIterations && (deadEndsFixedInThisPass > 0 || iterations === 1));
 
     if (iterations >= maxIterations && maxIterations > 0) console.warn("Main game dead end fixing reached max iterations.");
+}
+
+export function removeDisconnectedIslands(targetState) {
+    const visited = new Set();
+    const components = [];
+
+    for (const nodeStr of targetState.adjacencyList.keys()) {
+        if (visited.has(nodeStr)) continue;
+
+        const component = [];
+        const queue = [nodeStr];
+        visited.add(nodeStr);
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+            component.push(current);
+
+            const neighbors = targetState.adjacencyList.get(current) || [];
+            for (const neighbor of neighbors) {
+                const neighborStr = neighbor.toString();
+                if (!visited.has(neighborStr)) {
+                    visited.add(neighborStr);
+                    queue.push(neighborStr);
+                }
+            }
+        }
+
+        components.push(component);
+    }
+
+    if (components.length <= 1) return; // 沒有孤島
+
+    // 找出節點數最多的 component
+    const largestComponent = components.reduce((a, b) => (a.length > b.length ? a : b));
+    const validKeys = new Set(largestComponent);
+
+    console.log(`共找到 ${components.length} 個連通區，保留最大區塊 (${largestComponent.length} 節點)，刪除其餘孤島。`);
+
+    // 濾掉非最大區塊的節點
+    targetState.validPositions = targetState.validPositions.filter(pos => validKeys.has(pos.toString()));
+
+    // 重建 adjacencyList
+    const newAdjacencyList = new Map();
+    for (const key of validKeys) {
+        const neighbors = targetState.adjacencyList.get(key) || [];
+        const filteredNeighbors = neighbors.filter(n => validKeys.has(n.toString()));
+        newAdjacencyList.set(key, filteredNeighbors);
+    }
+    targetState.adjacencyList = newAdjacencyList;
+
+    // 濾掉 roadNetwork 中無效連線
+    targetState.roadNetwork = targetState.roadNetwork.filter(([a, b]) =>
+        validKeys.has(a.toString()) && validKeys.has(b.toString())
+    );
 }

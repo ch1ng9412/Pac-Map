@@ -1,6 +1,6 @@
 // 遊戲常數
 export const PACMAN_BASE_SPEED = 60; 
-export const GHOST_MOVE_SPEED_METERS_PER_SECOND = 45;
+export const GHOST_MOVE_SPEED_METERS_PER_SECOND = 60;
 export const MAX_MAP_ZOOM = 18;
 export const MAX_DELTA_TIME = 100; 
 export const NUMBER_OF_GHOSTS = 7;
