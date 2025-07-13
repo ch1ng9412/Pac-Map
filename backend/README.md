@@ -1,5 +1,5 @@
-# Python Project Template
-A modern Python project template leveraging `uv` for dependency management and integrating various development tools for code quality assurance.
+# Python 後端
+Using a modern Python project template leveraging `uv` for dependency management and integrating various development tools for code quality assurance. source: [coke5151/python-project-template](https://github.com/coke5151/python-project-template)
 
 ## Features
 - Fast and reliable package management with `uv`
@@ -22,7 +22,7 @@ A modern Python project template leveraging `uv` for dependency management and i
 └── pyrightconfig.json # Pyright configuration
 ```
 
-## Development Setup
+## 開發環境設定
 1. Install `uv`:
    ```bash
    # macOS and Linux
@@ -33,30 +33,25 @@ A modern Python project template leveraging `uv` for dependency management and i
    # Windows
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
-2. Initialize Project:
+2. 同步虛擬環境:
    ```bash
-   # For applications
-   uv init --python <version>
-   # Example: uv init --python 3.13
-
-   # For libraries (eg. PyPI distribution)
-   uv init --lib
+   cd backend # 確保你在 backend 資料夾裡面
+   uv sync
    ```
-3. Install Packages:
+3. 安裝工具 (在電腦全域安裝)
    ```bash
    # Install development tools globally (each tool has its own venv)
    uv tool install mypy ruff
-
-   # Install development dependencies (jupyterlab for example)
-   uv add jupyterlab --dev  # --dev for development dependencies
-
-   # Install project dependencies (pandas and requests for example)
-   uv add pandas requests  # example packages
    ```
-4. Run Code:
+4. 如果你需要安裝套件的時候
    ```bash
-   uv run main.py  # Run main.py in virtual environment
-   uv run jupyter lab  # Launch Jupyter Lab
+   uv add <package_name>
+   # Example: uv add pandas requests 可以安裝 pandas 和 requests 套件
+   ```
+5. Run Code:
+   ```bash
+   uv run src/main.py      # 使用虛擬環境執行 src/main.py
+   uv run jupyter lab      # 使用虛擬環境執行 Jupyterlab
    ```
 
 ## Recommanded VSCode/Cursor Extension
@@ -72,6 +67,3 @@ A modern Python project template leveraging `uv` for dependency management and i
 	- [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens)
 	- [GitLens](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens)
 	- [Git Graph](https://marketplace.visualstudio.com/items?itemName=mhutchie.git-graph)
-
-## License
-See [LICENSE](./LICENSE) for details.
