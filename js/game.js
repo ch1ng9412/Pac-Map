@@ -96,7 +96,6 @@ function resetGameState() {
     const mapElement = document.getElementById('map'); 
     if (mapElement) {
          mapElement.classList.remove('fading-to-black');
-         mapElement.style.filter = 'brightness(150%)'; 
     }
 }
 
@@ -698,7 +697,6 @@ function loseLife() {
         if(wastedBanner) wastedBanner.style.opacity = '0'; 
         if (mapElement) {
             mapElement.classList.remove('fading-to-black');
-            mapElement.style.filter = 'brightness(150%)'; 
         }
 
         if (pacmanElement) pacmanElement.classList.remove('hidden'); 
@@ -820,7 +818,9 @@ function updateLeaderboard(score) {
     if (typeof score === 'number') {
         leaderboard.push(score);
         leaderboard.sort((a, b) => b - a);
-        leaderboard = leaderboard.slice(0, 5);
+        if (leaderboard.length > 5){
+            leaderboard.splice(5);
+        }
     }
     updateLeaderboardUI();
 }
