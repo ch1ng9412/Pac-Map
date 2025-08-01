@@ -314,7 +314,7 @@ function generateDots(bounds) {
         if(spawnPoint) availablePositions = availablePositions.filter(p => !positionsAreEqual(p, spawnPoint)); 
     });
 
-    const desiredItemDensityFactor = 0.70, maxTotalItems = 25000;
+    const desiredItemDensityFactor = 0.70, maxTotalItems = 20000;
     let numTotalItemsToPlace = Math.min(Math.floor(availablePositions.length * desiredItemDensityFactor), maxTotalItems);
     if (availablePositions.length < numTotalItemsToPlace) numTotalItemsToPlace = availablePositions.length;
 

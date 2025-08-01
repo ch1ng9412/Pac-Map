@@ -21,7 +21,7 @@ export async function fetchRoadData(bounds) {
     }
 }
 
-export async function generateRoadNetworkGeneric(bounds, osmData, targetState, maxSegmentLength = 25) {
+export async function generateRoadNetworkGeneric(bounds, osmData, targetState, maxSegmentLength = 40) {
     targetState.validPositions = []; 
     targetState.roadNetwork = []; 
     targetState.adjacencyList.clear();
