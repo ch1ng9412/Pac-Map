@@ -158,6 +158,26 @@
             max-width: 600px; /* 與內容區塊寬度一致 */
             margin-top: 1rem;
         }
+        .health-bar-container {
+            width: 100%; /* 讓容器寬度與 .game-ui 的內容區對齊 */
+            height: 14px; /* 血條的高度 */
+            background-color: #333; /* 血條的背景色 (空血時的顏色) */
+            border: 2px solid #555; /* 血條的邊框 */
+            border-radius: 7px; /* 圓角效果 */
+            padding: 2px; /* 內邊距，讓填充條和邊框之間有點空隙 */
+            box-sizing: border-box; /* 確保 padding 和 border 不會增加總寬度 */
+            margin: 8px 0; /* 與上下元素的間距 */
+        }
+
+        .health-bar {
+            height: 100%; /* 填充條高度與容器一致 */
+            width: 100%;  /* 初始寬度為 100% (滿血) */
+            background-color: #00ff00; /* 滿血時的顏色 (綠色) */
+            border-radius: 4px; /* 填充條自己的圓角 */
+            
+            /* 這是最重要的部分：平滑的過渡動畫 */
+            transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out;
+        }
         .instructions, .leaderboard {
             max-width: 600px;
             width: 100%; /* 相對於 .content-toggle-container */
@@ -268,6 +288,9 @@
             <div class="ui-row">
                 <span>分數: <span id="score">0</span></span>
                 <span>生命: <span id="lives">3</span></span>
+            </div>
+            <div class="health-bar-container">
+                <div id="healthBar" class="health-bar"></div>
             </div>
             <div class="ui-row">
                 <span>關卡: <span id="level">1</span></span>

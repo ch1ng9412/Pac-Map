@@ -2,13 +2,29 @@ import { gameState, leaderboard } from './gameState.js';
 
 export function updateUI() { 
     document.getElementById('score').textContent = gameState.score; 
-    document.getElementById('lives').textContent = gameState.lives; 
     document.getElementById('level').textContent = gameState.level; 
     const remainingItems = gameState.dots.length + gameState.powerPellets.length; 
     document.getElementById('dotsLeft').textContent = remainingItems; 
     document.getElementById('highScore').textContent = leaderboard.length > 0 ? Math.max(0, ...leaderboard.filter(s => typeof s === 'number').concat(0)) : 0; 
     const minutes = Math.floor(gameState.gameTime / 60), seconds = gameState.gameTime % 60; 
     document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`; 
+    const hs = gameState.healthSystem;
+    document.getElementById('lives').textContent = hs.lives;
+
+    const healthBar = document.getElementById('healthBar');
+    if (healthBar) {
+        const healthPercent = hs.currentHealth;
+        
+        healthBar.style.width = `${healthPercent}%`;
+
+        if (healthPercent > 50) {
+            healthBar.style.backgroundColor = '#00ff00';
+        } else if (healthPercent > 20) {
+            healthBar.style.backgroundColor = '#ffff00';
+        } else {
+            healthBar.style.backgroundColor = '#ff0000';
+        }
+    }
 }
 
 export function updateLeaderboardUI() {

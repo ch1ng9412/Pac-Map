@@ -36,7 +36,7 @@ export async function initGame() {
     resetGameState(); 
     showLoadingScreen('正在獲取地圖資料...');
 
-    const bounds = gameState.map.getBounds(); 
+    const bounds = config.bounds; 
     const roadData = await fetchRoadData(bounds);
     await generateRoadNetworkGeneric(bounds, roadData, gameState); 
 
@@ -57,7 +57,8 @@ function resetGameState() {
     if (gameState.gameTimer) clearInterval(gameState.gameTimer);
     if (ghostDecisionInterval) clearInterval(ghostDecisionInterval);
     if (gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer);
-    
+    if (gameState.poisonCircle.damageInterval) clearInterval(gameState.poisonCircle.damageInterval);
+
     setGameLoopRequestId(null);
     setGhostDecisionInterval(null);
     setLastFrameTime(0);
@@ -185,6 +186,7 @@ function initGameElements() {
     createPacman(center); 
     createGhosts(); 
     generateDots(gameState.map.getBounds()); 
+    initPoisonCircle();
     updateUI();
 }
 
@@ -405,7 +407,6 @@ function gameLoop(timestamp) {
         setGameLoopRequestId(requestAnimationFrame(gameLoop));
         return;
     }
-    
     manageAutoPilot(); 
 
     let rawDeltaTime = timestamp - lastFrameTime;
@@ -415,6 +416,30 @@ function gameLoop(timestamp) {
     setLastFrameTime(timestamp);
 
     let deltaTime = rawDeltaTime * gameState.gameSpeedMultiplier; 
+    // --- *** 新增：更新毒圈邏輯 *** ---
+    const pc = gameState.poisonCircle;
+
+    // 檢查是否到了該縮圈的時間
+    if (!pc.isShrinking && timestamp > pc.nextShrinkTime) {
+        startNextShrink();
+    }
+
+    // 如果正在縮圈，就更新半徑
+    if (pc.isShrinking) {
+        pc.currentRadius -= pc.shrinkSpeed * (deltaTime / 1000);
+        if (pc.currentRadius < pc.targetRadius) {
+            pc.currentRadius = pc.targetRadius;
+            pc.isShrinking = false; // 到達目標，停止縮小
+            console.log("毒圈縮小完成！");
+        }
+        // 更新地圖上的圓形視覺
+        if (pc.circleObject) {
+            pc.circleObject.setRadius(pc.currentRadius);
+        }
+    }
+    
+    // 檢查玩家是否在圈外
+    checkPlayerInPoison();
 
     updatePacmanSmoothMovement(deltaTime); 
     gameState.ghosts.forEach(ghost => {
@@ -567,7 +592,7 @@ function checkCollisions() {
         if (pacmanPos.distanceTo(ghostPos) < 3) { 
             if (gameState.powerMode && ghost.isScared) {
                 eatGhost(ghost);
-            } else if (!ghost.isScared) {
+            } else if (!ghost.isScared && !gameState.isRoundTransitioning) {
                 loseLife(); 
             }
         }
@@ -647,121 +672,79 @@ function eatGhost(ghost) {
     updateUI();
 }
 
-function loseLife() { 
-    if (gameState.isLosingLife || gameState.isGameOver) return;
-    if (gameState.godMode) { 
-        logToDevConsole("神模式啟動中，小精靈不會失去生命。", "info");
-        return; 
+function loseLife() {
+    // 基础检查
+    if (gameState.isGameOver || gameState.isRoundTransitioning) return;
+
+    // 停止毒圈伤害
+    if (gameState.poisonCircle.damageInterval) {
+        clearInterval(gameState.poisonCircle.damageInterval);
+        gameState.poisonCircle.damageInterval = null;
     }
 
-    gameState.isLosingLife = true;
-    gameState.canMove = false;
-    gameState.pacmanMovement.isMoving = false;
-
-    if (ghostDecisionInterval) {
-        clearInterval(ghostDecisionInterval);
-        setGhostDecisionInterval(null);
-    }
     playDeathSound();
-    gameState.lives--;
+
+    // 数据处理
+    gameState.healthSystem.currentHealth = 0;
+    gameState.healthSystem.lives--;
     updateUI();
 
-    gameState.gameSpeedMultiplier = 0.2; 
+    if (gameState.healthSystem.lives <= 0) {
+        gameState.healthSystem.lives = 0;
+        updateUI();
+        setTimeout(() => endGame(false), 1500);
+    } else {
+        startRoundTransition();
+    }
+}
+
+function startRoundTransition() {
+    gameState.isRoundTransitioning = true; // 开启“回合过渡中”状态
+    gameState.canMove = false;
 
     const pacmanElement = gameState.pacman ? gameState.pacman.getElement() : null;
-    if (pacmanElement) pacmanElement.classList.add('hidden'); 
-
+    if (pacmanElement) pacmanElement.classList.add('hidden');
+    
+    // ... (这里放入所有 Wasted 动画显示的代码) ...
     const wastedScreen = document.getElementById('wastedScreenOverlay');
     const wastedBanner = document.getElementById('wastedBanner'); 
-    const mapElement = document.getElementById('map'); 
-    
     wastedBanner.style.opacity = '0'; 
     wastedScreen.style.display = 'flex'; 
-    if (mapElement) mapElement.classList.add('fading-to-black'); 
+    setTimeout(() => { wastedScreen.classList.add('active'); }, 100); 
+    setTimeout(() => { if (wastedBanner) wastedBanner.style.opacity = '1'; }, 1000); 
 
-    setTimeout(() => { 
-        wastedScreen.classList.add('active'); 
-    }, 100); 
-
-    setTimeout(() => {
-        if (wastedBanner) wastedBanner.style.opacity = '1'; 
-    }, 1000); 
-
-    const wastedDuration = 3000; 
+    const transitionDuration = 3000;
 
     setTimeout(() => {
-        gameState.gameSpeedMultiplier = 1; 
-
+        // --- 重置回合状态 ---
+        gameState.healthSystem.currentHealth = gameState.healthSystem.maxHealth;
+        
+        // ... (这里放入所有 Wasted 动画隐藏和角色位置重置的代码) ...
         wastedScreen.style.display = 'none';
         wastedScreen.classList.remove('active');
-        if(wastedBanner) wastedBanner.style.opacity = '0'; 
-        if (mapElement) {
-            mapElement.classList.remove('fading-to-black');
+        if(wastedBanner) wastedBanner.style.opacity = '0';
+        if (pacmanElement) pacmanElement.classList.remove('hidden');
+
+        if (gameState.pacman && gameState.pacmanLevelStartPoint) {
+            gameState.pacman.setLatLng(gameState.pacmanLevelStartPoint);
         }
+        gameState.ghosts.forEach(ghost => { 
+            if (ghost.marker && ghost.originalPos) { 
+                ghost.marker.setLatLng(ghost.originalPos); 
+                ghost.isScared = false;
+                ghost.movement.isMoving = false;
+                const normalIcon = createGhostIcon(ghost, false);
+                ghost.marker.setIcon(normalIcon);
+            } 
+        });
 
-        if (pacmanElement) pacmanElement.classList.remove('hidden'); 
-
-        if (gameState.lives <= 0) {
-            endGame(false);
-        } else {
-            if (gameState.pacman && gameState.pacmanLevelStartPoint) {
-                gameState.pacman.setLatLng(gameState.pacmanLevelStartPoint);
-            } else if (gameState.pacman && gameState.validPositions.length > 0) {
-                const center = gameState.map.getCenter();
-                gameState.pacman.setLatLng(findNearestRoadPositionGeneric(center.lat, center.lng, gameState.validPositions));
-            }
-            if (gameState.pacman) {
-                gameState.pacmanMovement.isMoving = false;
-                gameState.pacmanMovement.lastIntendedDirectionKey = null;
-                gameState.pacmanMovement.currentFacingDirection = 'left';
-                updatePacmanIconRotation();
-            }
-            
-            let assignedScatterIndicesRespawn = new Set();
-            gameState.ghosts.forEach((ghost, index) => { 
-                if (ghost.marker && ghost.originalPos) { 
-                    ghost.marker.setLatLng(ghost.originalPos); 
-                    ghost.isScared = false; 
-                    ghost.movement.isMoving = false; 
-                    ghost.movement.startPositionLatLng = L.latLng(ghost.originalPos[0], ghost.originalPos[1]); 
-                    ghost.movement.destinationNodeLatLng = null;
-
-                    const ghostElem = ghost.marker.getElement(); 
-                    if(ghostElem) ghostElem.classList.remove('ghost-eaten'); 
-                    const normalIcon = createGhostIcon(ghost, false);
-                    ghost.marker.setIcon(normalIcon); 
-
-                    ghost.scatterTargetNode = null;
-                    if (gameState.baseScatterPoints.length > 0) {
-                        let scatterIndex = -1, attempts = 0;
-                        const availableBasePoints = gameState.baseScatterPoints.length;
-                        if (assignedScatterIndicesRespawn.size < availableBasePoints) {
-                            do {
-                                scatterIndex = Math.floor(Math.random() * availableBasePoints);
-                                attempts++;
-                            } while (assignedScatterIndicesRespawn.has(scatterIndex) && attempts < availableBasePoints * 2);
-                             if (!assignedScatterIndicesRespawn.has(scatterIndex)) assignedScatterIndicesRespawn.add(scatterIndex);
-                             else scatterIndex = Math.floor(Math.random() * availableBasePoints);
-                        } else {
-                             scatterIndex = Math.floor(Math.random() * availableBasePoints);
-                        }
-                        
-                        if (scatterIndex !== -1 && gameState.baseScatterPoints[scatterIndex]) {
-                            ghost.scatterTargetNode = [...gameState.baseScatterPoints[scatterIndex]]; 
-                        } else { 
-                             ghost.scatterTargetNode = [...gameState.baseScatterPoints[index % availableBasePoints]]; 
-                        }
-                    }
-                    ghost.isScattering = !!ghost.scatterTargetNode;
-                } 
-            });
-            setTimeout(() => { 
-                gameState.canMove = true; 
-                gameState.isLosingLife = false; 
-                if (!gameState.isGameOver) startGhostDecisionMaking(); 
-            }, 500);
-        }
-    }, wastedDuration);
+        setTimeout(() => { 
+            gameState.canMove = true; 
+            gameState.isRoundTransitioning = false; // <-- 关闭“回合过渡中”状态
+            updateUI(); 
+            if (!gameState.isGameOver) startGhostDecisionMaking();
+        }, 500);
+    }, transitionDuration);
 }
 
 function nextLevel() { 
@@ -797,6 +780,7 @@ export function endGame(victory) {
     if (ghostDecisionInterval) clearInterval(ghostDecisionInterval);
     setGhostDecisionInterval(null);
     if(gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer);
+    if(gameState.poisonCircle.damageInterval) clearInterval(gameState.poisonCircle.damageInterval);
 
     gameState.pacmanMovement.isMoving = false;
     gameState.pacmanMovement.lastIntendedDirectionKey = null;
@@ -828,6 +812,91 @@ function updateLeaderboard(score) {
 function isNewRecord(score) {
     if (leaderboard.length === 0 && score > 0) return true;
     return score > 0 && score > Math.max(...leaderboard.filter(s => typeof s === 'number').concat(0));
+}
+
+// --- *** 新增：毒圈初始化函數 *** ---
+function initPoisonCircle() {
+    const mapCenter = gameState.map.getCenter();
+    const pc = gameState.poisonCircle; // 簡寫
+
+    pc.center = mapCenter; // 毒圈中心就是地圖中心
+    pc.currentRadius = 1000; // 初始一個較大的半徑，確保覆蓋整個地圖
+    pc.targetRadius = 1000;
+    pc.isShrinking = false;
+
+    // 如果已存在舊的毒圈物件，先移除
+    if (pc.circleObject && gameState.map.hasLayer(pc.circleObject)) {
+        gameState.map.removeLayer(pc.circleObject);
+    }
+    if(pc.damageInterval) clearInterval(pc.damageInterval);
+
+
+    // 創建新的 Leaflet 圓形物件
+    pc.circleObject = L.circle(pc.center, {
+        radius: pc.currentRadius,
+        color: '#00ffff',      // 圈的邊框顏色 (青色)
+        fillColor: '#00ffff',  // 圈的填充顏色
+        fillOpacity: 0.15,     // 填充的透明度
+        weight: 2              // 邊框寬度
+    }).addTo(gameState.map);
+
+    // 設置第一次縮圈的時間
+    pc.nextShrinkTime = performance.now() + 30000; // 遊戲開始後 30 秒開始第一次縮圈
+}
+
+// --- *** 新增：觸發縮圈的函數 *** ---
+function startNextShrink() {
+    const pc = gameState.poisonCircle;
+    
+    // 計算下一個目標半徑，例如每次縮小 20%
+    const newTargetRadius = pc.currentRadius * 0.8;
+    if (newTargetRadius < 50) { // 設定一個最小半徑
+        pc.targetRadius = 50;
+    } else {
+        pc.targetRadius = newTargetRadius;
+    }
+
+    const shrinkDuration = 20000; // 每次縮圈持續 20 秒
+    const distanceToShrink = pc.currentRadius - pc.targetRadius;
+    pc.shrinkSpeed = distanceToShrink / (shrinkDuration / 1000); // 計算出每秒縮小的速度
+
+    pc.isShrinking = true;
+    console.log(`毒圈開始縮小！目標半徑: ${pc.targetRadius.toFixed(0)} 公尺`);
+    
+    // 設置下一次縮圈的時間（例如：縮完後再等 30 秒）
+    pc.nextShrinkTime = performance.now() + shrinkDuration + 30000;
+}
+
+function checkPlayerInPoison() {
+    if (!gameState.pacman || gameState.isRoundTransitioning || gameState.isGameOver) return;
+
+    const pc = gameState.poisonCircle;
+    const pacmanPos = gameState.pacman.getLatLng();
+
+    const distanceToCenter = pacmanPos.distanceTo(pc.center);
+
+    if (distanceToCenter > pc.currentRadius) {
+        // 玩家在圈外
+        if (!pc.damageInterval) {
+            pc.damageInterval = setInterval(() => {
+                const hs = gameState.healthSystem;
+                hs.currentHealth -= 5; // 每次扣 5 點血
+                
+                if (hs.currentHealth <= 0) {
+                    hs.currentHealth = 0;
+                    loseLife(); // 當前血條空了，觸發失命邏輯
+                }
+                
+                updateUI();
+            }, 500); // 每半秒扣一次
+        }
+    } else {
+        // 玩家在圈內，停止扣血
+        if (pc.damageInterval) {
+            clearInterval(pc.damageInterval);
+            pc.damageInterval = null;
+        }
+    }
 }
 
 export function pauseGame() { 
@@ -867,6 +936,7 @@ export function backToMenu() {
     if (ghostDecisionInterval) clearInterval(ghostDecisionInterval); 
     setGhostDecisionInterval(null); 
     if(gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer); 
+    if(gameState.poisonCircle.damageInterval) clearInterval(gameState.poisonCircle.damageInterval);
     
     gameState.pacmanMovement.isMoving = false;
     gameState.pacmanMovement.lastIntendedDirectionKey = null; 

@@ -26,12 +26,17 @@ export let gameState = {
     dots: [],
     powerPellets: [],
     score: 0,
-    lives: 3,
+    healthSystem: {
+        lives: 3,           // 總生命次數 (或復活次數)
+        maxLives: 3,        // 最大生命次數
+        currentHealth: 100, // 當前血條的血量 (0-100)
+        maxHealth: 100      // 血條的最大血量
+    },
     level: 1,
     gameTime: 600, 
     isPaused: false,
     isGameOver: false,
-    isLosingLife: false, 
+    isRoundTransitioning: false,
     currentMapIndex: 0,
     gameTimer: null,
     powerMode: false,
@@ -52,7 +57,18 @@ export let gameState = {
     autoPilotMode: false, 
     cleverMode: false, 
     autoPilotPath: [],    
-    autoPilotTarget: null 
+    autoPilotTarget: null,
+    poisonCircle: {
+        circleObject: null,     // Leaflet 的圓形物件
+        center: null,           // 毒圈中心點的 LatLng 物件
+        currentRadius: 2000,    // 當前半徑 (單位：公尺)
+        targetRadius: 2000,     // 下一個階段的目標半徑
+        shrinkSpeed: 0,         // 每秒縮小的速度
+        damageInterval: null,   // 在圈外時，扣血的計時器
+        isShrinking: false,     // 標記是否正在縮小
+        nextShrinkTime: 0,      // 下一次縮圈開始的時間戳
+        damagePerTick: 0.01      // 每次扣血的量 (可以是小數)
+    }
 };
 
 // 背景地圖相關狀態
@@ -73,7 +89,10 @@ export let startScreenMapState = {
 
 // 地圖設定
 export const mapConfigs = [
-    { name: "台北市中心", center: [25.0330, 121.5654], zoom: MAX_MAP_ZOOM },
+    { name: "台北市中心", center: [25.0330, 121.5654], zoom: MAX_MAP_ZOOM, bounds: L.latLngBounds(
+            [25.0290, 121.5604], // 西南角 (SouthWest)
+            [25.0370, 121.5704]  // 東北角 (NorthEast)
+        )},
     { name: "台中市區", center: [24.1477, 120.6736], zoom: MAX_MAP_ZOOM },
     { name: "高雄市區", center: [22.6273, 120.3014], zoom: MAX_MAP_ZOOM }
 ];
