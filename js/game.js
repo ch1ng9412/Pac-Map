@@ -2,7 +2,7 @@ import { gameState, mapConfigs, MAX_MAP_ZOOM, NUMBER_OF_GHOSTS, PACMAN_BASE_SPEE
 import { soundsReady, setupSounds, playStartSound, playDotSound, playPowerPelletSound, playEatGhostSound, playDeathSound } from './audio.js';
 import { updateUI, updateLeaderboardUI, updatePacmanIconRotation, showLoadingScreen, hideLoadingScreen } from './ui.js';
 import { stopBackgroundAnimation, initStartScreenBackground } from './backgroundAnimation.js';
-import { fetchRoadData, generateRoadNetworkGeneric, findNearestRoadPositionGeneric, drawVisualRoads } from './map.js';
+import { fetchRoadData, generateRoadNetworkGeneric, findNearestRoadPositionGeneric, drawVisualRoads, getRandomPointInCircle } from './map.js';
 import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual } from './ai.js';
 import { logToDevConsole } from './devConsole.js';
 
@@ -58,6 +58,12 @@ function resetGameState() {
     if (ghostDecisionInterval) clearInterval(ghostDecisionInterval);
     if (gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer);
     if (gameState.poisonCircle.damageInterval) clearInterval(gameState.poisonCircle.damageInterval);
+    if (poisonSvgElements.poisonRect) {
+        poisonSvgElements.poisonRect.remove();
+        poisonSvgElements.nextCircleBorder.remove();
+        // Mask defs 可以保留，或者也一并移除
+    }
+    poisonSvgElements = {};
 
     setGameLoopRequestId(null);
     setGhostDecisionInterval(null);
@@ -416,28 +422,42 @@ function gameLoop(timestamp) {
     setLastFrameTime(timestamp);
 
     let deltaTime = rawDeltaTime * gameState.gameSpeedMultiplier; 
-    // --- *** 新增：更新毒圈邏輯 *** ---
+    
     const pc = gameState.poisonCircle;
 
-    // 檢查是否到了該縮圈的時間
+    // 1. 检查是否到了该启动新一轮缩圈的时间
     if (!pc.isShrinking && timestamp > pc.nextShrinkTime) {
         startNextShrink();
     }
 
-    // 如果正在縮圈，就更新半徑
+    // 2. 如果正在缩圈，就更新半径
     if (pc.isShrinking) {
         pc.currentRadius -= pc.shrinkSpeed * (deltaTime / 1000);
-        if (pc.currentRadius < pc.targetRadius) {
+        
+        // 检查是否已经到达目标
+        if (pc.currentRadius <= pc.targetRadius) {
             pc.currentRadius = pc.targetRadius;
-            pc.isShrinking = false; // 到達目標，停止縮小
-            console.log("毒圈縮小完成！");
-        }
-        // 更新地圖上的圓形視覺
-        if (pc.circleObject) {
-            pc.circleObject.setRadius(pc.currentRadius);
+            pc.isShrinking = false; // 标记本轮缩小结束
+            console.log("毒圈缩小完成！");
+
+            // *** 关键逻辑：缩小完成后，立即准备下一轮 ***
+            // 重新计算下一轮的目标，但不立即开始缩小
+            const nextTargetRadius = pc.currentRadius * 0.8;
+            pc.targetRadius = Math.max(nextTargetRadius, 50);
+
+            const randomCenterRadius = pc.currentRadius - pc.targetRadius;
+            if (randomCenterRadius > 0) {
+                pc.center = getRandomPointInCircle(pc.center, randomCenterRadius);
+            }
+            
+            // 设置下一次“开始缩小”的时间戳
+            pc.nextShrinkTime = performance.now() + 30000; // 30秒后
+            
+            console.log(`下一轮预告已显示。将在 30 秒后开始缩小。`);
         }
     }
     
+    updatePoisonCircleSVG();
     // 檢查玩家是否在圈外
     checkPlayerInPoison();
 
@@ -814,57 +834,168 @@ function isNewRecord(score) {
     return score > 0 && score > Math.max(...leaderboard.filter(s => typeof s === 'number').concat(0));
 }
 
-// --- *** 新增：毒圈初始化函數 *** ---
 function initPoisonCircle() {
     const mapCenter = gameState.map.getCenter();
-    const pc = gameState.poisonCircle; // 簡寫
+    const pc = gameState.poisonCircle;
 
-    pc.center = mapCenter; // 毒圈中心就是地圖中心
-    pc.currentRadius = 1000; // 初始一個較大的半徑，確保覆蓋整個地圖
-    pc.targetRadius = 1000;
+    pc.center = mapCenter;
+    pc.currentRadius = 800;
+    pc.targetRadius = 800;
     pc.isShrinking = false;
 
-    // 如果已存在舊的毒圈物件，先移除
+    // 移除旧的 circleObject (如果存在)
     if (pc.circleObject && gameState.map.hasLayer(pc.circleObject)) {
         gameState.map.removeLayer(pc.circleObject);
+        pc.circleObject = null;
     }
     if(pc.damageInterval) clearInterval(pc.damageInterval);
 
+    // *** 新逻辑：设置 SVG ***
+    setupPoisonCircleSVG();
+    
+    // 首次更新 SVG 的位置
+    updatePoisonCircleSVG();
 
-    // 創建新的 Leaflet 圓形物件
-    pc.circleObject = L.circle(pc.center, {
-        radius: pc.currentRadius,
-        color: '#00ffff',      // 圈的邊框顏色 (青色)
-        fillColor: '#00ffff',  // 圈的填充顏色
-        fillOpacity: 0.15,     // 填充的透明度
-        weight: 2              // 邊框寬度
-    }).addTo(gameState.map);
-
-    // 設置第一次縮圈的時間
-    pc.nextShrinkTime = performance.now() + 30000; // 遊戲開始後 30 秒開始第一次縮圈
+    pc.nextShrinkTime = performance.now() + 30000;
 }
 
 // --- *** 新增：觸發縮圈的函數 *** ---
 function startNextShrink() {
     const pc = gameState.poisonCircle;
     
-    // 計算下一個目標半徑，例如每次縮小 20%
+    // --- *** 步骤 1: 计算新的目标半径 (保持不变) *** ---
     const newTargetRadius = pc.currentRadius * 0.8;
-    if (newTargetRadius < 50) { // 設定一個最小半徑
-        pc.targetRadius = 50;
-    } else {
-        pc.targetRadius = newTargetRadius;
-    }
+    pc.targetRadius = Math.max(newTargetRadius, 50);
 
-    const shrinkDuration = 20000; // 每次縮圈持續 20 秒
+    // --- *** 步骤 2: 计算新的随机中心点 *** ---
+    // 下一个安全区的圆心，必须在当前安全区内
+    // 为了确保新的安全区完全被旧的包裹，新圆心的随机范围不能是整个旧圆
+    // 随机范围的半径 = 旧半径 - 新半径
+    const randomCenterRadius = pc.currentRadius - pc.targetRadius;
+    
+    if (randomCenterRadius > 0) {
+        // 在这个更小的同心圆内随机选择一个新的中心点
+        pc.center = getRandomPointInCircle(pc.center, randomCenterRadius);
+    }
+    // 如果 randomCenterRadius <= 0，意味着圈已经很小了，中心点保持不变
+
+    // --- *** 步骤 3: 计算缩圈速度等 (保持不变) *** ---
+    const shrinkDuration = 20000;
     const distanceToShrink = pc.currentRadius - pc.targetRadius;
-    pc.shrinkSpeed = distanceToShrink / (shrinkDuration / 1000); // 計算出每秒縮小的速度
+    pc.shrinkSpeed = distanceToShrink / (shrinkDuration / 1000);
 
     pc.isShrinking = true;
-    console.log(`毒圈開始縮小！目標半徑: ${pc.targetRadius.toFixed(0)} 公尺`);
+    console.log(`毒圈开始缩小！新中心: ${pc.center.lat.toFixed(4)}, ${pc.center.lng.toFixed(4)}, 目标半径: ${pc.targetRadius.toFixed(0)} 公尺`);
     
-    // 設置下一次縮圈的時間（例如：縮完後再等 30 秒）
-    pc.nextShrinkTime = performance.now() + shrinkDuration + 30000;
+    updatePoisonCircleSVG(); 
+}
+
+// --- *** 新增：毒圈 SVG 效果的初始化与更新函数 *** ---
+
+let poisonSvgElements = {}; // 用来存储我们创建的 SVG 元素
+
+function setupPoisonCircleSVG() {
+    // 获取 Leaflet 用来绘制矢量图形的 SVG 面板
+    const svgPane = gameState.map.getPane('overlayPane').querySelector('svg');
+    if (!svgPane) return;
+
+    // 创建一个 <defs> 元素，用来存放我们的遮罩定义
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    
+    // 创建遮罩 <mask>
+    const mask = document.createElementNS("http://www.w3.org/2000/svg", "mask");
+    mask.setAttribute("id", "safe-zone-mask");
+
+    // 遮罩的背景：一个巨大的白色矩形（代表默认所有地方都不透明）
+    const maskBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    maskBg.setAttribute("x", "-100%");
+    maskBg.setAttribute("y", "-100%");
+    maskBg.setAttribute("width", "300%");
+    maskBg.setAttribute("height", "300%");
+    maskBg.setAttribute("fill", "white");
+    
+    // 遮罩的前景：一个黑色的圆形，它就是要被“挖掉”的部分
+    // 在 SVG mask 中，黑色代表完全透明
+    const maskCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    maskCircle.setAttribute("cx", "50%");
+    maskCircle.setAttribute("cy", "50%");
+    maskCircle.setAttribute("r", "0"); // 初始半径为0
+    maskCircle.setAttribute("fill", "black");
+
+    mask.appendChild(maskBg);
+    mask.appendChild(maskCircle);
+    defs.appendChild(mask);
+    
+    // 创建覆盖整个地图的红色半透明矩形
+    const poisonRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    poisonRect.setAttribute("x", "-100%");
+    poisonRect.setAttribute("y", "-100%");
+    poisonRect.setAttribute("width", "300%");
+    poisonRect.setAttribute("height", "300%");
+    poisonRect.setAttribute("fill", "red");
+    poisonRect.setAttribute("fill-opacity", "0.25");
+    poisonRect.setAttribute("mask", "url(#safe-zone-mask)"); // 应用我们的遮罩！
+    poisonRect.style.pointerEvents = 'none'; // 确保它不影响鼠标交互
+
+    // 创建下一圈的绿色边框
+    const nextCircleBorder = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    nextCircleBorder.setAttribute("cx", "50%");
+    nextCircleBorder.setAttribute("cy", "50%");
+    nextCircleBorder.setAttribute("r", "0");
+    nextCircleBorder.setAttribute("fill", "none");
+    nextCircleBorder.setAttribute("stroke", "#00ff00");
+    nextCircleBorder.setAttribute("stroke-width", "3");
+    nextCircleBorder.setAttribute("stroke-opacity", "0.8");
+    nextCircleBorder.style.pointerEvents = 'none';
+
+    // 将这些元素添加到 SVG 面板
+    svgPane.appendChild(defs);
+    svgPane.appendChild(poisonRect);
+    svgPane.appendChild(nextCircleBorder);
+
+    // 存储这些元素的引用，方便后续更新
+    poisonSvgElements = {
+        maskCircle,
+        poisonRect,
+        nextCircleBorder
+    };
+}
+
+
+function updatePoisonCircleSVG() {
+    if (!poisonSvgElements.maskCircle) return;
+    
+    const pc = gameState.poisonCircle;
+    
+    // 将地理坐标和半径，转换为屏幕上的像素坐标和半径
+    const centerPoint = gameState.map.latLngToLayerPoint(pc.center);
+    
+    // 计算当前半径在屏幕上的像素大小
+    const edgeLatLng = L.latLng(pc.center.lat + (pc.currentRadius / 111320), pc.center.lng); // 粗略计算
+    const edgePoint = gameState.map.latLngToLayerPoint(edgeLatLng);
+    const radiusInPixels = centerPoint.y - edgePoint.y;
+
+    // 计算下一个目标半径在屏幕上的像素大小
+    const nextEdgeLatLng = L.latLng(pc.center.lat + (pc.targetRadius / 111320), pc.center.lng);
+    const nextEdgePoint = gameState.map.latLngToLayerPoint(nextEdgeLatLng);
+    const nextRadiusInPixels = centerPoint.y - nextEdgePoint.y;
+
+    // 更新 SVG 元素的位置和大小
+    poisonSvgElements.maskCircle.setAttribute("cx", centerPoint.x);
+    poisonSvgElements.maskCircle.setAttribute("cy", centerPoint.y);
+    poisonSvgElements.maskCircle.setAttribute("r", radiusInPixels);
+
+    const border = poisonSvgElements.nextCircleBorder;
+    
+    // 只要目标半径和当前半径不同，就意味着有一个“预告”存在
+    if (pc.targetRadius < pc.currentRadius) {
+        border.setAttribute("cx", centerPoint.x);
+        border.setAttribute("cy", centerPoint.y);
+        border.setAttribute("r", nextRadiusInPixels);
+        border.style.display = 'block';
+    } else {
+        border.style.display = 'none';
+    }
 }
 
 function checkPlayerInPoison() {

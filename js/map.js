@@ -21,7 +21,7 @@ export async function fetchRoadData(bounds) {
     }
 }
 
-export async function generateRoadNetworkGeneric(bounds, osmData, targetState, maxSegmentLength = 40) {
+export async function generateRoadNetworkGeneric(bounds, osmData, targetState, maxSegmentLength = 50) {
     targetState.validPositions = []; 
     targetState.roadNetwork = []; 
     targetState.adjacencyList.clear();
@@ -168,96 +168,82 @@ export function drawVisualRoads() {
 }
 
 function connectDeadEnds(targetState) {
-    console.log('Attempting to connect dead ends for main game...');
-    let deadEndsFixedInIterationTotal = 0;
-    let iterations = 0;
-    const maxIterations = Math.max(15, Math.floor(targetState.adjacencyList.size / 10));
-    let deadEndsFixedInThisPass = 0;
+    const MAX_CONNECTION_DISTANCE_METERS = 100;
+    const MAX_ITERATIONS = 500; // 设置一个上限防止意外的无限循环
+    let totalFixed = 0;
 
-    do {
-        deadEndsFixedInThisPass = 0;
-        iterations++;
-        if (iterations > maxIterations && maxIterations > 0) {
-            console.warn("Max iterations reached for connecting dead ends. Breaking.");
-            break;
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+        // 1. 在每一轮迭代的开始，都重新获取最新的死胡同列表
+        const deadEndNodes = Array.from(targetState.adjacencyList.entries())
+            .filter(([_, neighbors]) => neighbors.length === 1)
+            .map(([nodeStr, _]) => nodeStr.split(',').map(Number));
+        
+        // 如果没有死胡同了，或者只剩一个，就提前结束
+        if (deadEndNodes.length < 1) {
+            console.log(`已无死胡同可修复，总共修复了 ${totalFixed} 个。`);
+            return;
         }
-        while (true) {
-            // 取得所有 degree == 1 的節點
-            const deadEndNodes = Array.from(targetState.adjacencyList.entries())
-                .filter(([_, neighbors]) => neighbors.length === 1)
-                .map(([nodeStr]) => nodeStr.split(',').map(Number));
 
-            if (deadEndNodes.length < 2) break; // 沒有足夠的死路節點來對接
+        let fixedInThisPass = 0;
+        
+        // 2. 遍历当前找到的死胡同
+        for (const deadEndNode of deadEndNodes) {
+            
+            // 2a. 再次检查，因为它可能在之前的循环中已经被修复了
+            if (targetState.adjacencyList.get(deadEndNode.toString()).length > 1) {
+                continue;
+            }
 
-            let foundConnection = false;
-
-            // 嘗試找出最近的一對死路節點
+            let closestNode = null;
             let minDistanceSq = Infinity;
-            let pairToConnect = null;
 
-            for (let i = 0; i < deadEndNodes.length; i++) {
-                for (let j = i + 1; j < deadEndNodes.length; j++) {
-                    const a = deadEndNodes[i];
-                    const b = deadEndNodes[j];
+            // 3. 为这个死胡同，寻找一个最近的、非邻居的任意节点
+            // 这是原始算法的核心，但我们把它放在一个控制得当的循环里
+            for (const potentialTargetNode of targetState.validPositions) {
+                // 排除自己和唯一的邻居
+                const isSelf = positionsAreEqual(deadEndNode, potentialTargetNode);
+                const isNeighbor = targetState.adjacencyList.get(deadEndNode.toString())
+                                     .some(n => positionsAreEqual(n, potentialTargetNode));
+                
+                if (isSelf || isNeighbor) {
+                    continue;
+                }
 
-                    // 確保這兩節點目前還沒連接
-                    const alreadyConnected = targetState.roadNetwork.some(
-                        segment =>
-                            (positionsAreEqual(segment[0], a) && positionsAreEqual(segment[1], b)) ||
-                            (positionsAreEqual(segment[0], b) && positionsAreEqual(segment[1], a))
-                    );
-                    if (alreadyConnected) continue;
+                const dy = deadEndNode[0] - potentialTargetNode[0];
+                const dx = deadEndNode[1] - potentialTargetNode[1];
+                const distSq = dy * dy + dx * dx;
 
-                    const dy = a[0] - b[0];
-                    const dx = a[1] - b[1];
-                    const distSq = dy * dy + dx * dx;
-
-                    if (distSq < minDistanceSq) {
-                        minDistanceSq = distSq;
-                        pairToConnect = [a, b];
-                    }
+                if (distSq < minDistanceSq) {
+                    minDistanceSq = distSq;
+                    closestNode = potentialTargetNode;
                 }
             }
+            
+            // 4. 检查距离并连接
+            const distanceInMeters = Math.sqrt(minDistanceSq) * 111320;
+            console.log(distanceInMeters);
+            if (closestNode && distanceInMeters < MAX_CONNECTION_DISTANCE_METERS) {
+                const nodeA = deadEndNode;
+                const nodeB = closestNode;
 
-            if (pairToConnect) {
-                const [a, b] = pairToConnect;
+                // --- 连接逻辑 ---
+                targetState.roadNetwork.push([nodeA, nodeB]);
+                targetState.adjacencyList.get(nodeA.toString()).push(nodeB);
+                targetState.adjacencyList.get(nodeB.toString()).push(nodeA);
 
-                // 建立連線
-                targetState.roadNetwork.push([a, b]);
-
-                // 更新 a 的鄰居
-                const aKey = a.toString();
-                let aNeighbors = targetState.adjacencyList.get(aKey);
-                if (!aNeighbors) {
-                    aNeighbors = [];
-                    targetState.adjacencyList.set(aKey, aNeighbors);
-                }
-                if (!aNeighbors.some(n => positionsAreEqual(n, b))) {
-                    aNeighbors.push(b);
-                }
-
-                // 更新 b 的鄰居
-                const bKey = b.toString();
-                let bNeighbors = targetState.adjacencyList.get(bKey);
-                if (!bNeighbors) {
-                    bNeighbors = [];
-                    targetState.adjacencyList.set(bKey, bNeighbors);
-                }
-                if (!bNeighbors.some(n => positionsAreEqual(n, a))) {
-                    bNeighbors.push(a);
-                }
-
-                deadEndsFixedInIterationTotal++;
-                foundConnection = true;
+                fixedInThisPass++;
+                totalFixed++;
             }
-
-            if (!foundConnection) break; // 無法再連任何死路
-
         }
-        if (deadEndsFixedInThisPass === 0 && iterations > 1) break;
-    } while (iterations < maxIterations && (deadEndsFixedInThisPass > 0 || iterations === 1));
 
-    if (iterations >= maxIterations && maxIterations > 0) console.warn("Main game dead end fixing reached max iterations.");
+        // 5. 如果这一整轮都没有修复任何死胡同，说明已经稳定，可以结束了
+        if (fixedInThisPass === 0) {
+            console.log(`本轮未修复任何死胡同，结构稳定。总共修复了 ${totalFixed} 个。`);
+            return;
+        }
+    }
+
+    console.warn(`连接死胡同达到最大迭代次数 ${MAX_ITERATIONS}。总共修复了 ${totalFixed} 个。`);
 }
 
 export function removeDisconnectedIslands(targetState) {
@@ -312,4 +298,22 @@ export function removeDisconnectedIslands(targetState) {
     targetState.roadNetwork = targetState.roadNetwork.filter(([a, b]) =>
         validKeys.has(a.toString()) && validKeys.has(b.toString())
     );
+}
+
+export function getRandomPointInCircle(center, radius) {
+    // 将半径从米转换为经纬度的大致偏移量
+    // 这是一个简化计算，在小范围内足够精确
+    // 1度纬度约等于 111320 米
+    const radiusInDegrees = radius / 111320;
+
+    // 使用极坐标法生成随机点
+    // r 是半径，theta 是角度
+    const r = radiusInDegrees * Math.sqrt(Math.random());
+    const theta = Math.random() * 2 * Math.PI;
+
+    const randomLat = center.lat + r * Math.cos(theta);
+    // 修正经度偏移量，因为经度距离随纬度变化
+    const randomLng = center.lng + (r * Math.sin(theta)) / Math.cos(center.lat * (Math.PI / 180));
+
+    return L.latLng(randomLat, randomLng);
 }
