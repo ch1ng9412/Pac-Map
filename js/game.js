@@ -6,6 +6,11 @@ import { fetchRoadData, generateRoadNetworkGeneric, findNearestRoadPositionGener
 import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual } from './ai.js';
 import { logToDevConsole } from './devConsole.js';
 
+const bgmAudio = document.getElementById('bgm');
+if (bgmAudio) {
+    bgmAudio.volume = 0.5; // 设定一个合适的初始音量 (0.0 到 1.0)
+}
+
 export async function initGame() { 
     stopBackgroundAnimation(); 
 
@@ -383,6 +388,15 @@ async function startGame() {
         setupSounds();
     }
     playStartSound();
+
+    if (bgmAudio && bgmAudio.paused) {
+        // 使用 .play() 方法。它会返回一个 Promise。
+        // 我们用 .catch() 来处理浏览器可能因为自动播放策略而阻止播放的错误。
+        bgmAudio.play().catch(error => {
+            console.warn("BGM 自动播放被浏览器阻止:", error);
+            // 提示玩家手动开启声音
+        });
+    }
 
     gameState.gameTimer = setInterval(() => {
         if (!gameState.isPaused && !gameState.isGameOver) {
@@ -794,6 +808,7 @@ function nextLevel() {
 export function endGame(victory) { 
     gameState.isGameOver = true;
     gameState.canMove = false;
+    stopBGM();
     if (gameLoopRequestId) cancelAnimationFrame(gameLoopRequestId);
     setGameLoopRequestId(null);
     if(gameState.gameTimer) clearInterval(gameState.gameTimer);
@@ -1030,8 +1045,20 @@ function checkPlayerInPoison() {
     }
 }
 
+function stopBGM() {
+    if (bgmAudio) {
+        bgmAudio.pause();
+        bgmAudio.currentTime = 0; // 将播放进度重置到 0
+    }
+}
+
 export function pauseGame() { 
     if (gameState.isGameOver || gameState.isLosingLife) return; 
+
+    if (bgmAudio) {
+        bgmAudio.volume = 0.2;
+    }
+
     gameState.isPaused = true; 
     if (ghostDecisionInterval) clearInterval(ghostDecisionInterval); 
     setGhostDecisionInterval(null); 
@@ -1039,6 +1066,9 @@ export function pauseGame() {
 }
 
 export function resumeGame() { 
+    if (bgmAudio) {
+        bgmAudio.volume = 0.5;
+    }
     gameState.isPaused = false; 
     setLastFrameTime(performance.now()); 
     if (!gameState.isGameOver && !gameState.isLosingLife) startGhostDecisionMaking(); 
@@ -1060,7 +1090,8 @@ export function backToMenu() {
     document.getElementById('instructionsContent').style.display = 'none'; 
     document.getElementById('leaderboardContent').style.display = 'none';
     document.getElementById('startScreen').style.display = 'flex'; 
-    
+
+    stopBGM();
     if (gameLoopRequestId) cancelAnimationFrame(gameLoopRequestId);
     setGameLoopRequestId(null);
     if(gameState.gameTimer) clearInterval(gameState.gameTimer); 
