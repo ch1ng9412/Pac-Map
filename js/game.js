@@ -398,6 +398,7 @@ async function startGame() {
         });
     }
 
+    gameState.gameStartTime = performance.now();
     gameState.gameTimer = setInterval(() => {
         if (!gameState.isPaused && !gameState.isGameOver) {
             gameState.gameTime--;
@@ -826,10 +827,11 @@ export function endGame(victory) {
     gameState.autoPilotPath = [];
     gameState.autoPilotTarget = null;
     
+    const finalScore = calculateFinalScore(gameState.score);
     updateLeaderboard(gameState.score);
-    document.getElementById('finalScore').textContent = gameState.score;
+    document.getElementById('finalScore').textContent = finalScore;
     document.getElementById('gameOverTitle').textContent = victory ? '🎉 過關成功!' : ' 遊戲結束';
-    document.getElementById('newHighScore').style.display = isNewRecord(gameState.score) ? 'block' : 'none';
+    document.getElementById('newHighScore').style.display = isNewRecord(finalScore) ? 'block' : 'none';
     document.getElementById('gameOverScreen').style.display = 'flex';
 }
 
@@ -847,6 +849,29 @@ function updateLeaderboard(score) {
 function isNewRecord(score) {
     if (leaderboard.length === 0 && score > 0) return true;
     return score > 0 && score > Math.max(...leaderboard.filter(s => typeof s === 'number').concat(0));
+}
+
+function calculateFinalScore(baseScore) {
+    if (gameState.gameStartTime === 0) {
+        return baseScore;
+    }
+
+    // 1. 计算总存活时间（秒）
+    const gameEndTime = performance.now();
+    const totalSurvivalTimeMs = gameEndTime - gameState.gameStartTime;
+    const totalSurvivalTimeSec = Math.floor(totalSurvivalTimeMs / 1000);
+
+    console.log(`总存活时间: ${totalSurvivalTimeSec} 秒`);
+
+    // 2. 计算生存时间奖励分数
+    const survivalBonus = totalSurvivalTimeSec * 10;
+    
+    // 3. 计算最终总分
+    const finalScore = baseScore + survivalBonus;
+
+    console.log(`基础分数: ${baseScore}, 生存奖励: ${survivalBonus}, 最终总分: ${finalScore}`);
+    
+    return finalScore;
 }
 
 function initPoisonCircle() {

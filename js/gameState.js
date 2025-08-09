@@ -34,6 +34,7 @@ export let gameState = {
     },
     level: 1,
     gameTime: 600, 
+    gameStartTime: 0,
     isPaused: false,
     isGameOver: false,
     isRoundTransitioning: false,
