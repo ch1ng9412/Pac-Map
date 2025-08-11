@@ -1,5 +1,5 @@
 import { gameState } from './gameState.js';
-import { positionsAreEqual } from './ai.js';
+import { positionsAreEqual, bfsDistance } from './ai.js';
 
 export async function fetchRoadData(bounds) {
     const south = bounds.getSouth(), west = bounds.getWest(), north = bounds.getNorth(), east = bounds.getEast();
@@ -21,7 +21,7 @@ export async function fetchRoadData(bounds) {
     }
 }
 
-export async function generateRoadNetworkGeneric(bounds, osmData, targetState, maxSegmentLength = 50) {
+export async function generateRoadNetworkGeneric(bounds, osmData, targetState, maxSegmentLength = 20) {
     targetState.validPositions = []; 
     targetState.roadNetwork = []; 
     targetState.adjacencyList.clear();
@@ -38,7 +38,8 @@ export async function generateRoadNetworkGeneric(bounds, osmData, targetState, m
         if (element.type === 'node' && element.lat && element.lon) {
             nodes[element.id] = [element.lat, element.lon];
         } else if (element.type === 'way' && element.tags && element.tags.highway && element.nodes) {
-            const roadTypes = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'living_street', 'pedestrian', 'road', 'path', 'footway', 'cycleway', 'track'];
+            // const roadTypes = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'living_street', 'pedestrian', 'road', 'path', 'footway', 'cycleway', 'track'];
+            const roadTypes = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'road', 'path'];
             if (roadTypes.includes(element.tags.highway)) {
                 ways.push(element.nodes);
             }
@@ -71,32 +72,25 @@ export async function generateRoadNetworkGeneric(bounds, osmData, targetState, m
         const nodeA = segment[0];
         const nodeB = segment[1];
 
+        // 确保原始节点被记录
         if (!uniqueNodesMap.has(nodeA.toString())) uniqueNodesMap.set(nodeA.toString(), nodeA);
         if (!uniqueNodesMap.has(nodeB.toString())) uniqueNodesMap.set(nodeB.toString(), nodeB);
 
-        const latLngA = L.latLng(nodeA[0], nodeA[1]);
-        const latLngB = L.latLng(nodeB[0], nodeB[1]);
-        const distance = latLngA.distanceTo(latLngB);
+        // --- *** 使用新的辅助函数 *** ---
+        const newSegments = subdivideSegment(nodeA, nodeB, maxSegmentLength);
 
-        if (distance > MAX_SEGMENT_LENGTH_METERS) {
-            const numNewPoints = Math.ceil(distance / MAX_SEGMENT_LENGTH_METERS) - 1;
-            let lastPoint = nodeA;
-            for (let i = 1; i <= numNewPoints; i++) {
-                const fraction = i / (numNewPoints + 1);
-                const interpolatedLat = nodeA[0] + fraction * (nodeB[0] - nodeA[0]);
-                const interpolatedLng = nodeA[1] + fraction * (nodeB[1] - nodeA[1]);
-                const newNode = [interpolatedLat, interpolatedLng];
-                
-                if (!uniqueNodesMap.has(newNode.toString())) {
-                    uniqueNodesMap.set(newNode.toString(), newNode);
+        // 如果产生了新的细分节点，需要将它们也加入到 uniqueNodesMap 中
+        if (newSegments.length > 1) {
+            newSegments.forEach(newSeg => {
+                const newMiddleNode = newSeg[1];
+                if (!uniqueNodesMap.has(newMiddleNode.toString())) {
+                    uniqueNodesMap.set(newMiddleNode.toString(), newMiddleNode);
                 }
-                subdividedRoadNetwork.push([lastPoint, newNode]);
-                lastPoint = newNode;
-            }
-            subdividedRoadNetwork.push([lastPoint, nodeB]);
-        } else {
-            subdividedRoadNetwork.push(segment);
+            });
         }
+        
+        // 将细分后的路段加入最终的路网列表
+        subdividedRoadNetwork.push(...newSegments);
     });
 
     targetState.roadNetwork = subdividedRoadNetwork;
@@ -134,6 +128,33 @@ export async function generateRoadNetworkGeneric(bounds, osmData, targetState, m
     }
 }
 
+function subdivideSegment(nodeA, nodeB, maxSegmentLength) {
+    const latLngA = L.latLng(nodeA[0], nodeA[1]);
+    const latLngB = L.latLng(nodeB[0], nodeB[1]);
+    const distance = latLngA.distanceTo(latLngB);
+
+    if (distance > maxSegmentLength) {
+        const numNewPoints = Math.ceil(distance / maxSegmentLength) - 1;
+        const newSegments = [];
+        let lastPoint = nodeA;
+
+        for (let i = 1; i <= numNewPoints; i++) {
+            const fraction = i / (numNewPoints + 1);
+            const interpolatedLat = nodeA[0] + fraction * (nodeB[0] - nodeA[0]);
+            const interpolatedLng = nodeA[1] + fraction * (nodeB[1] - nodeA[1]);
+            const newNode = [interpolatedLat, interpolatedLng];
+            
+            newSegments.push([lastPoint, newNode]);
+            lastPoint = newNode;
+        }
+        newSegments.push([lastPoint, nodeB]);
+        return newSegments;
+    } else {
+        // 路段足够短，不需要细分
+        return [[nodeA, nodeB]];
+    }
+}
+
 export function findNearestRoadPositionGeneric(targetLat, targetLng, validPositionsList) {
     if (!validPositionsList || validPositionsList.length === 0) { 
         console.warn("findNearestRoadPositionGeneric with no valid positions."); 
@@ -168,8 +189,9 @@ export function drawVisualRoads() {
 }
 
 function connectDeadEnds(targetState) {
-    const MAX_CONNECTION_DISTANCE_METERS = 100;
+    const MAX_CONNECTION_DISTANCE_METERS = 200;
     const MAX_ITERATIONS = 500; // 设置一个上限防止意外的无限循环
+    const MIN_BFS_DISTANCE_TO_CONNECT = 10;
     let totalFixed = 0;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
@@ -188,52 +210,87 @@ function connectDeadEnds(targetState) {
         
         // 2. 遍历当前找到的死胡同
         for (const deadEndNode of deadEndNodes) {
-            
-            // 2a. 再次检查，因为它可能在之前的循环中已经被修复了
             if (targetState.adjacencyList.get(deadEndNode.toString()).length > 1) {
                 continue;
             }
 
-            let closestNode = null;
-            let minDistanceSq = Infinity;
+            // 1. 找到所有候选节点并按物理距离排序
+            let candidates = targetState.validPositions
+                .map(p => {
+                    const isSelf = positionsAreEqual(deadEndNode, p);
+                    const isNeighbor = targetState.adjacencyList.get(deadEndNode.toString())
+                                         .some(n => positionsAreEqual(n, p));
+                    if (isSelf || isNeighbor) return null;
 
-            // 3. 为这个死胡同，寻找一个最近的、非邻居的任意节点
-            // 这是原始算法的核心，但我们把它放在一个控制得当的循环里
-            for (const potentialTargetNode of targetState.validPositions) {
-                // 排除自己和唯一的邻居
-                const isSelf = positionsAreEqual(deadEndNode, potentialTargetNode);
-                const isNeighbor = targetState.adjacencyList.get(deadEndNode.toString())
-                                     .some(n => positionsAreEqual(n, potentialTargetNode));
+                    const dy = deadEndNode[0] - p[0];
+                    const dx = deadEndNode[1] - p[1];
+                    const distSq = dy * dy + dx * dx;
+                    return { node: p, distSq: distSq };
+                })
+                .filter(c => c !== null) // 移除 null
+                .sort((a, b) => a.distSq - b.distSq); // 按物理距离从小到大排序
+
+            // 2. 依次检查候选者，直到找到第一个满足条件的
+            let nodeToConnect = null;
+            for (const candidate of candidates) {
+                const distanceInMeters = Math.sqrt(candidate.distSq) * 111320;
                 
-                if (isSelf || isNeighbor) {
-                    continue;
+                // 物理距离过远，后续的肯定也过远，直接跳出
+                if (distanceInMeters > MAX_CONNECTION_DISTANCE_METERS) {
+                    break;
                 }
 
-                const dy = deadEndNode[0] - potentialTargetNode[0];
-                const dx = deadEndNode[1] - potentialTargetNode[1];
-                const distSq = dy * dy + dx * dx;
+                // *** 核心检查：计算 BFS 距离 ***
+                const pathDistance = bfsDistance(
+                    deadEndNode, 
+                    candidate.node, 
+                    targetState.adjacencyList,
+                    MIN_BFS_DISTANCE_TO_CONNECT + 5 // 搜索深度比阈值稍大即可
+                );
 
-                if (distSq < minDistanceSq) {
-                    minDistanceSq = distSq;
-                    closestNode = potentialTargetNode;
+                if (pathDistance > MIN_BFS_DISTANCE_TO_CONNECT) {
+                    // 找到了！这个节点既物理距离近，又路径距离远
+                    nodeToConnect = candidate.node;
+                    break; // 停止搜索，就用这个了
                 }
             }
             
-            // 4. 检查距离并连接
-            const distanceInMeters = Math.sqrt(minDistanceSq) * 111320;
-            console.log(distanceInMeters);
-            if (closestNode && distanceInMeters < MAX_CONNECTION_DISTANCE_METERS) {
+            // 3. 如果找到了符合条件的节点，就执行连接
+            const MAX_SEGMENT_LENGTH_FOR_NEW_ROADS = 20;
+            if (nodeToConnect) {
                 const nodeA = deadEndNode;
-                const nodeB = closestNode;
+                const nodeB = nodeToConnect;
 
-                // --- 连接逻辑 ---
-                targetState.roadNetwork.push([nodeA, nodeB]);
-                targetState.adjacencyList.get(nodeA.toString()).push(nodeB);
-                targetState.adjacencyList.get(nodeB.toString()).push(nodeA);
+                // --- *** 关键修改：细分新创建的道路 *** ---
+
+                // 1. 调用细分函数
+                const newSegments = subdivideSegment(nodeA, nodeB, MAX_SEGMENT_LENGTH_FOR_NEW_ROADS);
+
+                // 2. 处理细分后产生的新节点和新路段
+                let previousNode = nodeA;
+                newSegments.forEach((seg, index) => {
+                    const currentNode = seg[1];
+
+                    // a. 将新节点加入 validPositions 和 adjacencyList
+                    if (!targetState.validPositions.some(p => positionsAreEqual(p, currentNode))) {
+                        targetState.validPositions.push(currentNode);
+                        targetState.adjacencyList.set(currentNode.toString(), []);
+                    }
+                    
+                    // b. 将新路段加入 roadNetwork
+                    targetState.roadNetwork.push([previousNode, currentNode]);
+
+                    // c. 更新 adjacencyList 的连接
+                    targetState.adjacencyList.get(previousNode.toString()).push(currentNode);
+                    targetState.adjacencyList.get(currentNode.toString()).push(previousNode);
+
+                    previousNode = currentNode;
+                });
 
                 fixedInThisPass++;
                 totalFixed++;
             }
+
         }
 
         // 5. 如果这一整轮都没有修复任何死胡同，说明已经稳定，可以结束了

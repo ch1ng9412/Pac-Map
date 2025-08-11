@@ -319,3 +319,40 @@ function findNextAutoPilotTargetAndPath() {
         gameState.cleverMode = false;
     }
 }
+
+export function bfsDistance(startNode, goalNode, adjacencyList, maxDepth = 100) {
+    if (positionsAreEqual(startNode, goalNode)) {
+        return 0;
+    }
+
+    const startNodeStr = startNode.toString();
+    const goalNodeStr = goalNode.toString();
+
+    let queue = [[startNodeStr, 0]]; // 队列中存储 [节点字符串, 距离]
+    let visited = new Set([startNodeStr]); // 记录已访问的节点，防止循环
+
+    while (queue.length > 0) {
+        let [currentNodeStr, distance] = queue.shift(); // 从队列头部取出一个节点
+
+        if (distance >= maxDepth) {
+            continue; // 超过最大深度，停止这条路径的搜索
+        }
+
+        const neighbors = adjacencyList.get(currentNodeStr) || [];
+
+        for (const neighbor of neighbors) {
+            const neighborStr = neighbor.toString();
+
+            if (neighborStr === goalNodeStr) {
+                return distance + 1; // 找到了！返回距离
+            }
+
+            if (!visited.has(neighborStr)) {
+                visited.add(neighborStr);
+                queue.push([neighborStr, distance + 1]); // 将新节点加入队列尾部
+            }
+        }
+    }
+
+    return Infinity; // 如果队列为空还没找到，说明不可达
+}

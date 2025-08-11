@@ -3,7 +3,7 @@ import { soundsReady, setupSounds, playStartSound, playDotSound, playPowerPellet
 import { updateUI, updateLeaderboardUI, updatePacmanIconRotation, showLoadingScreen, hideLoadingScreen } from './ui.js';
 import { stopBackgroundAnimation, initStartScreenBackground } from './backgroundAnimation.js';
 import { fetchRoadData, generateRoadNetworkGeneric, findNearestRoadPositionGeneric, drawVisualRoads, getRandomPointInCircle } from './map.js';
-import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual } from './ai.js';
+import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual, bfsDistance} from './ai.js';
 import { logToDevConsole } from './devConsole.js';
 
 const bgmAudio = document.getElementById('bgm');
