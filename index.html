@@ -152,6 +152,67 @@
             background-color: #FFFF66; 
             color: #0000B3; 
         }
+        
+        .poi-icon-container {
+            z-index: 2000 !important;
+        }
+
+        /* 1. Flexbox 布局的包裹容器 */
+        .poi-icon-wrapper {
+            display: flex;
+            flex-direction: column; /* 垂直排列：图标在上，标题在下 */
+            align-items: center;    /* 水平居中所有子元素 */
+        }
+
+        /* 2. 图标 (水滴) 本身 */
+        .poi-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50% 50% 50% 0; /* 水滴形状 */
+            transform: rotate(-45deg);     /* 旋转水滴 */
+            border: 2px solid white;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+            
+            /* 使用 Flexbox 让内部的字母也居中 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 3. 图标内的字母 */
+        .poi-letter {
+            display: block;
+            transform: rotate(45deg); /* 把字母旋转回来 */
+            color: white;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        /* 4. 下方的文字标签 */
+        .poi-title {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: sans-serif;
+            white-space: nowrap;
+            margin-top: 4px; /* 图标和标签之间的间距 */
+            pointer-events: none; /* 避免遮挡鼠标事件 */
+        }
+
+        /* 5. 专属颜色 (保持不变) */
+        .monument-icon {
+            background-color: #a0522d;
+        }
+        .store-icon {
+            background-color: #2e8b57;
+        }
+        .park-icon {
+            background-color: #006400;
+        }
 
         .content-toggle-container { /* 包裹說明和排行榜內容的容器 */
             width: 100%;
@@ -229,6 +290,31 @@
             margin-bottom: 2.5rem;
             animation: blinkRed 0.8s infinite steps(1, end); /* 調整閃爍速度 */
         }
+        #minimap-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;  /* 小地图宽度 */
+            height: 200px; /* 小地图高度 */
+            z-index: 1000; /* 确保它在游戏 UI 之上 */
+            border: 3px solid #ffff00;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
+            background-color: #111;
+            border-radius: 5px; /* 轻微的圆角 */
+            overflow: hidden; /* 隐藏地图超出部分 */
+            display: none;
+        }
+        #minimap {
+            width: 100%;
+            height: 100%;
+        }
+        .minimap-player-icon {
+            background-color: #ffff00; /* 黄色 */
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 8px #ffff00;
+        }
+
         @keyframes blinkRed { /* 調整閃爍效果 */
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.6; transform: scale(1.02); }
@@ -356,6 +442,10 @@
             </div>
             <button class="pacman-pixel-button" id="restartGameBtn">重新開始</button>
             <button class="pacman-pixel-button" id="backToMenuBtnGameOver">回到主選單</button> 
+        </div>
+
+        <div id="minimap-container">
+            <div id="minimap"></div>
         </div>
 
         <div class="dev-console" id="devConsole">

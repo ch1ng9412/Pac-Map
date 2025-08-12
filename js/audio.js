@@ -1,6 +1,7 @@
 export let soundsReady = false;
 let introSynth, dotSynth, powerPelletSynth, eatGhostSynth, deathSynth;
 let dotSoundTimeout;
+let dotSoundIsCoolingDown = false;
 
 export function setupSounds() {
     if (typeof Tone !== 'undefined') {
@@ -45,7 +46,7 @@ export function setupSounds() {
 }
 
 export function playStartSound() {
-    if (!soundsReady || !Tone.now) return;
+    if (!soundsReady || !Tone.now || !introSynth) return;
     const now = Tone.now();
     introSynth.triggerAttackRelease(["C4", "E4", "G4"], "8n", now);
     introSynth.triggerAttackRelease(["E4", "G4", "C5"], "8n", now + 0.25);
@@ -63,7 +64,7 @@ export function playDotSound() {
 }
 
 export function playPowerPelletSound() {
-    if (!soundsReady || !Tone.now) return;
+    if (!soundsReady || !Tone.now || !powerPelletSynth) return;
     const now = Tone.now();
     powerPelletSynth.triggerAttackRelease("A4", "16n", now);
     powerPelletSynth.triggerAttackRelease("C#5", "16n", now + 0.1);
@@ -71,12 +72,12 @@ export function playPowerPelletSound() {
 }
 
 export function playEatGhostSound() {
-    if (!soundsReady || !Tone.now) return;
+    if (!soundsReady || !Tone.now || !eatGhostSynth) return;
     eatGhostSynth.triggerAttackRelease("0.2n", Tone.now());
 }
 
 export function playDeathSound() {
-    if (!soundsReady || !Tone.now) return;
+    if (!soundsReady || !Tone.now || !deathSynth) return;
     const now = Tone.now();
     deathSynth.triggerAttackRelease(["C3", "Eb3", "Gb3"], "1n", now);
     deathSynth.triggerAttackRelease(["C2", "Eb2", "Gb2"], "1n", now + 0.1); 

@@ -69,6 +69,12 @@ export let gameState = {
         isShrinking: false,     // 標記是否正在縮小
         nextShrinkTime: 0,      // 下一次縮圈開始的時間戳
         damagePerTick: 0.01      // 每次扣血的量 (可以是小數)
+    },
+    minimap: {
+        map: null,                // 小地图的 Leaflet 实例
+        playerMarker: null,       // 小地图上玩家的标记
+        poisonCircle: null,       // 小地图上的毒圈
+        nextPoisonCircle: null    // 小地图上的下一圈预告
     }
 };
 

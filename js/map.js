@@ -21,6 +21,51 @@ export async function fetchRoadData(bounds) {
     }
 }
 
+export async function fetchPOIData(bounds, poiQueries) {
+    const south = bounds.getSouth(), west = bounds.getWest(), north = bounds.getNorth(), east = bounds.getEast();
+    const bbox = `${south},${west},${north},${east}`;
+
+    let queryParts = [];
+    for (const key in poiQueries) {
+        const value = poiQueries[key];
+        // *** 关键修改：用 `~` 代替 `=` 来支持正则表达式 ***
+        // `~` 符号告诉 Overpass API，后面的值是一个正则表达式
+        // `^(${value})$` 确保完全匹配，例如 '^(cafe|restaurant|atm)$'
+        queryParts.push(`node["${key}"~"^(${value})$"](${bbox});`);
+    }
+    
+    if (queryParts.length === 0) {
+        console.warn("没有提供任何 POI 查询条件。");
+        return null;
+    }
+    
+    const query = `
+        [out:json][timeout:25];
+        (
+          ${queryParts.join('\n  ')}
+        );
+        out body;
+        >;
+        out skel qt;
+    `;
+
+    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+    console.log('正在从 Overpass API 获取地标数据...');
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.error(`获取地标数据时发生 HTTP 错误！状态: ${response.status}`);
+            return null;
+        }
+        const data = await response.json();
+        console.log(`成功获取到 ${data.elements.length} 个地标。`);
+        return data;
+    } catch (error) {
+        console.error('获取地标数据失败：', error);
+        return null;
+    }
+}
+
 export async function generateRoadNetworkGeneric(bounds, osmData, targetState, maxSegmentLength = 20) {
     targetState.validPositions = []; 
     targetState.roadNetwork = []; 
@@ -189,100 +234,102 @@ export function drawVisualRoads() {
 }
 
 function connectDeadEnds(targetState) {
-    const MAX_CONNECTION_DISTANCE_METERS = 200;
-    const MAX_ITERATIONS = 500; // 设置一个上限防止意外的无限循环
-    const MIN_BFS_DISTANCE_TO_CONNECT = 10;
+    const MIN_BFS_DISTANCE_TO_CONNECT = 15;   // 新连接所需的最短路径距离
+    const MAX_ITERATIONS = 50;                // 减少迭代次数，因为每次迭代都很昂贵
+    const MAX_CANDIDATES_TO_CHECK = 50;       // 每次只检查物理距离最近的50个候选者
+    const MAX_SEGMENT_LENGTH_FOR_NEW_ROADS = 40; // 新路的细分标准
+
     let totalFixed = 0;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
-        // 1. 在每一轮迭代的开始，都重新获取最新的死胡同列表
+        // 在每一轮迭代的开始，都重新获取最新的死胡同列表
         const deadEndNodes = Array.from(targetState.adjacencyList.entries())
             .filter(([_, neighbors]) => neighbors.length === 1)
             .map(([nodeStr, _]) => nodeStr.split(',').map(Number));
         
-        // 如果没有死胡同了，或者只剩一个，就提前结束
         if (deadEndNodes.length < 1) {
-            console.log(`已无死胡同可修复，总共修复了 ${totalFixed} 个。`);
+            console.log(`已无死胡同可修复。总共修复了 ${totalFixed} 个。`);
             return;
         }
 
         let fixedInThisPass = 0;
         
-        // 2. 遍历当前找到的死胡同
+        // 遍历当前找到的死胡同
         for (const deadEndNode of deadEndNodes) {
+            // 再次检查，因为它可能在之前的内层循环中已经被修复了
             if (targetState.adjacencyList.get(deadEndNode.toString()).length > 1) {
                 continue;
             }
 
             // 1. 找到所有候选节点并按物理距离排序
+            //    这是一个非常昂贵的操作，但对于找到最佳连接是必要的
             let candidates = targetState.validPositions
                 .map(p => {
                     const isSelf = positionsAreEqual(deadEndNode, p);
-                    const isNeighbor = targetState.adjacencyList.get(deadEndNode.toString())
-                                         .some(n => positionsAreEqual(n, p));
-                    if (isSelf || isNeighbor) return null;
+                    if (isSelf) return null;
 
+                    // 优化：不再在这里检查邻居，因为邻居的BFS距离会是1，自然会被过滤掉
                     const dy = deadEndNode[0] - p[0];
                     const dx = deadEndNode[1] - p[1];
                     const distSq = dy * dy + dx * dx;
                     return { node: p, distSq: distSq };
                 })
-                .filter(c => c !== null) // 移除 null
-                .sort((a, b) => a.distSq - b.distSq); // 按物理距离从小到大排序
+                .filter(c => c !== null)
+                .sort((a, b) => a.distSq - b.distSq);
 
-            // 2. 依次检查候选者，直到找到第一个满足条件的
+            // 2. 依次检查最近的候选者，直到找到第一个满足条件的
             let nodeToConnect = null;
-            for (const candidate of candidates) {
+            // *** 性能优化：只检查最近的 N 个候选者 ***
+            for (let j = 0; j < Math.min(candidates.length, MAX_CANDIDATES_TO_CHECK); j++) {
+                const candidate = candidates[j];
                 const distanceInMeters = Math.sqrt(candidate.distSq) * 111320;
-                
-                // 物理距离过远，后续的肯定也过远，直接跳出
-                if (distanceInMeters > MAX_CONNECTION_DISTANCE_METERS) {
-                    break;
-                }
 
-                // *** 核心检查：计算 BFS 距离 ***
                 const pathDistance = bfsDistance(
                     deadEndNode, 
                     candidate.node, 
                     targetState.adjacencyList,
-                    MIN_BFS_DISTANCE_TO_CONNECT + 5 // 搜索深度比阈值稍大即可
+                    MIN_BFS_DISTANCE_TO_CONNECT + 5
                 );
 
                 if (pathDistance > MIN_BFS_DISTANCE_TO_CONNECT) {
-                    // 找到了！这个节点既物理距离近，又路径距离远
                     nodeToConnect = candidate.node;
-                    break; // 停止搜索，就用这个了
+                    break; // 找到了！
                 }
             }
             
-            // 3. 如果找到了符合条件的节点，就执行连接
-            const MAX_SEGMENT_LENGTH_FOR_NEW_ROADS = 20;
+            // 3. 如果找到了符合条件的节点，就执行连接和细分
             if (nodeToConnect) {
                 const nodeA = deadEndNode;
                 const nodeB = nodeToConnect;
 
-                // --- *** 关键修改：细分新创建的道路 *** ---
-
-                // 1. 调用细分函数
+                // a. 调用细分函数
                 const newSegments = subdivideSegment(nodeA, nodeB, MAX_SEGMENT_LENGTH_FOR_NEW_ROADS);
 
-                // 2. 处理细分后产生的新节点和新路段
+                // b. 处理新节点和新路段
                 let previousNode = nodeA;
-                newSegments.forEach((seg, index) => {
+                newSegments.forEach(seg => {
                     const currentNode = seg[1];
 
-                    // a. 将新节点加入 validPositions 和 adjacencyList
-                    if (!targetState.validPositions.some(p => positionsAreEqual(p, currentNode))) {
+                    // 检查新节点是否存在，如果不存在，则添加到所有相关数据结构中
+                    const currentNodeStr = currentNode.toString();
+                    if (!targetState.adjacencyList.has(currentNodeStr)) {
                         targetState.validPositions.push(currentNode);
-                        targetState.adjacencyList.set(currentNode.toString(), []);
+                        targetState.adjacencyList.set(currentNodeStr, []);
                     }
                     
-                    // b. 将新路段加入 roadNetwork
                     targetState.roadNetwork.push([previousNode, currentNode]);
 
-                    // c. 更新 adjacencyList 的连接
-                    targetState.adjacencyList.get(previousNode.toString()).push(currentNode);
-                    targetState.adjacencyList.get(currentNode.toString()).push(previousNode);
+                    // --- *** 关键修正：确保获取到的是有效数组再 push *** ---
+                    const prevNeighbors = targetState.adjacencyList.get(previousNode.toString());
+                    if (prevNeighbors) {
+                        prevNeighbors.push(currentNode);
+                    }
+                    
+                    const currentNeighbors = targetState.adjacencyList.get(currentNodeStr);
+                    if (currentNeighbors) {
+                        currentNeighbors.push(previousNode);
+                    }
+                    // --- *********************************************** ---
 
                     previousNode = currentNode;
                 });
@@ -290,10 +337,8 @@ function connectDeadEnds(targetState) {
                 fixedInThisPass++;
                 totalFixed++;
             }
-
         }
 
-        // 5. 如果这一整轮都没有修复任何死胡同，说明已经稳定，可以结束了
         if (fixedInThisPass === 0) {
             console.log(`本轮未修复任何死胡同，结构稳定。总共修复了 ${totalFixed} 个。`);
             return;

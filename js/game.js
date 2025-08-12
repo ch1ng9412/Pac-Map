@@ -2,7 +2,7 @@ import { gameState, mapConfigs, MAX_MAP_ZOOM, NUMBER_OF_GHOSTS, PACMAN_BASE_SPEE
 import { soundsReady, setupSounds, playStartSound, playDotSound, playPowerPelletSound, playEatGhostSound, playDeathSound } from './audio.js';
 import { updateUI, updateLeaderboardUI, updatePacmanIconRotation, showLoadingScreen, hideLoadingScreen } from './ui.js';
 import { stopBackgroundAnimation, initStartScreenBackground } from './backgroundAnimation.js';
-import { fetchRoadData, generateRoadNetworkGeneric, findNearestRoadPositionGeneric, drawVisualRoads, getRandomPointInCircle } from './map.js';
+import { fetchRoadData, fetchPOIData, generateRoadNetworkGeneric, findNearestRoadPositionGeneric, drawVisualRoads, getRandomPointInCircle } from './map.js';
 import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual, bfsDistance} from './ai.js';
 import { logToDevConsole } from './devConsole.js';
 
@@ -42,7 +42,18 @@ export async function initGame() {
     showLoadingScreen('正在獲取地圖資料...');
 
     const bounds = config.bounds; 
-    const roadData = await fetchRoadData(bounds);
+
+    const [roadData, poiData] = await Promise.all([
+    fetchRoadData(bounds),
+    fetchPOIData(bounds, {
+        "historic": "monument",
+        "shop": "convenience",
+        "leisure": "park",
+        "tourism": "hotel",
+        "amenity": "bank|restaurant|cafe|bubble_tea|atm"
+    })
+]);
+
     await generateRoadNetworkGeneric(bounds, roadData, gameState); 
 
     setTimeout(() => {
@@ -52,7 +63,7 @@ export async function initGame() {
             console.error('無法初始化遊戲元素，因為沒有有效的道路位置。');
             return;
         }
-        initGameElements(); 
+        initGameElements(poiData); 
         startGameCountdown();
     }, 1000); 
 }
@@ -66,7 +77,13 @@ function resetGameState() {
     if (poisonSvgElements.poisonRect) {
         poisonSvgElements.poisonRect.remove();
         poisonSvgElements.nextCircleBorder.remove();
-        // Mask defs 可以保留，或者也一并移除
+    }
+    if (gameState.minimap.map) {
+        gameState.minimap.map.remove();
+        gameState.minimap.map = null;
+        gameState.minimap.playerMarker = null;
+        gameState.minimap.poisonCircle = null;
+        gameState.minimap.nextPoisonCircle = null;
     }
     poisonSvgElements = {};
 
@@ -74,7 +91,14 @@ function resetGameState() {
     setGhostDecisionInterval(null);
     setLastFrameTime(0);
 
-    gameState.score = 0; gameState.lives = 3; gameState.gameTime = 600; 
+    gameState.healthSystem = {
+        lives: 3,
+        maxLives: 3,
+        currentHealth: 100,
+        maxHealth: 100
+    };
+
+    gameState.score = 0; gameState.gameTime = 600; 
     gameState.isPaused = false; gameState.isGameOver = false; gameState.isLosingLife = false; 
     gameState.powerMode = false; gameState.dotsCollected = 0;
     gameState.ghostSpawnPoints = []; gameState.pacmanLevelStartPoint = null;
@@ -111,11 +135,112 @@ function resetGameState() {
     }
 }
 
-function initGameElements() { 
+function initGameElements(poiData) { 
     const center = gameState.map.getCenter();
     const bounds = gameState.map.getBounds();
     
     if (gameState.validPositions.length === 0) { console.error("No valid positions to place game elements."); return; }
+    // for debug
+    if (poiData && poiData.elements && poiData.elements.length > 0) {
+        
+        // --- *** 新增：地标计数逻辑 *** ---
+        const poiCounts = {}; // 创建一个空物件来存储每种类型的计数
+
+        poiData.elements.forEach(element => {
+            if (element.type !== 'node') return;
+
+            let poiType = null;
+            const tags = element.tags;
+            // 判断地标类型
+            if (tags.historic === 'monument') {
+                poiType = '纪念碑 (monument)';
+            } else if (tags.shop === 'convenience') {
+                poiType = '便利商店 (convenience)';
+            } else if (tags.leisure === 'park') {
+                poiType = '公园 (park)';
+            } else if (tags.tourism === 'hotel') {
+                poiType = '旅馆 (hotel)';
+            } else if (tags.amenity === 'bank') {
+                poiType = '银行 (bank)';
+            } else if (tags.amenity === 'restaurant') {
+                poiType = '餐厅 (restaurant)';
+            } else if (tags.amenity === 'cafe') {
+                poiType = '咖啡馆 (cafe)';
+            } else if (tags.amenity === 'bubble_tea') {
+                poiType = '手摇饮料 (bubble_tea)';
+            } else if (tags.amenity === 'atm') {
+                poiType = 'ATM';
+            }
+            // 你可以在这里添加更多的 else if 来识别其他地标类型
+
+            // 进行计数
+            if (poiCounts[poiType]) {
+                poiCounts[poiType]++; // 如果该类型已存在，数量加一
+            } else {
+                poiCounts[poiType] = 1; // 如果是第一次遇到该类型，数量设为一
+            }
+        });
+
+        // 将计数结果转换为适合 console.table 的格式
+        const countArray = Object.keys(poiCounts).map(key => ({
+            '地标类型 (Type)': key,
+            '数量 (Count)': poiCounts[key]
+        }));
+        
+        // 使用 console.table 输出一个漂亮的表格
+        console.log("--- 地标数量统计 ---");
+        console.table(countArray);
+        // --- ************************** ---
+    }
+
+    if (poiData && poiData.elements) {
+        poiData.elements.forEach(element => {
+            if (element.type !== 'node') return;
+
+            let poiConfig = null;
+            const tags = element.tags;
+
+            if (tags.historic === 'monument') {
+                poiConfig = { name: tags.name || '纪念碑', className: 'monument-icon', letter: 'M' };
+            } else if (tags.shop === 'convenience') {
+                poiConfig = { name: tags.name || '便利商店', className: 'store-icon', letter: 'S' };
+            } else if (tags.leisure === 'park') {
+                poiConfig = { name: tags.name || '公园', className: 'park-icon', letter: 'P' };
+            } else if (tags.tourism === 'hotel') {
+                poiConfig = { name: tags.name || '旅馆', className: 'hotel-icon', letter: 'H' };
+            } else if (tags.amenity === 'bank') {
+                poiConfig = { name: tags.name || '银行', className: 'bank-icon', letter: '$' };
+            } else if (tags.amenity === 'restaurant') {
+                poiConfig = { name: tags.name || '餐厅', className: 'restaurant-icon', letter: 'R' };
+            } else if (tags.amenity === 'cafe') {
+                poiConfig = { name: tags.name || '咖啡馆', className: 'cafe-icon', letter: 'C' };
+            } else if (tags.amenity === 'bubble_tea') {
+                poiConfig = { name: tags.name || '手摇饮', className: 'bubble-tea-icon', letter: 'T' };
+            } else if (tags.amenity === 'atm') {
+                poiConfig = { name: tags.name || 'ATM', className: 'atm-icon', letter: 'A' };
+            }
+
+            // 如果是我们需要处理的地标类型，就创建 Marker
+            if (poiConfig) {
+                const poiIcon = L.divIcon({
+                    className: 'poi-icon-container',
+                    iconSize: [24, 38],
+                    iconAnchor: [12, 38],
+                    // --- *** 关键修改：使用更清晰的 HTML 结构 *** ---
+                    html: `<div class="poi-icon-wrapper">
+                            <div class="poi-icon ${poiConfig.className}">
+                            <span class="poi-letter">${poiConfig.letter}</span>
+                            </div>
+                            <div class="poi-title">${poiConfig.name}</div>
+                        </div>`
+                });
+
+                const poiMarker = L.marker([element.lat, element.lon], { icon: poiIcon })
+                    .addTo(gameState.map)
+                    .bindPopup(`<b>${poiConfig.name}</b>`);
+            }
+        });
+    }
 
     gameState.ghostSpawnPoints = [];
     const spawnPointCandidates = [ 
@@ -198,7 +323,64 @@ function initGameElements() {
     createGhosts(); 
     generateDots(gameState.map.getBounds()); 
     initPoisonCircle();
+    initMinimap();
     updateUI();
+}
+
+function initMinimap() {
+    const mm = gameState.minimap; // 简写
+
+    // 如果已存在旧的小地图，先销毁
+    if (mm.map) {
+        mm.map.remove();
+        mm.map = null;
+    }
+
+    // 从主地图的配置中获取中心点
+    const center = mapConfigs[gameState.currentMapIndex].center;
+    
+    // *** 关键：设置一个远低于主地图的缩放级别 ***
+    const MINIMAP_ZOOM_LEVEL = 14; // 这个值需要你微调，以达到最佳视野
+0
+    mm.map = L.map('minimap', {
+        center: center,
+        zoom: MINIMAP_ZOOM_LEVEL,
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        keyboard: false
+    });
+
+    // 为小地图添加地图图块
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: MAX_MAP_ZOOM + 1
+    }).addTo(mm.map);
+
+    // 在小地图上创建玩家标记
+    const playerIcon = L.divIcon({
+        className: 'minimap-player-icon', // 我们需要为它定义样式
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
+    });
+    mm.playerMarker = L.marker(gameState.pacman.getLatLng(), { icon: playerIcon }).addTo(mm.map);
+
+    // 在小地图上创建毒圈
+    mm.poisonCircle = L.circle(gameState.poisonCircle.center, {
+        radius: gameState.poisonCircle.currentRadius,
+        color: 'red',
+        fillColor: 'red',
+        fillOpacity: 0.2
+    }).addTo(mm.map);
+
+    // 在小地图上创建下一圈预告
+    mm.nextPoisonCircle = L.circle(gameState.poisonCircle.center, {
+        radius: gameState.poisonCircle.targetRadius,
+        color: 'green',
+        weight: 2,
+        fill: false // 不填充
+    }).addTo(mm.map);
 }
 
 function createPacman(center) { 
@@ -379,6 +561,16 @@ function startGameCountdown() {
 
 async function startGame() { 
     document.getElementById('gameUI').style.display = 'block';
+
+    const minimapContainer = document.getElementById('minimap-container');
+    if (minimapContainer) {
+        minimapContainer.style.display = 'block';
+    }
+    if (gameState.minimap.map) {
+        setTimeout(() => {
+            gameState.minimap.map.invalidateSize();
+        }, 100);
+    }
     
     if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
         await Tone.start();
@@ -428,7 +620,8 @@ function gameLoop(timestamp) {
         setGameLoopRequestId(requestAnimationFrame(gameLoop));
         return;
     }
-    manageAutoPilot(); 
+    manageAutoPilot();
+    updateMinimap();
 
     let rawDeltaTime = timestamp - lastFrameTime;
     if (rawDeltaTime > MAX_DELTA_TIME) {
@@ -485,6 +678,42 @@ function gameLoop(timestamp) {
     });
 
     setGameLoopRequestId(requestAnimationFrame(gameLoop));
+}
+
+function updateMinimap() {
+    const mm = gameState.minimap;
+    const pc = gameState.poisonCircle;
+
+    if (!mm.map) return; // 如果小地图不存在，则不执行
+
+    const pacmanPos = gameState.pacman.getLatLng();
+
+    // 1. 同步小地图中心点和玩家位置
+    mm.map.setView(pacmanPos, undefined, { animate: false }); // undefined 表示保持当前缩放级别
+
+    // 2. 更新小地图上玩家标记的位置
+    if (mm.playerMarker) {
+        mm.playerMarker.setLatLng(pacmanPos);
+    }
+
+    // 3. 更新小地图上毒圈的位置和大小
+    if (mm.poisonCircle) {
+        mm.poisonCircle.setLatLng(pc.center);
+        mm.poisonCircle.setRadius(pc.currentRadius);
+    }
+
+    // 4. 更新小地图上下一圈预告的位置和大小
+    if (mm.nextPoisonCircle) {
+        mm.nextPoisonCircle.setLatLng(pc.center);
+        mm.nextPoisonCircle.setRadius(pc.targetRadius);
+        
+        // 根据主游戏逻辑决定是否显示
+        if (pc.targetRadius < pc.currentRadius) {
+            mm.map.addLayer(mm.nextPoisonCircle);
+        } else {
+            mm.map.removeLayer(mm.nextPoisonCircle);
+        }
+    }
 }
 
 function updateGhostSmoothMovement(ghost, deltaTime) { 
@@ -1111,6 +1340,10 @@ export function backToMenu() {
     document.getElementById('pauseScreen').style.display = 'none'; 
     document.getElementById('gameOverScreen').style.display = 'none'; 
     document.getElementById('gameUI').style.display = 'none'; 
+    const minimapContainer = document.getElementById('minimap-container');
+    if (minimapContainer) {
+        minimapContainer.style.display = 'none';
+    }
     document.getElementById('mapSelectionScreen').style.display = 'none'; 
     document.getElementById('instructionsContent').style.display = 'none'; 
     document.getElementById('leaderboardContent').style.display = 'none';
