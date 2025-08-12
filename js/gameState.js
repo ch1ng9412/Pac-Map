@@ -100,8 +100,14 @@ export const mapConfigs = [
             [25.0290, 121.5604], // 西南角 (SouthWest)
             [25.0370, 121.5704]  // 東北角 (NorthEast)
         )},
-    { name: "台中市區", center: [24.1477, 120.6736], zoom: MAX_MAP_ZOOM },
-    { name: "高雄市區", center: [22.6273, 120.3014], zoom: MAX_MAP_ZOOM }
+    { name: "台中市區", center: [24.1477, 120.6736], zoom: MAX_MAP_ZOOM, bounds: L.latLngBounds(
+            [24.1437, 120.6686], // 西南角 (SouthWest)
+            [24.1517, 120.6786]  // 東北角 (NorthEast)
+        )},
+    { name: "高雄市區", center: [22.6273, 120.3014], zoom: MAX_MAP_ZOOM, bounds: L.latLngBounds(
+            [22.6233, 120.2964], // 西南角 (SouthWest)
+            [22.6313, 120.3064]  // 東北角 (NorthEast)
+        )}
 ];
 
 // 排行榜資料

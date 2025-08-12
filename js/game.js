@@ -8,7 +8,7 @@ import { logToDevConsole } from './devConsole.js';
 
 const bgmAudio = document.getElementById('bgm');
 if (bgmAudio) {
-    bgmAudio.volume = 0.5; // 设定一个合适的初始音量 (0.0 到 1.0)
+    bgmAudio.volume = 0.4; // 设定一个合适的初始音量 (0.0 到 1.0)
 }
 
 export async function initGame() { 
@@ -1321,7 +1321,7 @@ export function pauseGame() {
 
 export function resumeGame() { 
     if (bgmAudio) {
-        bgmAudio.volume = 0.5;
+        bgmAudio.volume = 0.4;
     }
     gameState.isPaused = false; 
     setLastFrameTime(performance.now()); 
