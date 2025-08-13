@@ -6,6 +6,10 @@ import { fetchRoadData, fetchPOIData, generateRoadNetworkGeneric, findNearestRoa
 import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual, bfsDistance} from './ai.js';
 import { logToDevConsole } from './devConsole.js';
 
+// FPS 計算相關變數
+let fpsFrameTimes = [];
+let lastFpsUpdate = 0;
+
 const bgmAudio = document.getElementById('bgm');
 if (bgmAudio) {
     bgmAudio.volume = 0.4; // 设定一个合适的初始音量 (0.0 到 1.0)
@@ -403,7 +407,7 @@ function initMinimap() {
     
     // *** 关键：设置一个远低于主地图的缩放级别 ***
     const MINIMAP_ZOOM_LEVEL = 14; // 这个值需要你微调，以达到最佳视野
-0
+
     mm.map = L.map('minimap', {
         center: center,
         zoom: MINIMAP_ZOOM_LEVEL,
@@ -676,12 +680,16 @@ export function startGhostDecisionMaking() {
     }, decisionIntervalTime));
 }
 
-function gameLoop(timestamp) { 
+function gameLoop(timestamp) {
     if (gameState.isGameOver || gameState.isPaused) {
-        setLastFrameTime(timestamp); 
+        setLastFrameTime(timestamp);
         setGameLoopRequestId(requestAnimationFrame(gameLoop));
         return;
     }
+
+    // 計算並更新 FPS
+    updateFPS(timestamp);
+
     manageAutoPilot();
     updateMinimap();
 
@@ -691,7 +699,7 @@ function gameLoop(timestamp) {
     }
     setLastFrameTime(timestamp);
 
-    let deltaTime = rawDeltaTime * gameState.gameSpeedMultiplier; 
+    let deltaTime = rawDeltaTime * gameState.gameSpeedMultiplier;
     
     const pc = gameState.poisonCircle;
 
@@ -740,6 +748,30 @@ function gameLoop(timestamp) {
     });
 
     setGameLoopRequestId(requestAnimationFrame(gameLoop));
+}
+
+function updateFPS(timestamp) {
+    // 將當前時間戳加入陣列
+    fpsFrameTimes.push(timestamp);
+
+    // 移除超過 500ms 的舊時間戳
+    const cutoffTime = timestamp - 500;
+    while (fpsFrameTimes.length > 0 && fpsFrameTimes[0] < cutoffTime) {
+        fpsFrameTimes.shift();
+    }
+
+    // 每 100ms 更新一次 FPS 顯示
+    if (timestamp - lastFpsUpdate >= 100) {
+        const fps = fpsFrameTimes.length > 1 ?
+            Math.round((fpsFrameTimes.length - 1) * 1000 / (timestamp - fpsFrameTimes[0])) : 0;
+
+        const fpsDisplay = document.getElementById('fpsDisplay');
+        if (fpsDisplay) {
+            fpsDisplay.textContent = `FPS: ${fps}`;
+        }
+
+        lastFpsUpdate = timestamp;
+    }
 }
 
 function updateMinimap() {

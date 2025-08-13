@@ -1,505 +1,851 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OpenStreetMap 小精靈遊戲</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cubic+11&display=swap" rel="stylesheet">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cubic+11&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: 'Cubic 11', cursive;
-            background: #000;
-            overflow: hidden;
-            color: #fff;
-        }
+      body {
+        font-family: "Cubic 11", cursive;
+        background: #000;
+        overflow: hidden;
+        color: #fff;
+      }
 
-        .game-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
+      /* FPS 右上角顯示 */
+      .fps-overlay {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        z-index: 3000;
+        padding: 6px 8px;
+        background: rgba(0, 0, 0, 0.65);
+        border: 1px solid #555;
+        color: #0f0;
+        font-family: "Cubic 11", cursive;
+        font-size: 12px;
+        user-select: none;
+      }
 
-        #map { /* 主要遊戲地圖 */
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            background-color: #111;
-            transition: filter 2.5s ease-in-out; 
-        }
+      .game-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+      }
 
-        #map.fading-to-black {
-            filter: brightness(0%) grayscale(100%); 
-        }
+      #map {
+        /* 主要遊戲地圖 */
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        background-color: #111;
+        transition: filter 2.5s ease-in-out;
+      }
 
-        #startScreenMap {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 998;
-            background-color: #000;
-            filter: brightness(0.35) grayscale(0.1);
-            transition: opacity 0.5s ease-in-out;
-        }
+      #map.fading-to-black {
+        filter: brightness(0%) grayscale(100%);
+      }
 
-        .screen-overlay { /* 通用全螢幕覆蓋層樣式 */
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            text-align: center;
-            overflow-y: auto;
-            box-sizing: border-box;
-        }
+      #startScreenMap {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 998;
+        background-color: #000;
+        filter: brightness(0.35) grayscale(0.1);
+        transition: opacity 0.5s ease-in-out;
+      }
 
-        .start-screen {
-            background: rgba(0,0,0,0.3);
-            z-index: 1000; 
-        }
-        
-        .map-selection-screen {
-            background: rgba(0, 0, 0, 0.85); 
-            z-index: 1001; 
-            display: none; 
-        }
-        .map-selection-screen h2 {
-            font-size: clamp(2rem, 6vw, 3.5rem);
-            color: #ffff00;
-            text-shadow: 2px 2px 0px #ff0000;
-            margin-bottom: 2rem;
-        }
+      .screen-overlay {
+        /* 通用全螢幕覆蓋層樣式 */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        text-align: center;
+        overflow-y: auto;
+        box-sizing: border-box;
+      }
 
+      .start-screen {
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+      }
 
-        .game-title {
-            font-size: clamp(2.5rem, 8vw, 4.5rem);
-            color: #ffff00;
-            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #ffff00, 0 0 20px #ffff00, 0 0 25px #ffff00, 0 0 30px #ff0000, 0 0 35px #ff0000;
-            margin-bottom: 1.5rem; 
-            animation: gameTitlePulse 2s infinite ease-in-out;
-            letter-spacing: 0.1em;
-        }
-        
-        @keyframes gameTitlePulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.85; }
-        }
-        
-        .start-screen-actions { /* 主畫面按鈕容器 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap; /* 按鈕過多時換行 */
-            margin-bottom: 1rem;
-        }
+      .map-selection-screen {
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1001;
+        display: none;
+      }
+      .map-selection-screen h2 {
+        font-size: clamp(2rem, 6vw, 3.5rem);
+        color: #ffff00;
+        text-shadow: 2px 2px 0px #ff0000;
+        margin-bottom: 2rem;
+      }
 
+      .game-title {
+        font-size: clamp(2.5rem, 8vw, 4.5rem);
+        color: #ffff00;
+        text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #ffff00,
+          0 0 20px #ffff00, 0 0 25px #ffff00, 0 0 30px #ff0000, 0 0 35px #ff0000;
+        margin-bottom: 1.5rem;
+        animation: gameTitlePulse 2s infinite ease-in-out;
+        letter-spacing: 0.1em;
+      }
 
-        .pacman-pixel-button {
-            font-family: 'Cubic 11', cursive;
-            background-color: #2121DE; 
-            color: #FFFF00; 
-            border: 3px solid #000000; 
-            padding: 12px 24px; 
-            font-size: clamp(0.9rem, 3vw, 1.2rem); 
-            text-transform: uppercase;
-            border-radius: 0; 
-            box-shadow: 4px 4px 0px #000000c0; 
-            cursor: pointer;
-            transition: transform 0.05s ease-out, box-shadow 0.05s ease-out, background-color 0.05s ease-out;
-            margin: 10px; 
-            display: inline-block; 
-            outline: none;
-            min-width: 180px; 
+      @keyframes gameTitlePulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 1;
         }
-        .pacman-pixel-button:hover {
-            background-color: #4242FF; 
-            color: #FFFF66; 
-            box-shadow: 2px 2px 0px #000000c0;
-            transform: translate(2px, 2px);
+        50% {
+          transform: scale(1.05);
+          opacity: 0.85;
         }
+      }
 
-        .pacman-pixel-button:active {
-            background-color: #0000B3; 
-            box-shadow: 0px 0px 0px #000000c0;
-            transform: translate(4px, 4px);
-        }
-        
-        .map-button { 
-            margin: 8px;
-        }
-        
-        .map-button.pacman-pixel-button.active {
-            background-color: #FFFF00; 
-            color: #2121DE; 
-            border-color: #000000; 
-            box-shadow: 2px 2px 0px #000000c0; 
-            transform: translate(2px, 2px); 
-        }
-        .map-button.pacman-pixel-button.active:hover {
-            background-color: #FFFF66; 
-            color: #0000B3; 
-        }
-        
-        .poi-icon-container {
-            z-index: 2000 !important;
-        }
+      .start-screen-actions {
+        /* 主畫面按鈕容器 */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap; /* 按鈕過多時換行 */
+        margin-bottom: 1rem;
+      }
 
-        /* 1. Flexbox 布局的包裹容器 */
-        .poi-icon-wrapper {
-            display: flex;
-            flex-direction: column; /* 垂直排列：图标在上，标题在下 */
-            align-items: center;    /* 水平居中所有子元素 */
-        }
+      .pacman-pixel-button {
+        font-family: "Cubic 11", cursive;
+        background-color: #2121de;
+        color: #ffff00;
+        border: 3px solid #000000;
+        padding: 12px 24px;
+        font-size: clamp(0.9rem, 3vw, 1.2rem);
+        text-transform: uppercase;
+        border-radius: 0;
+        box-shadow: 4px 4px 0px #000000c0;
+        cursor: pointer;
+        transition: transform 0.05s ease-out, box-shadow 0.05s ease-out,
+          background-color 0.05s ease-out;
+        margin: 10px;
+        display: inline-block;
+        outline: none;
+        min-width: 180px;
+      }
+      .pacman-pixel-button:hover {
+        background-color: #4242ff;
+        color: #ffff66;
+        box-shadow: 2px 2px 0px #000000c0;
+        transform: translate(2px, 2px);
+      }
 
-        /* 2. 图标 (水滴) 本身 */
-        .poi-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 50% 50% 50% 0; /* 水滴形状 */
-            transform: rotate(-45deg);     /* 旋转水滴 */
-            border: 2px solid white;
-            box-shadow: 0 0 8px rgba(0,0,0,0.5);
-            
-            /* 使用 Flexbox 让内部的字母也居中 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+      .pacman-pixel-button:active {
+        background-color: #0000b3;
+        box-shadow: 0px 0px 0px #000000c0;
+        transform: translate(4px, 4px);
+      }
 
-        /* 3. 图标内的字母 */
-        .poi-letter {
-            display: block;
-            transform: rotate(45deg); /* 把字母旋转回来 */
-            color: white;
-            font-family: 'Cubic 11', cursive;
-            font-size: 14px;
-            font-weight: bold;
-            text-shadow: 1px 1px 2px black;
-        }
+      .map-button {
+        margin: 8px;
+      }
 
-        /* 4. 下方的文字标签 */
-        .poi-title {
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-family: sans-serif;
-            white-space: nowrap;
-            margin-top: 4px; /* 图标和标签之间的间距 */
-            pointer-events: none; /* 避免遮挡鼠标事件 */
-        }
+      .map-button.pacman-pixel-button.active {
+        background-color: #ffff00;
+        color: #2121de;
+        border-color: #000000;
+        box-shadow: 2px 2px 0px #000000c0;
+        transform: translate(2px, 2px);
+      }
+      .map-button.pacman-pixel-button.active:hover {
+        background-color: #ffff66;
+        color: #0000b3;
+      }
 
-        /* 5. 专属颜色 (保持不变) */
-        .monument-icon {
-            background-color: #dd0e0e;
-        }
-        .store-icon {
-            background-color: #1bc431;
-        }
-        .park-icon {
-            background-color: #006400;
-        }
-        .hotel-icon {
-            background-color: #1bc431;
-        }
-        .bank-icon {
-            background-color: #d1e428;
-        }
-        .restaurant-icon {
-            background-color: #dd0e0e;
-        }
-        .cafe-icon {
-            background-color: #1bc431;
-        }
-        .bubble-tea-icon {
-            background-color: #1bc431;
-        }
-        .atm-icon {
-            background-color: #d1e428;
-        }
+      .poi-icon-container {
+        z-index: 2000 !important;
+      }
 
-        .content-toggle-container { /* 包裹說明和排行榜內容的容器 */
-            width: 100%;
-            max-width: 600px; /* 與內容區塊寬度一致 */
-            margin-top: 1rem;
-        }
-        .health-bar-container {
-            width: 100%; /* 讓容器寬度與 .game-ui 的內容區對齊 */
-            height: 14px; /* 血條的高度 */
-            background-color: #333; /* 血條的背景色 (空血時的顏色) */
-            border: 2px solid #555; /* 血條的邊框 */
-            border-radius: 7px; /* 圓角效果 */
-            padding: 2px; /* 內邊距，讓填充條和邊框之間有點空隙 */
-            box-sizing: border-box; /* 確保 padding 和 border 不會增加總寬度 */
-            margin: 8px 0; /* 與上下元素的間距 */
-        }
+      /* 1. Flexbox 布局的包裹容器 */
+      .poi-icon-wrapper {
+        display: flex;
+        flex-direction: column; /* 垂直排列：图标在上，标题在下 */
+        align-items: center; /* 水平居中所有子元素 */
+      }
 
-        .health-bar {
-            height: 100%; /* 填充條高度與容器一致 */
-            width: 100%;  /* 初始寬度為 100% (滿血) */
-            background-color: #00ff00; /* 滿血時的顏色 (綠色) */
-            border-radius: 4px; /* 填充條自己的圓角 */
-            
-            /* 這是最重要的部分：平滑的過渡動畫 */
-            transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out;
-        }
-        .instructions, .leaderboard {
-            max-width: 600px;
-            width: 100%; /* 相對於 .content-toggle-container */
-            margin: 0 auto 1rem auto; /* 水平居中，底部留白 */
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.75); /* 稍微加深一點 */
-            border: 3px solid #ffff00; /* 加粗邊框 */
-            border-radius: 0px; 
-            box-shadow: 0 0 10px rgba(255, 255, 0, 0.2);
-            display: none; 
-        }
-        .instructions h3, .leaderboard h3 {
-            color: #ffff00;
-            margin-bottom: 1rem;
-            font-size: clamp(1.2rem, 5vw, 1.8rem);
-            text-shadow: 2px 2px 0px #000; /* 加粗陰影 */
-        }
-        .instructions ul, .leaderboard ol {
-            list-style: none;
-            line-height: 1.8;
-            padding-left: 0;
-            font-size: clamp(0.8rem, 3vw, 1rem);
-        }
-        .instructions li { margin: 10px 0; padding-left: 25px; position: relative; }
-        .instructions li:before { content: ">>"; position: absolute; left: 0; color: #ffff00; font-weight: bold; }
-        
-        .leaderboard ol { padding-left: 0; } /* 確保排行榜列表不內縮 */
-        .leaderboard li { counter-increment: leaderboard; padding: 8px 10px; margin: 6px 0; background: rgba(30, 30, 80, 0.5); border-radius: 0px; border-left: 4px solid #ffff00; }
-        .leaderboard li:before { content: counter(leaderboard) ". "; font-weight: bold; color: #ffff00; margin-right: 10px; }
+      /* 2. 图标 (水滴) 本身 */
+      .poi-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50% 50% 50% 0; /* 水滴形状 */
+        transform: rotate(-45deg); /* 旋转水滴 */
+        border: 2px solid white;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
 
-        .game-ui { position: absolute; top: 20px; left: 20px; z-index: 500; background: rgba(0, 0, 0, 0.8); color: white; padding: 15px; border-radius: 10px; font-family: 'Cubic 11', cursive; font-size: 14px; border: 1px solid #555; }
-        .ui-row { display: flex; justify-content: space-between; margin: 5px 0; min-width: 300px; }
-        .quest-container {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #555;
-            flex-direction: column; /* 让描述和进度垂直排列 */
-            align-items: flex-start;
-            text-align: left;
-        }
-        #quest-description {
-            font-size: 12px;
-        }
-        #quest-progress {
-            font-size: 14px;
-            color: #ffff00; /* 进度用黄色突出显示 */
-        }
+        /* 使用 Flexbox 让内部的字母也居中 */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
 
-        .pause-screen {
-            background: rgba(10, 10, 30, 0.92); /* 深藍色調背景 */
-            border: 4px solid #FFB84D; /* 鬼怪橙色邊框 */
-            box-shadow: 0 0 25px #FFB84D, inset 0 0 20px rgba(0,0,0,0.5); 
-            z-index: 2500; 
-            color: white;
-            display: none;
-        }
-        .pause-screen h2 {
-            font-size: clamp(2.8rem, 8vw, 4.5rem); 
-            color: #FF0000; 
-            text-shadow: 3px 3px 0px #000000, 
-                         0 0 8px #fff, 
-                         0 0 12px #FF0000,
-                         0 0 18px #FFB84D; /* 加入橙色光暈 */
-            margin-bottom: 2.5rem;
-            animation: blinkRed 0.8s infinite steps(1, end); /* 調整閃爍速度 */
-        }
-        #minimap-container {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 200px;  /* 小地图宽度 */
-            height: 200px; /* 小地图高度 */
-            z-index: 1000; /* 确保它在游戏 UI 之上 */
-            border: 3px solid #ffff00;
-            box-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
-            background-color: #111;
-            border-radius: 5px; /* 轻微的圆角 */
-            overflow: hidden; /* 隐藏地图超出部分 */
-            display: none;
-        }
-        #minimap {
-            width: 100%;
-            height: 100%;
-        }
-        .minimap-player-icon {
-            background-color: #ffff00; /* 黄色 */
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 8px #ffff00;
-        }
+      /* 3. 图标内的字母 */
+      .poi-letter {
+        display: block;
+        transform: rotate(45deg); /* 把字母旋转回来 */
+        color: white;
+        font-family: "Cubic 11", cursive;
+        font-size: 14px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px black;
+      }
 
-        @keyframes blinkRed { /* 調整閃爍效果 */
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.02); }
+      /* 4. 下方的文字标签 */
+      .poi-title {
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-family: sans-serif;
+        white-space: nowrap;
+        margin-top: 4px; /* 图标和标签之间的间距 */
+        pointer-events: none; /* 避免遮挡鼠标事件 */
+      }
+
+      /* 5. 专属颜色 (保持不变) */
+      .monument-icon {
+        background-color: #dd0e0e;
+      }
+      .store-icon {
+        background-color: #1bc431;
+      }
+      .park-icon {
+        background-color: #006400;
+      }
+      .hotel-icon {
+        background-color: #1bc431;
+      }
+      .bank-icon {
+        background-color: #d1e428;
+      }
+      .restaurant-icon {
+        background-color: #dd0e0e;
+      }
+      .cafe-icon {
+        background-color: #1bc431;
+      }
+      .bubble-tea-icon {
+        background-color: #1bc431;
+      }
+      .atm-icon {
+        background-color: #d1e428;
+      }
+
+      .content-toggle-container {
+        /* 包裹說明和排行榜內容的容器 */
+        width: 100%;
+        max-width: 600px; /* 與內容區塊寬度一致 */
+        margin-top: 1rem;
+      }
+      .health-bar-container {
+        width: 100%; /* 讓容器寬度與 .game-ui 的內容區對齊 */
+        height: 14px; /* 血條的高度 */
+        background-color: #333; /* 血條的背景色 (空血時的顏色) */
+        border: 2px solid #555; /* 血條的邊框 */
+        border-radius: 7px; /* 圓角效果 */
+        padding: 2px; /* 內邊距，讓填充條和邊框之間有點空隙 */
+        box-sizing: border-box; /* 確保 padding 和 border 不會增加總寬度 */
+        margin: 8px 0; /* 與上下元素的間距 */
+      }
+
+      .health-bar {
+        height: 100%; /* 填充條高度與容器一致 */
+        width: 100%; /* 初始寬度為 100% (滿血) */
+        background-color: #00ff00; /* 滿血時的顏色 (綠色) */
+        border-radius: 4px; /* 填充條自己的圓角 */
+
+        /* 這是最重要的部分：平滑的過渡動畫 */
+        transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out;
+      }
+      .instructions,
+      .leaderboard {
+        max-width: 600px;
+        width: 100%; /* 相對於 .content-toggle-container */
+        margin: 0 auto 1rem auto; /* 水平居中，底部留白 */
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.75); /* 稍微加深一點 */
+        border: 3px solid #ffff00; /* 加粗邊框 */
+        border-radius: 0px;
+        box-shadow: 0 0 10px rgba(255, 255, 0, 0.2);
+        display: none;
+      }
+      .instructions h3,
+      .leaderboard h3 {
+        color: #ffff00;
+        margin-bottom: 1rem;
+        font-size: clamp(1.2rem, 5vw, 1.8rem);
+        text-shadow: 2px 2px 0px #000; /* 加粗陰影 */
+      }
+      .instructions ul,
+      .leaderboard ol {
+        list-style: none;
+        line-height: 1.8;
+        padding-left: 0;
+        font-size: clamp(0.8rem, 3vw, 1rem);
+      }
+      .instructions li {
+        margin: 10px 0;
+        padding-left: 25px;
+        position: relative;
+      }
+      .instructions li:before {
+        content: ">>";
+        position: absolute;
+        left: 0;
+        color: #ffff00;
+        font-weight: bold;
+      }
+
+      .leaderboard ol {
+        padding-left: 0;
+      } /* 確保排行榜列表不內縮 */
+      .leaderboard li {
+        counter-increment: leaderboard;
+        padding: 8px 10px;
+        margin: 6px 0;
+        background: rgba(30, 30, 80, 0.5);
+        border-radius: 0px;
+        border-left: 4px solid #ffff00;
+      }
+      .leaderboard li:before {
+        content: counter(leaderboard) ". ";
+        font-weight: bold;
+        color: #ffff00;
+        margin-right: 10px;
+      }
+
+      .game-ui {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 500;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        font-family: "Cubic 11", cursive;
+        font-size: 14px;
+        border: 1px solid #555;
+      }
+      .ui-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 5px 0;
+        min-width: 300px;
+      }
+      .quest-container {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #555;
+        flex-direction: column; /* 让描述和进度垂直排列 */
+        align-items: flex-start;
+        text-align: left;
+      }
+      #quest-description {
+        font-size: 12px;
+      }
+      #quest-progress {
+        font-size: 14px;
+        color: #ffff00; /* 进度用黄色突出显示 */
+      }
+
+      .pause-screen {
+        background: rgba(10, 10, 30, 0.92); /* 深藍色調背景 */
+        border: 4px solid #ffb84d; /* 鬼怪橙色邊框 */
+        box-shadow: 0 0 25px #ffb84d, inset 0 0 20px rgba(0, 0, 0, 0.5);
+        z-index: 2500;
+        color: white;
+        display: none;
+      }
+      .pause-screen h2 {
+        font-size: clamp(2.8rem, 8vw, 4.5rem);
+        color: #ff0000;
+        text-shadow: 3px 3px 0px #000000, 0 0 8px #fff, 0 0 12px #ff0000,
+          0 0 18px #ffb84d; /* 加入橙色光暈 */
+        margin-bottom: 2.5rem;
+        animation: blinkRed 0.8s infinite steps(1, end); /* 調整閃爍速度 */
+      }
+      #minimap-container {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 200px; /* 小地图宽度 */
+        height: 200px; /* 小地图高度 */
+        z-index: 1000; /* 确保它在游戏 UI 之上 */
+        border: 3px solid #ffff00;
+        box-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
+        background-color: #111;
+        border-radius: 5px; /* 轻微的圆角 */
+        overflow: hidden; /* 隐藏地图超出部分 */
+        display: none;
+      }
+      #minimap {
+        width: 100%;
+        height: 100%;
+      }
+      .minimap-player-icon {
+        background-color: #ffff00; /* 黄色 */
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 0 8px #ffff00;
+      }
+
+      @keyframes blinkRed {
+        /* 調整閃爍效果 */
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
         }
-        .pause-screen .pacman-pixel-button { margin: 15px; }
+        50% {
+          opacity: 0.6;
+          transform: scale(1.02);
+        }
+      }
+      .pause-screen .pacman-pixel-button {
+        margin: 15px;
+      }
 
-
-        .game-over-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 2500; color: white; }
-        .map-selector { margin: 20px 0; } /* 用於地圖選擇界面中的按鈕組 */
-        .countdown { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 5rem; color: #ffff00; text-shadow: 3px 3px 0px #ff6b6b; z-index: 600; display: none; }
-        .pacman-icon { width: 24px; height: 24px; background-color: #ffff00; border-radius: 50%; position: relative; transition: transform 0.05s linear, opacity 0.3s ease-out; }
-        .pacman-icon.hidden { opacity: 0; pointer-events: none; }
-        .pacman-icon::before { content: ''; position: absolute; width: 0; height: 0; top: 50%; left: 12px; transform: translateY(-50%); border-style: solid; border-color: transparent #111 transparent transparent; animation: pacman-mouth-chomp 0.4s infinite; }
-        @keyframes pacman-mouth-chomp { 0%, 100% { border-width: 12px 12px 12px 0; } 50% { border-width: 4px 12px 4px 0; } }
-        .pacman-icon.facing-true-left { transform: rotate(180deg); } 
-        .pacman-icon.facing-true-right { transform: rotate(0deg); }   
-        .pacman-icon.facing-true-up { transform: rotate(-90deg); }  
-        .pacman-icon.facing-true-down { transform: rotate(90deg); } 
-        .ghost-icon { width: 20px; height: 20px; border-radius: 10px 10px 0 0; position: relative; overflow: visible; }
-        .ghost-icon::before, .ghost-icon::after { content: ''; position: absolute; width: 6px; height: 8px; background-color: white; border-radius: 50%; top: 4px; border: 1px solid #555; }
-        .ghost-icon::before { left: 3px; } 
-        .ghost-icon::after { right: 3px; } 
-        .ghost-icon > div.wave1, .ghost-icon > div.wave2, .ghost-icon > div.wave3 { position: absolute; bottom: -6px; width: 33.33%; height: 6px; background-color: inherit; border-radius: 0 0 50% 50% / 0 0 100% 100%; }
-        .ghost-icon > div.wave1 { left: 0; }
-        .ghost-icon > div.wave2 { left: 33.33%; }
-        .ghost-icon > div.wave3 { left: 66.66%; }
-        .ghost-red { background: #ff0000; } .ghost-pink { background: #ffc0cb; } .ghost-cyan { background: #00ffff; } .ghost-orange { background: #ffb84d; } .ghost-purple { background: #800080; } .ghost-green { background: #008000; } .ghost-blue { background: #0000ff; }   
-        .ghost-scared { background: #2222dd; }
-        .ghost-scared::before, .ghost-scared::after { background-color: white; width: 8px; height: 4px; top: 7px; }
-        @keyframes ghost-eaten-fade { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.5) translateY(-15px); } }
-        .ghost-icon.ghost-eaten { animation: ghost-eaten-fade 0.5s forwards; }
-        .wasted-screen-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0); display: none; justify-content: center; align-items: center; z-index: 2000; transition: background-color 2.5s ease-in-out; }
-        .wasted-screen-overlay.active { display: flex; background-color: rgba(0, 0, 0, 1); }
-        .wasted-banner { width: 100%; background-color: #000000; padding: 20px 0; text-align: center; opacity: 0; transform: scale(1) translateY(0); }
-        .wasted-text { font-family: 'Impact', Haettenschweiler, 'Arial Narrow Bold', sans-serif; font-size: 6rem; color: #D32F2F; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 3px 3px 5px rgba(0,0,0,0.5); }
-        .dot { width: 4px; height: 4px; background: #ffff00; border-radius: 50%; }
-        .power-pellet { width: 12px; height: 12px; background: #ffff00; border-radius: 50%; animation: blink 1s infinite; }
-        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.3; } }
-        .dev-console { position: absolute; bottom: 0; left: 0; width: 100%; background-color: rgba(0, 0, 0, 0.85); color: #0f0; font-family: 'Courier New', Courier, monospace; font-size: 14px; padding: 10px; z-index: 3000; display: none; border-top: 2px solid #0f0; }
-        .dev-console-output { height: 100px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #0a0; padding: 5px; white-space: pre-wrap; }
-        .dev-console-input { width: calc(100% - 20px); background-color: #111; color: #0f0; border: 1px solid #0a0; padding: 5px; font-family: 'Courier New', Courier, monospace; font-size: 14px; }
-        .dev-console-input:focus { outline: none; border-color: #0f0; }
+      .game-over-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 2500;
+        color: white;
+      }
+      .map-selector {
+        margin: 20px 0;
+      } /* 用於地圖選擇界面中的按鈕組 */
+      .countdown {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 5rem;
+        color: #ffff00;
+        text-shadow: 3px 3px 0px #ff6b6b;
+        z-index: 600;
+        display: none;
+      }
+      .pacman-icon {
+        width: 24px;
+        height: 24px;
+        background-color: #ffff00;
+        border-radius: 50%;
+        position: relative;
+        transition: transform 0.05s linear, opacity 0.3s ease-out;
+      }
+      .pacman-icon.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .pacman-icon::before {
+        content: "";
+        position: absolute;
+        width: 0;
+        height: 0;
+        top: 50%;
+        left: 12px;
+        transform: translateY(-50%);
+        border-style: solid;
+        border-color: transparent #111 transparent transparent;
+        animation: pacman-mouth-chomp 0.4s infinite;
+      }
+      @keyframes pacman-mouth-chomp {
+        0%,
+        100% {
+          border-width: 12px 12px 12px 0;
+        }
+        50% {
+          border-width: 4px 12px 4px 0;
+        }
+      }
+      .pacman-icon.facing-true-left {
+        transform: rotate(180deg);
+      }
+      .pacman-icon.facing-true-right {
+        transform: rotate(0deg);
+      }
+      .pacman-icon.facing-true-up {
+        transform: rotate(-90deg);
+      }
+      .pacman-icon.facing-true-down {
+        transform: rotate(90deg);
+      }
+      .ghost-icon {
+        width: 20px;
+        height: 20px;
+        border-radius: 10px 10px 0 0;
+        position: relative;
+        overflow: visible;
+      }
+      .ghost-icon::before,
+      .ghost-icon::after {
+        content: "";
+        position: absolute;
+        width: 6px;
+        height: 8px;
+        background-color: white;
+        border-radius: 50%;
+        top: 4px;
+        border: 1px solid #555;
+      }
+      .ghost-icon::before {
+        left: 3px;
+      }
+      .ghost-icon::after {
+        right: 3px;
+      }
+      .ghost-icon > div.wave1,
+      .ghost-icon > div.wave2,
+      .ghost-icon > div.wave3 {
+        position: absolute;
+        bottom: -6px;
+        width: 33.33%;
+        height: 6px;
+        background-color: inherit;
+        border-radius: 0 0 50% 50% / 0 0 100% 100%;
+      }
+      .ghost-icon > div.wave1 {
+        left: 0;
+      }
+      .ghost-icon > div.wave2 {
+        left: 33.33%;
+      }
+      .ghost-icon > div.wave3 {
+        left: 66.66%;
+      }
+      .ghost-red {
+        background: #ff0000;
+      }
+      .ghost-pink {
+        background: #ffc0cb;
+      }
+      .ghost-cyan {
+        background: #00ffff;
+      }
+      .ghost-orange {
+        background: #ffb84d;
+      }
+      .ghost-purple {
+        background: #800080;
+      }
+      .ghost-green {
+        background: #008000;
+      }
+      .ghost-blue {
+        background: #0000ff;
+      }
+      .ghost-scared {
+        background: #2222dd;
+      }
+      .ghost-scared::before,
+      .ghost-scared::after {
+        background-color: white;
+        width: 8px;
+        height: 4px;
+        top: 7px;
+      }
+      @keyframes ghost-eaten-fade {
+        0% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(0.5) translateY(-15px);
+        }
+      }
+      .ghost-icon.ghost-eaten {
+        animation: ghost-eaten-fade 0.5s forwards;
+      }
+      .wasted-screen-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+        transition: background-color 2.5s ease-in-out;
+      }
+      .wasted-screen-overlay.active {
+        display: flex;
+        background-color: rgba(0, 0, 0, 1);
+      }
+      .wasted-banner {
+        width: 100%;
+        background-color: #000000;
+        padding: 20px 0;
+        text-align: center;
+        opacity: 0;
+        transform: scale(1) translateY(0);
+      }
+      .wasted-text {
+        font-family: "Impact", Haettenschweiler, "Arial Narrow Bold", sans-serif;
+        font-size: 6rem;
+        color: #d32f2f;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000,
+          -1px 1px 0 #000, 1px 1px 0 #000, 3px 3px 5px rgba(0, 0, 0, 0.5);
+      }
+      .dot {
+        width: 4px;
+        height: 4px;
+        background: #ffff00;
+        border-radius: 50%;
+      }
+      .power-pellet {
+        width: 12px;
+        height: 12px;
+        background: #ffff00;
+        border-radius: 50%;
+        animation: blink 1s infinite;
+      }
+      @keyframes blink {
+        0%,
+        50% {
+          opacity: 1;
+        }
+        51%,
+        100% {
+          opacity: 0.3;
+        }
+      }
+      .dev-console {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.85);
+        color: #0f0;
+        font-family: "Courier New", Courier, monospace;
+        font-size: 14px;
+        padding: 10px;
+        z-index: 3000;
+        display: none;
+        border-top: 2px solid #0f0;
+      }
+      .dev-console-output {
+        height: 100px;
+        overflow-y: auto;
+        margin-bottom: 10px;
+        border: 1px solid #0a0;
+        padding: 5px;
+        white-space: pre-wrap;
+      }
+      .dev-console-input {
+        width: calc(100% - 20px);
+        background-color: #111;
+        color: #0f0;
+        border: 1px solid #0a0;
+        padding: 5px;
+        font-family: "Courier New", Courier, monospace;
+        font-size: 14px;
+      }
+      .dev-console-input:focus {
+        outline: none;
+        border-color: #0f0;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="game-container">
-        <div id="startScreenMap"></div>
-        <div id="map"></div>
+      <div id="startScreenMap"></div>
+      <div id="map"></div>
 
-        <div class="wasted-screen-overlay" id="wastedScreenOverlay">
-            <div class="wasted-banner" id="wastedBanner"> <span class="wasted-text">WASTED</span></div>
+      <div class="wasted-screen-overlay" id="wastedScreenOverlay">
+        <div class="wasted-banner" id="wastedBanner">
+          <span class="wasted-text">WASTED</span>
+        </div>
+      </div>
+
+      <div class="countdown" id="countdown"></div>
+
+      <div class="game-ui" id="gameUI" style="display: none">
+        <div class="ui-row">
+          <span>分數: <span id="score">0</span></span>
+          <span>生命: <span id="lives">3</span></span>
+        </div>
+        <div class="health-bar-container">
+          <div id="healthBar" class="health-bar"></div>
+        </div>
+        <div class="ui-row">
+          <span>關卡: <span id="level">1</span></span>
+          <span>時間: <span id="timer">5:00</span></span>
+        </div>
+        <div class="ui-row">
+          <span>剩餘點數: <span id="dotsLeft">0</span></span>
+          <span>最高分: <span id="highScore">0</span></span>
         </div>
 
-        <div class="countdown" id="countdown"></div>
-
-        <div class="game-ui" id="gameUI" style="display: none;">
-            <div class="ui-row">
-                <span>分數: <span id="score">0</span></span>
-                <span>生命: <span id="lives">3</span></span>
-            </div>
-            <div class="health-bar-container">
-                <div id="healthBar" class="health-bar"></div>
-            </div>
-            <div class="ui-row">
-                <span>關卡: <span id="level">1</span></span>
-                <span>時間: <span id="timer">5:00</span></span>
-            </div>
-            <div class="ui-row">
-                <span>剩餘點數: <span id="dotsLeft">0</span></span>
-                <span>最高分: <span id="highScore">0</span></span>
-            </div>
-            
-            <!-- *** 新增：任务显示区域 *** -->
-            <div id="quest-display" class="ui-row quest-container">
-                <span id="quest-description"></span>
-                <span id="quest-progress"></span>
-            </div>
+        <!-- *** 新增：任务显示区域 *** -->
+        <div id="quest-display" class="ui-row quest-container">
+          <span id="quest-description"></span>
+          <span id="quest-progress"></span>
         </div>
+      </div>
 
-        <div class="screen-overlay start-screen" id="startScreen">
-            <h1 class="game-title">PAC-MAP</h1>
-            <div class="start-screen-actions">
-                <button class="pacman-pixel-button" id="startGameBtn">開始遊戲</button>
-                <button class="pacman-pixel-button" id="instructionsBtn">遊戲說明</button>
-                <button class="pacman-pixel-button" id="leaderboardBtn">排行榜</button>
-            </div>
-            <div class="content-toggle-container">
-                <div class="instructions" id="instructionsContent">
-                    <h3> 遊戲說明</h3>
-                    <ul>
-                        <li>使用 WASD 或方向鍵控制小精靈移動</li>
-                        <li>空白鍵暫停遊戲</li>
-                        <li>收集黃色點數 (20分) 和大力丸 (50分)</li>
-                        <li>吃大力丸後可以擊殺鬼怪 (150分)</li>
-                        <li>避免被鬼怪抓到，你有 3 條命</li>
-                        <li>10分鐘內收集完所有點數晉級下一關</li>
-                    </ul>
-                </div>
-                <div class="leaderboard" id="leaderboardContent">
-                    <h3> 排行榜</h3>
-                    <ol id="leaderboardList">
-                        <li>暫無記錄</li>
-                    </ol>
-                </div>
-            </div>
+      <div class="screen-overlay start-screen" id="startScreen">
+        <h1 class="game-title">PAC-MAP</h1>
+        <div class="start-screen-actions">
+          <button class="pacman-pixel-button" id="startGameBtn">
+            開始遊戲
+          </button>
+          <button class="pacman-pixel-button" id="instructionsBtn">
+            遊戲說明
+          </button>
+          <button class="pacman-pixel-button" id="leaderboardBtn">
+            排行榜
+          </button>
         </div>
+        <div class="content-toggle-container">
+          <div class="instructions" id="instructionsContent">
+            <h3>遊戲說明</h3>
+            <ul>
+              <li>使用 WASD 或方向鍵控制小精靈移動</li>
+              <li>空白鍵暫停遊戲</li>
+              <li>收集黃色點數 (20分) 和大力丸 (50分)</li>
+              <li>吃大力丸後可以擊殺鬼怪 (150分)</li>
+              <li>避免被鬼怪抓到，你有 3 條命</li>
+              <li>10分鐘內收集完所有點數晉級下一關</li>
+            </ul>
+          </div>
+          <div class="leaderboard" id="leaderboardContent">
+            <h3>排行榜</h3>
+            <ol id="leaderboardList">
+              <li>暫無記錄</li>
+            </ol>
+          </div>
+        </div>
+      </div>
 
-        <div class="screen-overlay map-selection-screen" id="mapSelectionScreen">
-            <h2>選擇地圖</h2>
-            <div class="map-selector">
-                <button class="map-button pacman-pixel-button active" data-map-index="0">台北市中心</button>
-                <button class="map-button pacman-pixel-button" data-map-index="1">台中市區</button>
-                <button class="map-button pacman-pixel-button" data-map-index="2">高雄市區</button>
-            </div>
-            <button class="pacman-pixel-button" id="backToStartScreenBtn">返回主選單</button>
+      <div class="screen-overlay map-selection-screen" id="mapSelectionScreen">
+        <h2>選擇地圖</h2>
+        <div class="map-selector">
+          <button
+            class="map-button pacman-pixel-button active"
+            data-map-index="0"
+          >
+            台北市中心
+          </button>
+          <button class="map-button pacman-pixel-button" data-map-index="1">
+            台中市區
+          </button>
+          <button class="map-button pacman-pixel-button" data-map-index="2">
+            高雄市區
+          </button>
         </div>
+        <button class="pacman-pixel-button" id="backToStartScreenBtn">
+          返回主選單
+        </button>
+      </div>
 
-        <div class="screen-overlay pause-screen" id="pauseScreen">
-            <h2>遊戲暫停</h2>
-            <button class="pacman-pixel-button" id="resumeGameBtn">繼續遊戲</button>
-            <button class="pacman-pixel-button" id="backToMenuBtnPause">回到主選單</button> 
-        </div>
+      <div class="screen-overlay pause-screen" id="pauseScreen">
+        <h2>遊戲暫停</h2>
+        <button class="pacman-pixel-button" id="resumeGameBtn">繼續遊戲</button>
+        <button class="pacman-pixel-button" id="backToMenuBtnPause">
+          回到主選單
+        </button>
+      </div>
 
-        <div class="screen-overlay game-over-screen" id="gameOverScreen">
-            <h2 id="gameOverTitle">遊戲結束</h2>
-            <div class="ui-row" style="justify-content: center; margin: 20px 0;">
-                <span style="font-size: 2rem;">最終分數: <span id="finalScore">0</span></span>
-            </div>
-            <div id="newHighScore" style="display: none; color: #ffff00; font-size: 1.5rem; margin: 10px 0;">
-                🏆 新紀錄！
-            </div>
-            <button class="pacman-pixel-button" id="restartGameBtn">重新開始</button>
-            <button class="pacman-pixel-button" id="backToMenuBtnGameOver">回到主選單</button> 
+      <div class="screen-overlay game-over-screen" id="gameOverScreen">
+        <h2 id="gameOverTitle">遊戲結束</h2>
+        <div class="ui-row" style="justify-content: center; margin: 20px 0">
+          <span style="font-size: 2rem"
+            >最終分數: <span id="finalScore">0</span></span
+          >
         </div>
+        <div
+          id="newHighScore"
+          style="
+            display: none;
+            color: #ffff00;
+            font-size: 1.5rem;
+            margin: 10px 0;
+          "
+        >
+          🏆 新紀錄！
+        </div>
+        <button class="pacman-pixel-button" id="restartGameBtn">
+          重新開始
+        </button>
+        <button class="pacman-pixel-button" id="backToMenuBtnGameOver">
+          回到主選單
+        </button>
+      </div>
 
-        <div id="minimap-container">
-            <div id="minimap"></div>
-        </div>
+      <div id="minimap-container">
+        <div id="minimap"></div>
+      </div>
 
-        <div class="dev-console" id="devConsole">
-            <div class="dev-console-output" id="devConsoleOutput">開發者指令視窗已啟用。輸入 'help' 查看可用指令。</div>
-            <input type="text" class="dev-console-input" id="devConsoleInput" placeholder="輸入指令...">
+      <div class="dev-console" id="devConsole">
+        <div class="dev-console-output" id="devConsoleOutput">
+          開發者指令視窗已啟用。輸入 'help' 查看可用指令。
         </div>
+        <input
+          type="text"
+          class="dev-console-input"
+          id="devConsoleInput"
+          placeholder="輸入指令..."
+        />
+      </div>
+
+      <!-- FPS 顯示 -->
+      <div class="fps-overlay" id="fpsDisplay">FPS: --</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <script type="module" src="js/main.js"></script>
     <audio id="bgm" loop>
-        <source src="audio/Pacmap_bgm.wav" type="audio/mpeg">
+      <source src="audio/Pacmap_bgm.wav" type="audio/wav" />
     </audio>
-</body>
+  </body>
 </html>
