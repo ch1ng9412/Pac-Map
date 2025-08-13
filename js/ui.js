@@ -25,6 +25,32 @@ export function updateUI() {
             healthBar.style.backgroundColor = '#ff0000';
         }
     }
+     // --- *** 新的、更智能的任务 UI 更新逻辑 *** ---
+    const questDescEl = document.getElementById('quest-description');
+    const questProgEl = document.getElementById('quest-progress');
+    const qs = gameState.questSystem; // 简写
+
+    // 优先检查是否有临时完成消息
+    if (qs.completionMessage) {
+        // 如果有，就显示完成消息
+        questDescEl.textContent = qs.completionMessage;
+        questProgEl.textContent = "🎉🎉🎉"; // 进度条可以显示一些庆祝的表情
+        questDescEl.parentElement.style.display = 'flex';
+    } 
+    // 检查是否有正在进行的任务
+    else if (qs.activeQuest) {
+        // 如果有，就显示任务描述和进度
+        questDescEl.textContent = qs.activeQuest.description;
+        questProgEl.textContent = `進度: ${qs.activeQuest.progress} / ${qs.activeQuest.targetCount}`;
+        questDescEl.parentElement.style.display = 'flex';
+    } 
+    // 都没有，就显示默认信息
+    else {
+        questDescEl.textContent = '任務：探索地圖！';
+        questProgEl.textContent = `已完成: ${qs.completedQuests}`;
+        questDescEl.parentElement.style.display = 'flex';
+    }
+    // --- ****************************************** ---
 }
 
 export function updateLeaderboardUI() {

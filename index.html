@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenStreetMap 小精靈遊戲</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cubic+11&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -14,7 +16,7 @@
         }
 
         body {
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'Cubic 11', cursive;
             background: #000;
             overflow: hidden;
             color: #fff;
@@ -108,7 +110,7 @@
 
 
         .pacman-pixel-button {
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'Cubic 11', cursive;
             background-color: #2121DE; 
             color: #FFFF00; 
             border: 3px solid #000000; 
@@ -184,7 +186,7 @@
             display: block;
             transform: rotate(45deg); /* 把字母旋转回来 */
             color: white;
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'Cubic 11', cursive;
             font-size: 14px;
             font-weight: bold;
             text-shadow: 1px 1px 2px black;
@@ -205,13 +207,31 @@
 
         /* 5. 专属颜色 (保持不变) */
         .monument-icon {
-            background-color: #a0522d;
+            background-color: #dd0e0e;
         }
         .store-icon {
-            background-color: #2e8b57;
+            background-color: #1bc431;
         }
         .park-icon {
             background-color: #006400;
+        }
+        .hotel-icon {
+            background-color: #1bc431;
+        }
+        .bank-icon {
+            background-color: #d1e428;
+        }
+        .restaurant-icon {
+            background-color: #dd0e0e;
+        }
+        .cafe-icon {
+            background-color: #1bc431;
+        }
+        .bubble-tea-icon {
+            background-color: #1bc431;
+        }
+        .atm-icon {
+            background-color: #d1e428;
         }
 
         .content-toggle-container { /* 包裹說明和排行榜內容的容器 */
@@ -269,8 +289,23 @@
         .leaderboard li { counter-increment: leaderboard; padding: 8px 10px; margin: 6px 0; background: rgba(30, 30, 80, 0.5); border-radius: 0px; border-left: 4px solid #ffff00; }
         .leaderboard li:before { content: counter(leaderboard) ". "; font-weight: bold; color: #ffff00; margin-right: 10px; }
 
-        .game-ui { position: absolute; top: 20px; left: 20px; z-index: 500; background: rgba(0, 0, 0, 0.8); color: white; padding: 15px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 14px; border: 1px solid #555; }
+        .game-ui { position: absolute; top: 20px; left: 20px; z-index: 500; background: rgba(0, 0, 0, 0.8); color: white; padding: 15px; border-radius: 10px; font-family: 'Cubic 11', cursive; font-size: 14px; border: 1px solid #555; }
         .ui-row { display: flex; justify-content: space-between; margin: 5px 0; min-width: 300px; }
+        .quest-container {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #555;
+            flex-direction: column; /* 让描述和进度垂直排列 */
+            align-items: flex-start;
+            text-align: left;
+        }
+        #quest-description {
+            font-size: 12px;
+        }
+        #quest-progress {
+            font-size: 14px;
+            color: #ffff00; /* 进度用黄色突出显示 */
+        }
 
         .pause-screen {
             background: rgba(10, 10, 30, 0.92); /* 深藍色調背景 */
@@ -385,6 +420,12 @@
             <div class="ui-row">
                 <span>剩餘點數: <span id="dotsLeft">0</span></span>
                 <span>最高分: <span id="highScore">0</span></span>
+            </div>
+            
+            <!-- *** 新增：任务显示区域 *** -->
+            <div id="quest-display" class="ui-row quest-container">
+                <span id="quest-description"></span>
+                <span id="quest-progress"></span>
             </div>
         </div>
 

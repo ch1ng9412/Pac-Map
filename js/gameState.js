@@ -65,17 +65,26 @@ export let gameState = {
         currentRadius: 2000,    // 當前半徑 (單位：公尺)
         targetRadius: 2000,     // 下一個階段的目標半徑
         shrinkSpeed: 0,         // 每秒縮小的速度
-        damageInterval: null,   // 在圈外時，扣血的計時器
         isShrinking: false,     // 標記是否正在縮小
         nextShrinkTime: 0,      // 下一次縮圈開始的時間戳
-        damagePerTick: 0.01      // 每次扣血的量 (可以是小數)
+        damagePerTick: 0.01,      // 每次扣血的量 (可以是小數)
+        lastDamageTime: 0,      // <-- 新增：记录上次伤害的时间戳
+        damagePerTick: 5,       // <-- 伤害值可以调高一点，因为现在不是固定间隔了
+        damageCooldown: 500     // <-- 新增：伤害的冷却时间 (毫秒)
     },
     minimap: {
         map: null,                // 小地图的 Leaflet 实例
         playerMarker: null,       // 小地图上玩家的标记
         poisonCircle: null,       // 小地图上的毒圈
         nextPoisonCircle: null    // 小地图上的下一圈预告
-    }
+    },
+    questSystem: {
+        activeQuest: null,        // 当前激活的任务物件
+        availableQuests: [],      // 一个任务池，存放所有可能的任务
+        completedQuests: 0,        // 已完成任务的数量
+        completionMessage: ""
+    },
+    pois: []
 };
 
 // 背景地圖相關狀態

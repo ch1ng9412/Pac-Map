@@ -220,27 +220,37 @@ function initGameElements(poiData) {
                 poiConfig = { name: tags.name || 'ATM', className: 'atm-icon', letter: 'A' };
             }
 
-            // 如果是我们需要处理的地标类型，就创建 Marker
             if (poiConfig) {
                 const poiIcon = L.divIcon({
                     className: 'poi-icon-container',
                     iconSize: [24, 38],
                     iconAnchor: [12, 38],
-                    // --- *** 关键修改：使用更清晰的 HTML 结构 *** ---
                     html: `<div class="poi-icon-wrapper">
-                            <div class="poi-icon ${poiConfig.className}">
-                            <span class="poi-letter">${poiConfig.letter}</span>
-                            </div>
-                            <div class="poi-title">${poiConfig.name}</div>
-                        </div>`
+                                <div class="poi-icon ${poiConfig.className}">
+                                    <span class="poi-letter">${poiConfig.letter}</span>
+                                </div>
+                                <div class="poi-title">${poiConfig.name}</div>
+                            </div>`
                 });
 
                 const poiMarker = L.marker([element.lat, element.lon], { icon: poiIcon })
                     .addTo(gameState.map)
                     .bindPopup(`<b>${poiConfig.name}</b>`);
+
+                // --- *** 关键修改点：简化存储的数据 *** ---
+                gameState.pois.push({
+                    marker: poiMarker,
+                    type: poiConfig.className,          // e.g., 'store-icon'
+                    name: poiConfig.name,
+                    id: `${element.type}-${element.id}` // 唯一ID，用于任务追踪
+                });
+                // --- ************************************* ---
             }
         });
     }
+
+    initializeQuests();
+    generateNewQuest();
 
     gameState.ghostSpawnPoints = [];
     const spawnPointCandidates = [ 
@@ -325,6 +335,58 @@ function initGameElements(poiData) {
     initPoisonCircle();
     initMinimap();
     updateUI();
+}
+
+function initializeQuests() {
+    const qs = gameState.questSystem;
+    qs.availableQuests = [];
+    qs.completedQuests = 0;
+
+    const existingPoiTypes = new Set(gameState.pois.map(p => p.type));
+
+    if (existingPoiTypes.has('store-icon')) {
+        qs.availableQuests.push({
+            type: 'visit_poi',
+            poiType: 'store-icon',
+            targetCount: 5,
+            description: '任務：抵達 5 家不同的便利商店',
+            reward: 5000
+        });
+    }
+    if (existingPoiTypes.has('cafe-icon')) {
+        qs.availableQuests.push({
+            type: 'visit_poi',
+            poiType: 'cafe-icon',
+            targetCount: 3,
+            description: '任務：抵達 3 家咖啡館',
+            reward: 3000
+        });
+    }
+    // 你可以在这里为其他地标类型添加更多任务
+}
+
+function generateNewQuest() {
+    const qs = gameState.questSystem;
+    if (qs.availableQuests.length === 0) {
+        qs.activeQuest = null;
+        console.log("没有更多可用任务了。");
+        updateUI();
+        return;
+    }
+
+    // 从任务池中随机选择一个任务
+    const questIndex = Math.floor(Math.random() * qs.availableQuests.length);
+    const newQuestTemplate = qs.availableQuests[questIndex];
+
+    // 创建一个“激活”的任务实例
+    qs.activeQuest = {
+        ...newQuestTemplate, // 复制任务模板的所有属性
+        progress: 0,         // 初始化进度
+        visitedPoiIds: new Set() // 用来记录访问过的地标ID，防止重复计算
+    };
+
+    console.log(`新任务生成: ${qs.activeQuest.description}`);
+    updateUI(); // 更新UI以显示新任务
 }
 
 function initMinimap() {
@@ -419,7 +481,7 @@ export function createGhosts() {
         console.error("Cannot create ghosts: No valid positions or ghost spawn points defined.");
         return;
     }
-    const baseGhostColors = ['red', 'pink', 'cyan', 'orange', 'purple', 'green', 'blue']; 
+    const baseGhostColors = ['red', 'pink', 'cyan', 'orange', 'purple', 'green']; 
     gameState.ghosts = []; 
     
     let assignedScatterIndices = new Set(); 
@@ -667,7 +729,7 @@ function gameLoop(timestamp) {
     
     updatePoisonCircleSVG();
     // 檢查玩家是否在圈外
-    checkPlayerInPoison();
+    checkPlayerInPoison(timestamp);
 
     updatePacmanSmoothMovement(deltaTime); 
     gameState.ghosts.forEach(ghost => {
@@ -861,6 +923,29 @@ function checkCollisions() {
             }
         }
     });
+
+    const aq = gameState.questSystem.activeQuest;
+    if (aq && aq.type === 'visit_poi') {
+
+        // 1. 首先，获取小精靈当前所在的最近路网节点
+        const pacmanCurrentNode = findNearestRoadPositionGeneric(pacmanPos.lat, pacmanPos.lng, gameState.validPositions);
+
+        gameState.pois.forEach(poi => {
+            if (poi.type === aq.poiType && !aq.visitedPoiIds.has(poi.id)) {
+                
+                // 2. 获取这个地标 Marker 所在的最近路网节点
+                const poiMarkerPos = poi.marker.getLatLng();
+                const poiNode = findNearestRoadPositionGeneric(poiMarkerPos.lat, poiMarkerPos.lng, gameState.validPositions);
+
+                // 3. **进行判定**
+                //    判定条件：玩家所在的节点，就是地标所在的节点
+                if (positionsAreEqual(pacmanCurrentNode, poiNode)) {
+                    // 玩家抵达了一个任务目标！
+                    handleQuestProgress(poi);
+                }
+            }
+        });
+    }
 }
 
 function collectItem(item) { 
@@ -936,6 +1021,62 @@ function eatGhost(ghost) {
     updateUI();
 }
 
+function handleQuestProgress(visitedPoi) {
+    const aq = gameState.questSystem.activeQuest;
+    if (!aq || aq.visitedPoiIds.has(visitedPoi.id)) return; // 双重检查
+
+    // 记录这个地标已被访问
+    aq.visitedPoiIds.add(visitedPoi.id);
+    aq.progress++;
+
+    console.log(`抵达 "${visitedPoi.name}"！任务进度: ${aq.progress}/${aq.targetCount}`);
+    
+    // 在这里可以添加一个短暂的视觉/音效提示，比如在屏幕上显示 "+1"
+    
+    updateUI(); // 更新UI显示进度
+
+    // 检查任务是否完成
+    if (aq.progress >= aq.targetCount) {
+        completeQuest();
+    }
+}
+
+function completeQuest() {
+    const aq = gameState.questSystem.activeQuest;
+    if (!aq) return;
+
+    console.log(`任务完成: ${aq.description}`);
+    
+    // 1. 给予分数奖励
+    gameState.score += aq.reward;
+    console.log(`获得奖励分数: ${aq.reward}！`);
+
+    // 2. *** 设置临时完成消息 ***
+    const qs = gameState.questSystem;
+    qs.completionMessage = `任務完成！+${aq.reward} 分`;
+
+    // 3. 更新已完成任务计数
+    qs.completedQuests++;
+    
+    // 4. 移除已完成的任务
+    qs.activeQuest = null;
+
+    // 5. 立即更新一次 UI，显示“任务完成”的消息
+    updateUI();
+
+    // 6. 设置一个计时器，在几秒后清除消息并生成新任务
+    setTimeout(() => {
+        // a. 清除完成消息
+        qs.completionMessage = "";
+        
+        // b. 生成新任务
+        generateNewQuest();
+        
+        // c. 再次更新 UI，显示新任务
+        //    (generateNewQuest 内部已经调用了 updateUI，所以这里可能不需要再调用)
+    }, 4000); // 消息显示 4 秒
+}
+
 function loseLife() {
     // 基础检查
     if (gameState.isGameOver || gameState.isRoundTransitioning) return;
@@ -956,7 +1097,7 @@ function loseLife() {
     if (gameState.healthSystem.lives <= 0) {
         gameState.healthSystem.lives = 0;
         updateUI();
-        setTimeout(() => endGame(false), 1500);
+        endGame(false);
     } else {
         startRoundTransition();
     }
@@ -1177,10 +1318,10 @@ function setupPoisonCircleSVG() {
 
     // 遮罩的背景：一个巨大的白色矩形（代表默认所有地方都不透明）
     const maskBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    maskBg.setAttribute("x", "-100%");
-    maskBg.setAttribute("y", "-100%");
-    maskBg.setAttribute("width", "300%");
-    maskBg.setAttribute("height", "300%");
+    maskBg.setAttribute("x", "-200%");
+    maskBg.setAttribute("y", "-200%");
+    maskBg.setAttribute("width", "600%");
+    maskBg.setAttribute("height", "600%");
     maskBg.setAttribute("fill", "white");
     
     // 遮罩的前景：一个黑色的圆形，它就是要被“挖掉”的部分
@@ -1197,10 +1338,10 @@ function setupPoisonCircleSVG() {
     
     // 创建覆盖整个地图的红色半透明矩形
     const poisonRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    poisonRect.setAttribute("x", "-100%");
-    poisonRect.setAttribute("y", "-100%");
-    poisonRect.setAttribute("width", "300%");
-    poisonRect.setAttribute("height", "300%");
+    poisonRect.setAttribute("x", "-200%");
+    poisonRect.setAttribute("y", "-200%");
+    poisonRect.setAttribute("width", "600%");
+    poisonRect.setAttribute("height", "600%");
     poisonRect.setAttribute("fill", "red");
     poisonRect.setAttribute("fill-opacity", "0.25");
     poisonRect.setAttribute("mask", "url(#safe-zone-mask)"); // 应用我们的遮罩！
@@ -1267,34 +1408,30 @@ function updatePoisonCircleSVG() {
     }
 }
 
-function checkPlayerInPoison() {
-    if (!gameState.pacman || gameState.isRoundTransitioning || gameState.isGameOver) return;
+function checkPlayerInPoison(timestamp) { // <-- 接收当前的时间戳
+    if (!gameState.pacman || gameState.isLosingLife || gameState.isGameOver || gameState.isRoundTransitioning) {
+        return;
+    }
 
     const pc = gameState.poisonCircle;
     const pacmanPos = gameState.pacman.getLatLng();
-
     const distanceToCenter = pacmanPos.distanceTo(pc.center);
 
     if (distanceToCenter > pc.currentRadius) {
-        // 玩家在圈外
-        if (!pc.damageInterval) {
-            pc.damageInterval = setInterval(() => {
-                const hs = gameState.healthSystem;
-                hs.currentHealth -= 5; // 每次扣 5 點血
-                
-                if (hs.currentHealth <= 0) {
-                    hs.currentHealth = 0;
-                    loseLife(); // 當前血條空了，觸發失命邏輯
-                }
-                
-                updateUI();
-            }, 500); // 每半秒扣一次
-        }
-    } else {
-        // 玩家在圈內，停止扣血
-        if (pc.damageInterval) {
-            clearInterval(pc.damageInterval);
-            pc.damageInterval = null;
+        // --- *** 新的扣血逻辑 *** ---
+        // 检查是否已经过了冷却时间
+        if (timestamp - pc.lastDamageTime > pc.damageCooldown) {
+            pc.lastDamageTime = timestamp; // 更新上次伤害的时间
+
+            const hs = gameState.healthSystem;
+            hs.currentHealth -= pc.damagePerTick;
+            
+            if (hs.currentHealth <= 0) {
+                hs.currentHealth = 0;
+                loseLife();
+            }
+            
+            updateUI();
         }
     }
 }
