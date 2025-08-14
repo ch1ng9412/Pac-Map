@@ -131,3 +131,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log('OpenStreetMap 小精靈遊戲已載入完成！');
 });
+
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    // 使用 debounce 技术，避免在高频 resize 事件中频繁执行
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        // 如果游戏正在进行中，就刷新主地图和子地图的尺寸
+        if (gameState.map) {
+            gameState.map.invalidateSize();
+        }
+        if (gameState.minimap.map) {
+            gameState.minimap.map.invalidateSize();
+        }
+    }, 250); // 延迟 250ms 执行
+});

@@ -40,7 +40,7 @@ export async function initGame() {
          maxZoom: MAX_MAP_ZOOM + 1
     }).addTo(gameState.map);
 
-    if (gameState.map) gameState.map.invalidateSize();
+    gameState.map.invalidateSize();
 
     resetGameState(); 
     showLoadingScreen('正在獲取地圖資料...');
@@ -89,6 +89,12 @@ function resetGameState() {
         gameState.minimap.poisonCircle = null;
         gameState.minimap.nextPoisonCircle = null;
     }
+    gameState.backpack = {
+        items: [null, null, null],
+        maxSize: 3
+    };
+    gameState.foodItems = [];
+    gameState.pois = [];
     poisonSvgElements = {};
 
     setGameLoopRequestId(null);
@@ -680,6 +686,11 @@ async function startGame() {
     if (minimapContainer) {
         minimapContainer.style.display = 'block';
     }
+    const backpackContainer = document.getElementById('backpack-ui');
+    if (backpackContainer) {
+        backpackContainer.style.display = 'flex'; // 因为它是 flex 布局，所以用 'flex'
+    }
+
     if (gameState.minimap.map) {
         setTimeout(() => {
             gameState.minimap.map.invalidateSize();
@@ -1630,6 +1641,10 @@ export function backToMenu() {
     const minimapContainer = document.getElementById('minimap-container');
     if (minimapContainer) {
         minimapContainer.style.display = 'none';
+    }
+    const backpackContainer = document.getElementById('backpack-ui');
+    if (backpackContainer) {
+        backpackContainer.style.display = 'none';
     }
     document.getElementById('mapSelectionScreen').style.display = 'none'; 
     document.getElementById('instructionsContent').style.display = 'none'; 
