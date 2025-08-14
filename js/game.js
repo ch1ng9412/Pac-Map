@@ -45,7 +45,8 @@ export async function initGame() {
     resetGameState(); 
     showLoadingScreen('正在獲取地圖資料...');
 
-    const bounds = config.bounds; 
+    const bounds = config.bounds;
+    const center = config.center; // 获取 center
 
     const [roadData, poiData] = await Promise.all([
     fetchRoadData(bounds),
@@ -67,7 +68,7 @@ export async function initGame() {
             console.error('無法初始化遊戲元素，因為沒有有效的道路位置。');
             return;
         }
-        initGameElements(poiData); 
+        initGameElements(poiData, center, bounds); 
         startGameCountdown();
     }, 1000); 
 }
@@ -145,119 +146,114 @@ function resetGameState() {
     }
 }
 
-function initGameElements(poiData) { 
-    const center = gameState.map.getCenter();
-    const bounds = gameState.map.getBounds();
-    
-    if (gameState.validPositions.length === 0) { console.error("No valid positions to place game elements."); return; }
-    // for debug
+function initGameElements(poiData, center, bounds) { 
+    // ---- 步骤 1: 清理旧的地标数据 ----
+    gameState.pois = [];
+    let elementsToDisplay = [];
+
     if (poiData && poiData.elements && poiData.elements.length > 0) {
         
-        // --- *** 新增：地标计数逻辑 *** ---
-        const poiCounts = {}; // 创建一个空物件来存储每种类型的计数
+        // ---- 步骤 2: 基于距离智能筛选地标 (方案三) ----
+        console.log(`原始地标数量: ${poiData.elements.length}`);
 
-        poiData.elements.forEach(element => {
-            if (element.type !== 'node') return;
+        const MIN_DISTANCE_BETWEEN_POIS = 70; // 地标之间的最小距离（单位：公尺）
+        const finalPois = [];
 
-            let poiType = null;
-            const tags = element.tags;
-            // 判断地标类型
-            if (tags.historic === 'monument') {
-                poiType = '纪念碑 (monument)';
-            } else if (tags.shop === 'convenience') {
-                poiType = '便利商店 (convenience)';
-            } else if (tags.leisure === 'park') {
-                poiType = '公园 (park)';
-            } else if (tags.tourism === 'hotel') {
-                poiType = '旅馆 (hotel)';
-            } else if (tags.amenity === 'bank') {
-                poiType = '银行 (bank)';
-            } else if (tags.amenity === 'restaurant') {
-                poiType = '餐厅 (restaurant)';
-            } else if (tags.amenity === 'cafe') {
-                poiType = '咖啡馆 (cafe)';
-            } else if (tags.amenity === 'bubble_tea') {
-                poiType = '手摇饮料 (bubble_tea)';
-            } else if (tags.amenity === 'atm') {
-                poiType = 'ATM';
+        // 随机打乱原始数组，这确保了每次游戏筛选出的地标组合都不同，增加了重玩性。
+        const shuffledElements = [...poiData.elements].sort(() => 0.5 - Math.random());
+
+        shuffledElements.forEach(element => {
+            if (element.type !== 'node') return; // 只处理节点类型的地标
+
+            const currentPos = L.latLng(element.lat, element.lon);
+            let isTooClose = false;
+
+            // 核心逻辑：检查当前地标是否与任何“已经选入最终列表”的地标离得太近
+            for (const finalPoi of finalPois) {
+                const finalPoiPos = L.latLng(finalPoi.lat, finalPoi.lon);
+                if (currentPos.distanceTo(finalPoiPos) < MIN_DISTANCE_BETWEEN_POIS) {
+                    isTooClose = true;
+                    break; // 一旦发现太近，就没必要再和其他点比较了，直接跳出内层循环
+                }
             }
-            // 你可以在这里添加更多的 else if 来识别其他地标类型
 
-            // 进行计数
-            if (poiCounts[poiType]) {
-                poiCounts[poiType]++; // 如果该类型已存在，数量加一
-            } else {
-                poiCounts[poiType] = 1; // 如果是第一次遇到该类型，数量设为一
+            // 如果遍历完所有已选中的点，都没有发现太近的，就把这个地标选入最终列表
+            if (!isTooClose) {
+                finalPois.push(element);
+            }
+        });
+        
+        elementsToDisplay = finalPois; // 使用筛选后的地标列表进行后续操作
+        console.log(`按距离筛选后，最终显示的地标数量: ${elementsToDisplay.length}`);
+    }
+
+    // ---- 步骤 3: 统计并输出筛选后的地标数量 ----
+    if (elementsToDisplay.length > 0) {
+        const poiCounts = {};
+        elementsToDisplay.forEach(element => {
+            const tags = element.tags;
+            let poiType = null;
+
+            if (tags.historic === 'monument') poiType = '纪念碑 (monument)';
+            else if (tags.shop === 'convenience') poiType = '便利商店 (convenience)';
+            else if (tags.leisure === 'park') poiType = '公园 (park)';
+            else if (tags.tourism === 'hotel') poiType = '旅馆 (hotel)';
+            else if (tags.amenity === 'bank') poiType = '银行 (bank)';
+            else if (tags.amenity === 'restaurant') poiType = '餐厅 (restaurant)';
+            else if (tags.amenity === 'cafe') poiType = '咖啡馆 (cafe)';
+            else if (tags.amenity === 'bubble_tea') poiType = '手摇饮料 (bubble_tea)';
+            else if (tags.amenity === 'atm') poiType = 'ATM';
+            
+            if (poiType) {
+                poiCounts[poiType] = (poiCounts[poiType] || 0) + 1;
             }
         });
 
-        // 将计数结果转换为适合 console.table 的格式
         const countArray = Object.keys(poiCounts).map(key => ({
             '地标类型 (Type)': key,
             '数量 (Count)': poiCounts[key]
         }));
         
-        // 使用 console.table 输出一个漂亮的表格
-        console.log("--- 地标数量统计 ---");
+        console.log("--- 地标数量统计 (筛选后) ---");
         console.table(countArray);
-        // --- ************************** ---
     }
 
-    if (poiData && poiData.elements) {
-        poiData.elements.forEach(element => {
-            if (element.type !== 'node') return;
+    // ---- 步骤 4: 创建地标 Marker 并存储数据 ----
+    elementsToDisplay.forEach(element => {
+        // 这部分是你已经写好的，根据类型创建不同 poiConfig 的逻辑
+        let poiConfig = null;
+        const tags = element.tags;
+        
+        if (tags.historic === 'monument') poiConfig = { name: tags.name || '纪念碑', className: 'monument-icon', letter: 'M' };
+        else if (tags.shop === 'convenience') poiConfig = { name: tags.name || '便利商店', className: 'store-icon', letter: 'S' };
+        else if (tags.leisure === 'park') poiConfig = { name: tags.name || '公园', className: 'park-icon', letter: 'P' };
+        else if (tags.tourism === 'hotel') poiConfig = { name: tags.name || '旅馆', className: 'hotel-icon', letter: 'H' };
+        else if (tags.amenity === 'bank') poiConfig = { name: tags.name || '银行', className: 'bank-icon', letter: '$' };
+        else if (tags.amenity === 'restaurant') poiConfig = { name: tags.name || '餐厅', className: 'restaurant-icon', letter: 'R' };
+        else if (tags.amenity === 'cafe') poiConfig = { name: tags.name || '咖啡馆', className: 'cafe-icon', letter: 'C' };
+        else if (tags.amenity === 'bubble_tea') poiConfig = { name: tags.name || '手摇饮', className: 'bubble-tea-icon', letter: 'B' };
+        else if (tags.amenity === 'atm') poiConfig = { name: tags.name || 'ATM', className: 'atm-icon', letter: 'A' };
+        
+        if (poiConfig) {
+            const poiIcon = L.divIcon({
+                className: 'poi-icon-container',
+                iconSize: [24, 38],
+                iconAnchor: [12, 24],
+                html: `<div class="poi-icon-wrapper"><div class="poi-icon ${poiConfig.className}"><span class="poi-letter">${poiConfig.letter}</span></div><div class="poi-title">${poiConfig.name}</div></div>`
+            });
 
-            let poiConfig = null;
-            const tags = element.tags;
+            const poiMarker = L.marker([element.lat, element.lon], { icon: poiIcon })
+                .addTo(gameState.map)
+                .bindPopup(`<b>${poiConfig.name}</b>`);
 
-            if (tags.historic === 'monument') {
-                poiConfig = { name: tags.name || '纪念碑', className: 'monument-icon', letter: 'M' };
-            } else if (tags.shop === 'convenience') {
-                poiConfig = { name: tags.name || '便利商店', className: 'store-icon', letter: 'S' };
-            } else if (tags.leisure === 'park') {
-                poiConfig = { name: tags.name || '公园', className: 'park-icon', letter: 'P' };
-            } else if (tags.tourism === 'hotel') {
-                poiConfig = { name: tags.name || '旅馆', className: 'hotel-icon', letter: 'H' };
-            } else if (tags.amenity === 'bank') {
-                poiConfig = { name: tags.name || '银行', className: 'bank-icon', letter: '$' };
-            } else if (tags.amenity === 'restaurant') {
-                poiConfig = { name: tags.name || '餐厅', className: 'restaurant-icon', letter: 'R' };
-            } else if (tags.amenity === 'cafe') {
-                poiConfig = { name: tags.name || '咖啡馆', className: 'cafe-icon', letter: 'C' };
-            } else if (tags.amenity === 'bubble_tea') {
-                poiConfig = { name: tags.name || '手摇饮', className: 'bubble-tea-icon', letter: 'T' };
-            } else if (tags.amenity === 'atm') {
-                poiConfig = { name: tags.name || 'ATM', className: 'atm-icon', letter: 'A' };
-            }
-
-            if (poiConfig) {
-                const poiIcon = L.divIcon({
-                    className: 'poi-icon-container',
-                    iconSize: [24, 38],
-                    iconAnchor: [12, 38],
-                    html: `<div class="poi-icon-wrapper">
-                                <div class="poi-icon ${poiConfig.className}">
-                                    <span class="poi-letter">${poiConfig.letter}</span>
-                                </div>
-                                <div class="poi-title">${poiConfig.name}</div>
-                            </div>`
-                });
-
-                const poiMarker = L.marker([element.lat, element.lon], { icon: poiIcon })
-                    .addTo(gameState.map)
-                    .bindPopup(`<b>${poiConfig.name}</b>`);
-
-                // --- *** 关键修改点：简化存储的数据 *** ---
-                gameState.pois.push({
-                    marker: poiMarker,
-                    type: poiConfig.className,          // e.g., 'store-icon'
-                    name: poiConfig.name,
-                    id: `${element.type}-${element.id}` // 唯一ID，用于任务追踪
-                });
-                // --- ************************************* ---
-            }
-        });
-    }
+            gameState.pois.push({
+                marker: poiMarker,
+                type: poiConfig.className,
+                name: poiConfig.name,
+                id: `${element.type}-${element.id}`
+            });
+        }
+    });
 
     generateFoodItems();
     initializeQuests();
@@ -503,10 +499,21 @@ function initMinimap() {
     }).addTo(mm.map);
 }
 
-function createPacman(center) { 
+function createPacman(centerArray) { // <--- 将参数名改为 centerArray，更清晰
+    // 安全检查
+    if (!Array.isArray(centerArray) || centerArray.length !== 2) {
+        console.error("createPacman 收到了无效的 centerArray 参数！将使用地图的当前中心作为备用。", centerArray);
+        const fallbackCenter = gameState.map.getCenter();
+        centerArray = [fallbackCenter.lat, fallbackCenter.lng]; // 备用方案也设为数组格式
+    }
+    
     if (gameState.validPositions.length === 0) return;
+    
     const pacmanCustomIcon = L.divIcon({ className: 'pacman-icon', iconSize: [24, 24], iconAnchor: [12, 12] });
-    const roadPos = findNearestRoadPositionGeneric(center.lat, center.lng, gameState.validPositions); 
+    
+    // *** 关键修正：直接使用索引 [0] 和 [1] 来访问经纬度 ***
+    const roadPos = findNearestRoadPositionGeneric(centerArray[0], centerArray[1], gameState.validPositions); 
+    
     gameState.pacman = L.marker(roadPos, { icon: pacmanCustomIcon }).addTo(gameState.map);
     gameState.pacmanLevelStartPoint = roadPos;
     gameState.pacmanMovement.currentFacingDirection = 'left';
@@ -1072,7 +1079,7 @@ function pickupFood(foodItem, indexInWorld) {
         // --- 背包已满 ---
         console.log("背包已满，无法捡取！");
         // 在这里可以显示一个“背包已满”的提示
-        showNotification("背包已满！", 2000);
+        //showNotification("背包已满！", 2000);
     }
 }
 
