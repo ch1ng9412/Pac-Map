@@ -1,7 +1,7 @@
 import { gameState, gameLoopRequestId } from './gameState.js';
 import { setupSounds, soundsReady } from './audio.js';
 import { updateLeaderboardUI } from './ui.js';
-import { initGame, pauseGame, resumeGame, tryStartMovementInDirection, restartGame, backToMenu } from './game.js';
+import { initGame, pauseGame, resumeGame, tryStartMovementInDirection, restartGame, backToMenu, useBackpackItem} from './game.js';
 import { initStartScreenBackground } from './backgroundAnimation.js';
 import { toggleDevConsole, setupDevConsoleListeners } from './devConsole.js';
 
@@ -93,17 +93,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (gameState.isGameOver || !gameState.canMove || gameState.isLosingLife) return; 
         
-        if (e.code === 'Space') { 
+        const key = e.code;
+
+        if (key === 'Space') { 
             e.preventDefault(); 
             if (gameState.isPaused) resumeGame(); 
             else pauseGame(); 
             return; 
         } 
-        
+
+        if (key === 'Digit1' || key === 'Digit2' || key === 'Digit3') {
+            // Digit1 对应背包索引 0
+            const slotIndex = parseInt(key.slice(-1)) - 1;
+            useBackpackItem(slotIndex);
+        }
+
         if (gameState.isPaused || !gameState.pacman) return; 
         
         const validMoveKeys = ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']; 
-        if (validMoveKeys.includes(e.code)) {
+        if (validMoveKeys.includes(key)) {
             // Map arrow keys to WASD for logic consistency
             const keyMap = {
                 'ArrowUp': 'KeyW',
@@ -111,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'ArrowLeft': 'KeyA',
                 'ArrowRight': 'KeyD'
             };
-            gameState.pacmanMovement.lastIntendedDirectionKey = keyMap[e.code] || e.code;
+            gameState.pacmanMovement.lastIntendedDirectionKey = keyMap[key] || key;
         } else {
             return; 
         }

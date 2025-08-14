@@ -1,4 +1,4 @@
-import { gameState, mapConfigs, MAX_MAP_ZOOM, NUMBER_OF_GHOSTS, PACMAN_BASE_SPEED, GHOST_MOVE_SPEED_METERS_PER_SECOND, MAX_DELTA_TIME, leaderboard, gameLoopRequestId, ghostDecisionInterval, lastFrameTime, setGameLoopRequestId, setGhostDecisionInterval, setLastFrameTime } from './gameState.js';
+import { gameState, mapConfigs, MAX_MAP_ZOOM, NUMBER_OF_GHOSTS, PACMAN_BASE_SPEED, GHOST_MOVE_SPEED_METERS_PER_SECOND, MAX_DELTA_TIME, leaderboard, gameLoopRequestId, ghostDecisionInterval, lastFrameTime, setGameLoopRequestId, setGhostDecisionInterval, setLastFrameTime, foodDatabase } from './gameState.js';
 import { soundsReady, setupSounds, playStartSound, playDotSound, playPowerPelletSound, playEatGhostSound, playDeathSound } from './audio.js';
 import { updateUI, updateLeaderboardUI, updatePacmanIconRotation, showLoadingScreen, hideLoadingScreen } from './ui.js';
 import { stopBackgroundAnimation, initStartScreenBackground } from './backgroundAnimation.js';
@@ -253,6 +253,7 @@ function initGameElements(poiData) {
         });
     }
 
+    generateFoodItems();
     initializeQuests();
     generateNewQuest();
 
@@ -341,6 +342,53 @@ function initGameElements(poiData) {
     updateUI();
 }
 
+function generateFoodItems() {
+    gameState.foodItems = []; // 清空旧的美食
+
+    // 遍历所有已存在于地图上的地标
+    gameState.pois.forEach(poi => {
+        // 为每个地标，有一定几率在它附近的道路上生成一个美食
+        if (Math.random() < 0.5) { // 50% 的几率生成
+            
+            // 1. 从数据库中选择一种美食
+            const possibleFoods = foodDatabase[poi.type] || foodDatabase['default'];
+            const foodTemplate = possibleFoods[Math.floor(Math.random() * possibleFoods.length)];
+
+            // 2. 寻找生成位置
+            //    在距离地标一定范围内的随机一个路网节点上
+            const poiMarkerPos = poi.marker.getLatLng();
+            const spawnRadius = 50; // 在地标周围 50 米内寻找
+            
+            // 筛选出在半径内的所有可用节点
+            const nearbyNodes = gameState.validPositions.filter(nodePos => {
+                return L.latLng(nodePos[0], nodePos[1]).distanceTo(poiMarkerPos) < spawnRadius;
+            });
+
+            if (nearbyNodes.length > 0) {
+                // 从附近的节点中随机选一个作为生成点
+                const spawnPos = nearbyNodes[Math.floor(Math.random() * nearbyNodes.length)];
+
+                // 3. 创建美食的 L.divIcon
+                const foodIcon = L.divIcon({
+                    className: 'food-icon',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12],
+                    html: foodTemplate.icon // 直接使用 emoji 作为内容
+                });
+
+                // 4. 创建 Marker 并存入 gameState.foodItems
+                const foodMarker = L.marker(spawnPos, { icon: foodIcon }).addTo(gameState.map);
+
+                gameState.foodItems.push({
+                    marker: foodMarker,
+                    ...foodTemplate // 将美食的所有属性(name, icon, heal)复制过来
+                });
+            }
+        }
+    });
+    console.log(`在地图上生成了 ${gameState.foodItems.length} 个美食。`);
+}
+
 function initializeQuests() {
     const qs = gameState.questSystem;
     qs.availableQuests = [];
@@ -373,7 +421,7 @@ function generateNewQuest() {
     const qs = gameState.questSystem;
     if (qs.availableQuests.length === 0) {
         qs.activeQuest = null;
-        console.log("没有更多可用任务了。");
+        console.log("沒有更多可用任務了。");
         updateUI();
         return;
     }
@@ -977,6 +1025,76 @@ function checkCollisions() {
                 }
             }
         });
+    }
+    for (let i = gameState.foodItems.length - 1; i >= 0; i--) {
+        const food = gameState.foodItems[i];
+        const foodPos = food.marker.getLatLng();
+        
+        if (pacmanPos.distanceTo(foodPos) < 10) {
+            // 碰到了！尝试捡取
+            pickupFood(food, i);
+        }
+    }
+}
+
+function pickupFood(foodItem, indexInWorld) {
+    const bp = gameState.backpack;
+
+    // 寻找背包里的一个空格子
+    const emptySlotIndex = bp.items.findIndex(slot => slot === null);
+
+    if (emptySlotIndex !== -1) {
+        // --- 背包有空位 ---
+        
+        // 1. 将物品放入背包
+        bp.items[emptySlotIndex] = foodItem;
+
+        // 2. 从地图上移除物品
+        foodItem.marker.remove(); // 从地图上移除 Marker
+        gameState.foodItems.splice(indexInWorld, 1); // 从世界物品数组中移除
+
+        console.log(`捡取了 ${foodItem.name}，放入背包第 ${emptySlotIndex + 1} 格。`);
+
+        // 在这里可以播放一个捡到东西的音效
+        updateUI(); // 更新UI以显示背包内容
+    } else {
+        // --- 背包已满 ---
+        console.log("背包已满，无法捡取！");
+        // 在这里可以显示一个“背包已满”的提示
+        showNotification("背包已满！", 2000);
+    }
+}
+
+export function useBackpackItem(slotIndex) {
+    // 安全检查
+    if (gameState.isPaused || gameState.isGameOver || gameState.isLosingLife) return;
+    
+    const bp = gameState.backpack;
+    const item = bp.items[slotIndex];
+
+    if (item) {
+        // --- 格子里有物品 ---
+        const hs = gameState.healthSystem;
+        
+        // 1. 回血
+        hs.currentHealth += item.heal;
+        // 确保血量不超过上限
+        if (hs.currentHealth > hs.maxHealth) {
+            hs.currentHealth = hs.maxHealth;
+        }
+
+        console.log(`使用了 ${item.name}，恢复了 ${item.heal} 点生命！当前血量: ${hs.currentHealth.toFixed(0)}`);
+        
+        // 在这里可以播放一个吃东西/回血的音效
+
+        // 2. 从背包中移除已使用的物品
+        bp.items[slotIndex] = null;
+
+        // 3. 更新 UI
+        updateUI();
+    } else {
+        console.log(`背包第 ${slotIndex + 1} 格是空的。`);
+        // 可以播放一个“无效操作”的音效
     }
 }
 

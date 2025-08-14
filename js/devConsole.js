@@ -144,7 +144,7 @@ function processDevCommand(command) {
             break;
         case 'ghosts':
             if (gameState.ghosts && gameState.ghosts.length > 0) {
-                logToDevConsole("Current ghost states:", 'info');
+                logToDevConsole("目前鬼怪狀態:", 'info');
 
                 // 準備一個陣列來儲存要輸出的資訊
                 const ghostInfo = gameState.ghosts.map((ghost, index) => {
@@ -166,7 +166,7 @@ function processDevCommand(command) {
                 // 這是比 console.log 更清晰的選擇
                 console.table(ghostInfo);
                 
-                logToDevConsole("Ghost states have been printed to the browser's main console.", 'success');
+                logToDevConsole("鬼怪狀態已打印至瀏覽器主控台。", 'success');
             } else {
                 logToDevConsole("No ghosts are currently in the game.", 'warn');
             }

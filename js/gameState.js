@@ -84,7 +84,12 @@ export let gameState = {
         completedQuests: 0,        // 已完成任务的数量
         completionMessage: ""
     },
-    pois: []
+    pois: [],
+    foodItems: [],
+    backpack: {
+        items: [null, null, null],
+        maxSize: 3
+    }
 };
 
 // 背景地圖相關狀態
@@ -118,6 +123,27 @@ export const mapConfigs = [
             [22.6313, 120.3064]  // 東北角 (NorthEast)
         )}
 ];
+
+export const foodDatabase = {
+    'restaurant-icon': [
+        { name: '美味漢堡', icon: '🍔', heal: 30 },
+        { name: '香脆薯條', icon: '🍟', heal: 20 }
+    ],
+    'cafe-icon': [
+        { name: '濃縮咖啡', icon: '☕', heal: 15 },
+        { name: '甜甜圈', icon: '🍩', heal: 25 }
+    ],
+    'store-icon': [
+        { name: '能量飲料', icon: '🥤', heal: 10 },
+        { name: '三角飯糰', icon: '🍙', heal: 20 }
+    ],
+    'bubble-tea-icon': [
+        { name: '珍珠奶茶', icon: '🧋', heal: 15 }
+    ],
+    'default': [
+        { name: '瓶裝水', icon: '💧', heal: 5 }
+    ]
+};
 
 // 排行榜資料
 export let leaderboard = [];

@@ -658,6 +658,43 @@
           opacity: 0.3;
         }
       }
+      .food-icon {
+          font-size: 20px;
+          text-align: center;
+          line-height: 24px;
+          text-shadow: 0 0 5px white; /* 给 emoji 加一点光晕 */
+      }
+      .backpack-container {
+          position: absolute;
+          bottom: 20px;
+          left: 20px; /* 放在左下角 */
+          display: flex; /* 横向排列 */
+          gap: 10px; /* 格子之间的间距 */
+          z-index: 1000;
+      }
+      .backpack-slot {
+          width: 60px;
+          height: 60px;
+          background-color: rgba(0, 0, 0, 0.7);
+          border: 2px solid #555;
+          border-radius: 5px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          position: relative;
+          font-size: 28px; /* emoji 的大小 */
+      }
+      .slot-key {
+          position: absolute;
+          top: 2px;
+          left: 4px;
+          font-size: 12px;
+          color: #ccc;
+          font-family: 'Cubic 11', cursive;
+      }
+      .backpack-slot.filled {
+          border-color: #ffff00;
+      }
       .dev-console {
         position: absolute;
         bottom: 0;
@@ -705,6 +742,21 @@
           <span class="wasted-text">WASTED</span>
         </div>
       </div>
+
+      <div id="backpack-ui" class="backpack-container">
+        <div class="backpack-slot" id="slot-0">
+            <span class="slot-key">1</span>
+            <span class="slot-item"></span>
+        </div>
+        <div class="backpack-slot" id="slot-1">
+            <span class="slot-key">2</span>
+            <span class="slot-item"></span>
+        </div>
+        <div class="backpack-slot" id="slot-2">
+            <span class="slot-key">3</span>
+            <span class="slot-item"></span>
+        </div>
+    </div>
 
       <div class="countdown" id="countdown"></div>
 

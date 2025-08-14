@@ -34,7 +34,7 @@ export function updateUI() {
     if (qs.completionMessage) {
         // 如果有，就显示完成消息
         questDescEl.textContent = qs.completionMessage;
-        questProgEl.textContent = "🎉🎉🎉"; // 进度条可以显示一些庆祝的表情
+        questProgEl.textContent = "🎉 獎勵已發放！ 🎉"; // 进度条可以显示一些庆祝的表情
         questDescEl.parentElement.style.display = 'flex';
     } 
     // 检查是否有正在进行的任务
@@ -46,11 +46,27 @@ export function updateUI() {
     } 
     // 都没有，就显示默认信息
     else {
-        questDescEl.textContent = '任務：探索地圖！';
+        questDescEl.textContent = '任務：自由探索地圖！';
         questProgEl.textContent = `已完成: ${qs.completedQuests}`;
         questDescEl.parentElement.style.display = 'flex';
     }
-    // --- ****************************************** ---
+    
+    const bp = gameState.backpack;
+    for (let i = 0; i < bp.maxSize; i++) {
+        const slotEl = document.getElementById(`slot-${i}`);
+        const itemEl = slotEl.querySelector('.slot-item');
+        const item = bp.items[i];
+
+        if (item) {
+            itemEl.textContent = item.icon; // 显示 emoji
+            slotEl.classList.add('filled');
+            slotEl.title = `${item.name}\n恢復 ${item.heal} 點生命`; // 鼠标悬停提示
+        } else {
+            itemEl.textContent = ''; // 清空内容
+            slotEl.classList.remove('filled');
+            slotEl.title = '空格';
+        }
+    }
 }
 
 export function updateLeaderboardUI() {
