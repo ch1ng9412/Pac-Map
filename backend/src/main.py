@@ -13,7 +13,8 @@ from pydantic import BaseModel
 from auth import authenticate_google_user, create_access_token, generate_google_auth_url, get_current_user
 from config import settings
 from database import db
-from models import APIResponse, GameScore, LeaderboardEntry, LeaderboardResponse, Token, User
+from map_service import map_service
+from models import APIResponse, GameScore, LeaderboardEntry, LeaderboardResponse, ProcessedMapData, Token, User
 
 # 建立 FastAPI 應用程式
 app = FastAPI(title=settings.APP_NAME, description="Pac-Map 遊戲後端 API", version="1.0.0", debug=settings.DEBUG)
@@ -175,6 +176,72 @@ async def get_my_scores(limit: int = 10, current_user: User = Depends(get_curren
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get user scores: {e!s}"
         )
+
+
+# === 地圖相關路由 ===
+
+
+@app.get("/maps/configs")
+async def get_map_configs():
+    """取得所有地圖配置"""
+    try:
+        configs = [
+            {"index": i, "name": config.name, "center": config.center, "zoom": config.zoom}
+            for i, config in enumerate(map_service.map_configs)
+        ]
+        return {"success": True, "data": configs}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get map configs: {e!s}"
+        ) from e
+
+
+@app.get("/maps/{map_index}/data", response_model=ProcessedMapData)
+async def get_map_data(map_index: int, force_refresh: bool = False):
+    """取得處理後的地圖數據"""
+    try:
+        map_data = await map_service.get_processed_map_data(map_index, force_refresh)
+
+        if not map_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Map with index {map_index} not found or failed to process",
+            )
+
+        return map_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get map data: {e!s}"
+        ) from e
+
+
+@app.post("/maps/{map_index}/refresh")
+async def refresh_map_data(map_index: int):
+    """強制重新處理地圖數據"""
+    try:
+        map_data = await map_service.get_processed_map_data(map_index, force_refresh=True)
+
+        if not map_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Map with index {map_index} not found or failed to process",
+            )
+
+        return {
+            "success": True,
+            "message": f"Map {map_index} data refreshed successfully",
+            "processed_at": map_data.processed_at.isoformat(),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to refresh map data: {e!s}"
+        ) from e
 
 
 if __name__ == "__main__":

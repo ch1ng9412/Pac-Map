@@ -3,6 +3,7 @@ import { soundsReady, setupSounds, playStartSound, playDotSound, playPowerPellet
 import { updateUI, updateLeaderboardUI, updatePacmanIconRotation, showLoadingScreen, hideLoadingScreen } from './ui.js';
 import { stopBackgroundAnimation, initStartScreenBackground } from './backgroundAnimation.js';
 import { fetchRoadData, fetchPOIData, generateRoadNetworkGeneric, findNearestRoadPositionGeneric, drawVisualRoads, getRandomPointInCircle } from './map.js';
+import { loadMapDataFromBackend, checkBackendHealth } from './mapService.js';
 import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual, bfsDistance} from './ai.js';
 import { logToDevConsole } from './devConsole.js';
 import { isLoggedIn, authenticatedFetch } from './auth.js';
@@ -16,16 +17,16 @@ if (bgmAudio) {
     bgmAudio.volume = 0.4; // 设定一个合适的初始音量 (0.0 到 1.0)
 }
 
-export async function initGame() { 
-    stopBackgroundAnimation(); 
+export async function initGame() {
+    stopBackgroundAnimation();
 
     const config = mapConfigs[gameState.currentMapIndex];
-    if (gameState.map) { 
+    if (gameState.map) {
         gameState.map.remove();
-        gameState.map = null; 
+        gameState.map = null;
     }
 
-    gameState.map = L.map('map', { 
+    gameState.map = L.map('map', {
         center: config.center,
         zoom: config.zoom,
         minZoom: MAX_MAP_ZOOM,
@@ -43,24 +44,54 @@ export async function initGame() {
 
     gameState.map.invalidateSize();
 
-    resetGameState(); 
-    showLoadingScreen('正在獲取地圖資料...');
+    resetGameState();
+    showLoadingScreen('正在載入地圖資料...');
 
-    const bounds = config.bounds;
-    const center = config.center; // 获取 center
+    const center = config.center;
 
-    const [roadData, poiData] = await Promise.all([
-    fetchRoadData(bounds),
-    fetchPOIData(bounds, {
-        "historic": "monument",
-        "shop": "convenience",
-        "leisure": "park",
-        "tourism": "hotel",
-        "amenity": "bank|restaurant|cafe|bubble_tea|atm"
-    })
-]);
+    // 嘗試使用後端 API 載入地圖數據
+    const backendAvailable = await checkBackendHealth();
+    let mapLoadSuccess = false;
 
-    await generateRoadNetworkGeneric(bounds, roadData, gameState); 
+    if (backendAvailable) {
+        console.log('後端服務可用，使用預處理的地圖數據');
+        showLoadingScreen('正在從後端載入預處理地圖數據...');
+        mapLoadSuccess = await loadMapDataFromBackend(gameState.currentMapIndex, gameState);
+    }
+
+    // 如果後端不可用或載入失敗，回退到原始方法
+    if (!mapLoadSuccess) {
+        console.log('回退到原始地圖載入方法');
+        showLoadingScreen('正在獲取地圖資料...');
+
+        const bounds = config.bounds;
+        const [roadData, poiData] = await Promise.all([
+            fetchRoadData(bounds),
+            fetchPOIData(bounds, {
+                "historic": "monument",
+                "shop": "convenience",
+                "leisure": "park",
+                "tourism": "hotel",
+                "amenity": "bank|restaurant|cafe|bubble_tea|atm"
+            })
+        ]);
+
+        await generateRoadNetworkGeneric(bounds, roadData, gameState);
+
+        // 設置 POI 數據（如果有的話）
+        if (poiData && poiData.elements) {
+            gameState.pois = poiData.elements.filter(element =>
+                element.type === 'node' && element.lat && element.lon
+            ).map(element => ({
+                id: element.id,
+                type: element.tags?.amenity || element.tags?.shop || element.tags?.historic || element.tags?.leisure || element.tags?.tourism || 'unknown',
+                name: element.tags?.name,
+                lat: element.lat,
+                lng: element.lon,
+                tags: element.tags
+            }));
+        }
+    }
 
     setTimeout(() => {
         hideLoadingScreen();
@@ -69,9 +100,9 @@ export async function initGame() {
             console.error('無法初始化遊戲元素，因為沒有有效的道路位置。');
             return;
         }
-        initGameElements(poiData, center, bounds); 
+        initGameElements(gameState.pois, center, config.bounds);
         startGameCountdown();
-    }, 1000); 
+    }, 1000);
 }
 
 function resetGameState() { 
