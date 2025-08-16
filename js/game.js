@@ -5,6 +5,7 @@ import { stopBackgroundAnimation, initStartScreenBackground } from './background
 import { fetchRoadData, fetchPOIData, generateRoadNetworkGeneric, findNearestRoadPositionGeneric, drawVisualRoads, getRandomPointInCircle } from './map.js';
 import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual, bfsDistance} from './ai.js';
 import { logToDevConsole } from './devConsole.js';
+import { isLoggedIn, authenticatedFetch } from './auth.js';
 
 // FPS 計算相關變數
 let fpsFrameTimes = [];
@@ -109,9 +110,10 @@ function resetGameState() {
         maxHealth: 100
     };
 
-    gameState.score = 0; gameState.gameTime = 600; 
-    gameState.isPaused = false; gameState.isGameOver = false; gameState.isLosingLife = false; 
+    gameState.score = 0; gameState.gameTime = 600;
+    gameState.isPaused = false; gameState.isGameOver = false; gameState.isLosingLife = false;
     gameState.powerMode = false; gameState.dotsCollected = 0;
+    gameState.ghostsEaten = 0; gameState.powerPelletsEaten = 0;
     gameState.ghostSpawnPoints = []; gameState.pacmanLevelStartPoint = null;
     gameState.baseScatterPoints = []; 
     gameState.pacmanMovement = { isMoving: false, startPositionLatLng: null, destinationNodeLatLng: null, totalDistanceToDestinationNode: 0, distanceTraveledThisSegment: 0, lastIntendedDirectionKey: null, currentFacingDirection: 'left' };
@@ -1127,7 +1129,8 @@ function collectItem(item) {
         itemArray = gameState.powerPellets;
         activatePowerMode();
         playPowerPelletSound();
-    } 
+        gameState.powerPelletsEaten++; // 統計能量豆數量
+    }
 
     if (itemArray) {
         const indexInArray = itemArray.indexOf(item);
@@ -1173,7 +1176,8 @@ function eatGhost(ghost) {
     
     playEatGhostSound();
     gameState.score += 150;
-    if (ghostElement) ghostElement.classList.add('ghost-eaten'); 
+    gameState.ghostsEaten++; // 統計吃掉的鬼怪數量
+    if (ghostElement) ghostElement.classList.add('ghost-eaten');
     ghost.movement.isMoving = false;
     
     setTimeout(() => { 
@@ -1344,7 +1348,7 @@ function nextLevel() {
     startGameCountdown();
 }
 
-export function endGame(victory) { 
+export function endGame(victory) {
     gameState.isGameOver = true;
     gameState.canMove = false;
     stopBGM();
@@ -1358,15 +1362,19 @@ export function endGame(victory) {
 
     gameState.pacmanMovement.isMoving = false;
     gameState.pacmanMovement.lastIntendedDirectionKey = null;
-    gameState.ghosts.forEach(g => { if(g.movement) g.movement.isMoving = false; }); 
-    
-    gameState.autoPilotMode = false; 
+    gameState.ghosts.forEach(g => { if(g.movement) g.movement.isMoving = false; });
+
+    gameState.autoPilotMode = false;
     gameState.cleverMode = false;
     gameState.autoPilotPath = [];
     gameState.autoPilotTarget = null;
-    
+
     const finalScore = calculateFinalScore(gameState.score);
     updateLeaderboard(gameState.score);
+
+    // 提交分數到後端（如果已登入）
+    submitScoreToBackend(finalScore, victory);
+
     document.getElementById('finalScore').textContent = finalScore;
     document.getElementById('gameOverTitle').textContent = victory ? '🎉 過關成功!' : ' 遊戲結束';
     document.getElementById('newHighScore').style.display = isNewRecord(finalScore) ? 'block' : 'none';
@@ -1671,10 +1679,137 @@ export function backToMenu() {
     gameState.pacmanMovement.lastIntendedDirectionKey = null; 
     gameState.ghosts.forEach(g => {if(g.movement) g.movement.isMoving = false;}); 
     
-    if (gameState.map) { 
-        gameState.map.remove(); 
-        gameState.map = null; 
+    if (gameState.map) {
+        gameState.map.remove();
+        gameState.map = null;
     } 
 
-    initStartScreenBackground(); 
+    initStartScreenBackground();
+}
+
+/**
+ * 提交分數到後端
+ * @param {number} finalScore - 最終分數
+ * @param {boolean} victory - 是否勝利
+ */
+async function submitScoreToBackend(finalScore, victory) {
+    // 檢查用戶是否已登入
+    if (!isLoggedIn()) {
+        console.log('ℹ️ 用戶未登入，跳過分數提交');
+        return;
+    }
+
+    try {
+        console.log('📊 開始提交分數到後端...', {
+            score: finalScore,
+            victory: victory,
+            level: gameState.level,
+            mapIndex: gameState.currentMapIndex
+        });
+
+        // 計算遊戲統計數據
+        const gameStats = calculateGameStats();
+
+        // 準備分數數據
+        const scoreData = {
+            score: finalScore,
+            level: gameState.level,
+            map_index: gameState.currentMapIndex || 0,
+            survival_time: Math.max(0, 600 - gameState.gameTime), // 存活時間（秒）
+            dots_collected: gameState.dotsCollected || 0,
+            ghosts_eaten: gameStats.ghostsEaten || 0
+        };
+
+        console.log('📤 提交分數數據:', scoreData);
+
+        // 發送到後端
+        const response = await authenticatedFetch('http://localhost:8000/game/score', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(scoreData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ 分數提交成功:', result);
+
+        // 顯示成功訊息
+        showScoreSubmissionMessage('分數已成功提交到排行榜！', 'success');
+
+        // 更新排行榜 UI
+        setTimeout(() => {
+            updateLeaderboardUI();
+        }, 1000);
+
+    } catch (error) {
+        console.error('❌ 分數提交失敗:', error);
+
+        // 顯示錯誤訊息
+        if (error.message.includes('登入已過期')) {
+            showScoreSubmissionMessage('登入已過期，請重新登入後再試', 'error');
+        } else {
+            showScoreSubmissionMessage('分數提交失敗，但已保存到本地記錄', 'warning');
+        }
+    }
+}
+
+/**
+ * 計算遊戲統計數據
+ */
+function calculateGameStats() {
+    // 這裡可以添加更多統計數據的計算
+    // 目前先返回基本數據
+    return {
+        ghostsEaten: gameState.ghostsEaten || 0,
+        powerPelletsEaten: gameState.powerPelletsEaten || 0,
+        totalGameTime: 600 - gameState.gameTime
+    };
+}
+
+/**
+ * 顯示分數提交訊息
+ * @param {string} message - 訊息內容
+ * @param {string} type - 訊息類型 ('success', 'error', 'warning')
+ */
+function showScoreSubmissionMessage(message, type = 'info') {
+    // 創建訊息元素
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `score-submission-message ${type}`;
+    messageDiv.textContent = message;
+
+    // 添加樣式
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 6px;
+        color: white;
+        font-weight: bold;
+        z-index: 10000;
+        transition: opacity 0.3s ease;
+        max-width: 300px;
+        word-wrap: break-word;
+        ${type === 'success' ? 'background-color: #28a745;' : ''}
+        ${type === 'error' ? 'background-color: #dc3545;' : ''}
+        ${type === 'warning' ? 'background-color: #ffc107; color: #212529;' : ''}
+        ${type === 'info' ? 'background-color: #17a2b8;' : ''}
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    // 5秒後自動移除
+    setTimeout(() => {
+        messageDiv.style.opacity = '0';
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 300);
+    }, 5000);
 }
