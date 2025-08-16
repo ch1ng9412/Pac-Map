@@ -13,8 +13,21 @@ from pydantic import BaseModel
 from auth import authenticate_google_user, create_access_token, generate_google_auth_url, get_current_user
 from config import settings
 from database import db
+from game_validation_service import game_validation_service
 from map_service import map_service
-from models import APIResponse, GameScore, LeaderboardEntry, LeaderboardResponse, ProcessedMapData, Token, User
+from models import (
+    APIResponse,
+    GameEventValidationRequest,
+    GameEventValidationResponse,
+    GameScore,
+    GameSessionEndRequest,
+    GameSessionStartRequest,
+    LeaderboardEntry,
+    LeaderboardResponse,
+    ProcessedMapData,
+    Token,
+    User,
+)
 
 # 建立 FastAPI 應用程式
 app = FastAPI(title=settings.APP_NAME, description="Pac-Map 遊戲後端 API", version="1.0.0", debug=settings.DEBUG)
@@ -241,6 +254,100 @@ async def refresh_map_data(map_index: int):
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to refresh map data: {e!s}"
+        ) from e
+
+
+# === 遊戲驗證相關路由 ===
+
+
+@app.post("/game/session/start")
+async def start_game_session(request: GameSessionStartRequest, current_user: User = Depends(get_current_user)):
+    """開始新的遊戲會話"""
+    try:
+        session_id = game_validation_service.start_game_session(current_user.id, request)
+        return {"success": True, "session_id": session_id}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to start game session: {e!s}"
+        ) from e
+
+
+@app.post("/game/session/start-test")
+async def start_game_session_test(request: GameSessionStartRequest):
+    """開始新的遊戲會話（測試用，無需認證）"""
+    try:
+        session_id = game_validation_service.start_game_session(999, request)  # 使用測試用戶ID
+        return {"success": True, "session_id": session_id}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to start game session: {e!s}"
+        ) from e
+
+
+@app.post("/game/event/validate", response_model=GameEventValidationResponse)
+async def validate_game_event(request: GameEventValidationRequest, current_user: User = Depends(get_current_user)):
+    """驗證遊戲事件"""
+    try:
+        response = game_validation_service.validate_game_event(request.session_id, request.event)
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to validate game event: {e!s}"
+        ) from e
+
+
+@app.post("/game/session/end")
+async def end_game_session(request: GameSessionEndRequest, current_user: User = Depends(get_current_user)):
+    """結束遊戲會話"""
+    try:
+        is_valid = game_validation_service.end_game_session(request.session_id, request)
+
+        # 如果驗證通過，創建分數記錄
+        if is_valid:
+            game_score = GameScore(
+                score=request.final_score,
+                level=1,  # 可以從會話中獲取
+                map_index=0,  # 可以從會話中獲取
+                survival_time=request.survival_time,
+                dots_collected=request.dots_collected,
+                ghosts_eaten=request.ghosts_eaten,
+            )
+            score_record = db.create_score(current_user.id, game_score)
+
+            return {
+                "success": True,
+                "is_valid": is_valid,
+                "score_id": score_record.id,
+                "message": "遊戲會話結束，分數已記錄",
+            }
+        else:
+            return {"success": True, "is_valid": is_valid, "message": "遊戲會話結束，但驗證失敗，分數未記錄"}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to end game session: {e!s}"
+        ) from e
+
+
+@app.get("/game/session/{session_id}/stats")
+async def get_session_stats(session_id: str, current_user: User = Depends(get_current_user)):
+    """獲取遊戲會話統計"""
+    try:
+        stats = game_validation_service.get_session_stats(session_id)
+        if not stats:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game session not found")
+
+        # 檢查會話是否屬於當前用戶
+        if stats["user_id"] != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+        return {"success": True, "data": stats}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get session stats: {e!s}"
         ) from e
 
 

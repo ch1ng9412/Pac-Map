@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Test</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #map { height: 400px; width: 100%; margin: 20px 0; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Pac-Map 簡單測試</h1>
+    <div id="results"></div>
+    <div id="map"></div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        const results = document.getElementById('results');
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+        
+        // 測試 1: Leaflet 地圖
+        try {
+            addResult('測試 1: 初始化 Leaflet 地圖...', 'info');
+            const map = L.map('map').setView([25.0330, 121.5654], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            addResult('✅ Leaflet 地圖初始化成功', 'success');
+        } catch (error) {
+            addResult('❌ Leaflet 地圖初始化失敗: ' + error.message, 'error');
+        }
+        
+        // 測試 2: 後端連接
+        async function testBackend() {
+            try {
+                addResult('測試 2: 檢查後端連接...', 'info');
+                const response = await fetch('http://localhost:8000/maps/configs');
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('✅ 後端連接成功，地圖配置數量: ' + data.data.length, 'success');
+                } else {
+                    addResult('❌ 後端響應錯誤: ' + response.status, 'error');
+                }
+            } catch (error) {
+                addResult('❌ 後端連接失敗: ' + error.message, 'error');
+            }
+        }
+        
+        // 測試 3: 模組載入
+        async function testModules() {
+            try {
+                addResult('測試 3: 檢查模組載入...', 'info');
+                
+                // 測試 gameState
+                const gameState = await import('./js/gameState.js');
+                addResult('✅ gameState.js 載入成功', 'success');
+                
+                // 測試 mapService
+                const mapService = await import('./js/mapService.js');
+                addResult('✅ mapService.js 載入成功', 'success');
+                
+                // 測試 gameValidationService
+                const validationService = await import('./js/gameValidationService.js');
+                addResult('✅ gameValidationService.js 載入成功', 'success');
+                
+            } catch (error) {
+                addResult('❌ 模組載入失敗: ' + error.message, 'error');
+            }
+        }
+        
+        // 測試 4: 地圖數據載入
+        async function testMapData() {
+            try {
+                addResult('測試 4: 檢查地圖數據載入...', 'info');
+                const response = await fetch('http://localhost:8000/maps/0/data');
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('✅ 地圖數據載入成功，路網段數: ' + data.road_network.length, 'success');
+                } else {
+                    addResult('❌ 地圖數據載入失敗: ' + response.status, 'error');
+                }
+            } catch (error) {
+                addResult('❌ 地圖數據載入錯誤: ' + error.message, 'error');
+            }
+        }
+        
+        // 執行所有測試
+        async function runAllTests() {
+            await testBackend();
+            await testModules();
+            await testMapData();
+            addResult('🎉 所有測試完成！', 'info');
+        }
+        
+        // 延遲執行測試，確保頁面載入完成
+        setTimeout(runAllTests, 1000);
+    </script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import { updateUI, updateLeaderboardUI, updatePacmanIconRotation, showLoadingScr
 import { stopBackgroundAnimation, initStartScreenBackground } from './backgroundAnimation.js';
 import { fetchRoadData, fetchPOIData, generateRoadNetworkGeneric, findNearestRoadPositionGeneric, drawVisualRoads, getRandomPointInCircle } from './map.js';
 import { loadMapDataFromBackend, checkBackendHealth } from './mapService.js';
+import { gameValidationService, reportGameStart, reportDotCollected, reportPowerPelletCollected, reportGhostEaten, reportLifeLost, reportGameEnd } from './gameValidationService.js';
 import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual, bfsDistance} from './ai.js';
 import { logToDevConsole } from './devConsole.js';
 import { isLoggedIn, authenticatedFetch } from './auth.js';
@@ -702,19 +703,19 @@ function generateDots(bounds) {
     updateUI();
 }
 
-function startGameCountdown() { 
+function startGameCountdown() {
     const countdown = document.getElementById('countdown');
     countdown.style.display = 'block';
     let count = 3;
     gameState.canMove = false;
-    const countInterval = setInterval(() => {
+    const countInterval = setInterval(async () => {
         countdown.textContent = count;
         count--;
         if (count < 0) {
             clearInterval(countInterval);
             countdown.style.display = 'none';
             gameState.canMove = true;
-            startGame();
+            await startGame();
         }
     }, 1000);
 }
@@ -756,6 +757,17 @@ async function startGame() {
     }
 
     gameState.gameStartTime = performance.now();
+
+    // 啟動遊戲驗證會話
+    if (isLoggedIn()) {
+        try {
+            await gameValidationService.startGameSession(gameState.currentMapIndex, gameState.gameTime);
+            await reportGameStart(gameState);
+        } catch (error) {
+            console.warn('遊戲驗證啟動失敗，繼續遊戲:', error);
+        }
+    }
+
     gameState.gameTimer = setInterval(() => {
         if (!gameState.isPaused && !gameState.isGameOver) {
             gameState.gameTime--;
@@ -1149,18 +1161,28 @@ export function useBackpackItem(slotIndex) {
     }
 }
 
-function collectItem(item) { 
+function collectItem(item) {
+    const scoreBefore = gameState.score;
     gameState.score += item.points;
+
     if(gameState.map.hasLayer(item)) gameState.map.removeLayer(item);
     let itemArray;
     if (item.type === 'dot') {
         itemArray = gameState.dots;
         playDotSound();
+        // 報告豆子收集事件
+        if (isLoggedIn()) {
+            reportDotCollected(gameState, scoreBefore, item.points).catch(console.warn);
+        }
     } else if (item.type === 'power') {
         itemArray = gameState.powerPellets;
         activatePowerMode();
         playPowerPelletSound();
         gameState.powerPelletsEaten++; // 統計能量豆數量
+        // 報告能量豆收集事件
+        if (isLoggedIn()) {
+            reportPowerPelletCollected(gameState, scoreBefore, item.points).catch(console.warn);
+        }
     }
 
     if (itemArray) {
@@ -1169,8 +1191,8 @@ function collectItem(item) {
     }
     gameState.dotsCollected++;
     updateUI();
-    if (gameState.dots.length === 0 && gameState.powerPellets.length === 0 ) { 
-         if (gameState.totalDots > 0) nextLevel(); 
+    if (gameState.dots.length === 0 && gameState.powerPellets.length === 0 ) {
+         if (gameState.totalDots > 0) nextLevel();
     }
 }
 
@@ -1200,26 +1222,33 @@ function deactivatePowerMode() {
     });
 }
 
-function eatGhost(ghost) { 
+function eatGhost(ghost) {
     if (!ghost || !ghost.marker) return;
     const ghostElement = ghost.marker.getElement();
-    if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return; 
-    
+    if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return;
+
     playEatGhostSound();
+    const scoreBefore = gameState.score;
     gameState.score += 150;
     gameState.ghostsEaten++; // 統計吃掉的鬼怪數量
+
+    // 報告吃鬼事件
+    if (isLoggedIn()) {
+        reportGhostEaten(gameState, scoreBefore, 150).catch(console.warn);
+    }
+
     if (ghostElement) ghostElement.classList.add('ghost-eaten');
     ghost.movement.isMoving = false;
-    
-    setTimeout(() => { 
-        if (ghostElement) ghostElement.classList.remove('ghost-eaten'); 
-        if (ghost.marker && ghost.originalPos) { 
-            ghost.marker.setLatLng(ghost.originalPos); 
-            
+
+    setTimeout(() => {
+        if (ghostElement) ghostElement.classList.remove('ghost-eaten');
+        if (ghost.marker && ghost.originalPos) {
+            ghost.marker.setLatLng(ghost.originalPos);
+
             // 判斷應該恢復成害怕圖示還是正常圖示
             const iconToSet = createGhostIcon(ghost, gameState.powerMode); // <--- 使用新函數
             ghost.marker.setIcon(iconToSet);
-        } 
+        }
     }, 500);
     updateUI();
 }
@@ -1292,9 +1321,19 @@ function loseLife() {
 
     playDeathSound();
 
+    // 記錄事件前的狀態
+    const livesBefore = gameState.healthSystem.lives;
+    const healthBefore = gameState.healthSystem.currentHealth;
+
     // 数据处理
     gameState.healthSystem.currentHealth = 0;
     gameState.healthSystem.lives--;
+
+    // 報告失去生命事件
+    if (isLoggedIn()) {
+        reportLifeLost(gameState, livesBefore, healthBefore).catch(console.warn);
+    }
+
     updateUI();
 
     if (gameState.healthSystem.lives <= 0) {
@@ -1372,14 +1411,16 @@ function nextLevel() {
     });
     gameState.ghosts = [];
 
-    initGameElements(); 
+    // 使用當前地圖配置重新初始化遊戲元素
+    const config = mapConfigs[gameState.currentMapIndex];
+    initGameElements(gameState.pois, config.center, config.bounds);
     deactivatePowerMode();
     updateUI();
     if(gameState.pacman) updatePacmanIconRotation();
     startGameCountdown();
 }
 
-export function endGame(victory) {
+export async function endGame(victory) {
     gameState.isGameOver = true;
     gameState.canMove = false;
     stopBGM();
@@ -1402,6 +1443,23 @@ export function endGame(victory) {
 
     const finalScore = calculateFinalScore(gameState.score);
     updateLeaderboard(gameState.score);
+
+    // 報告遊戲結束事件並結束驗證會話
+    if (isLoggedIn()) {
+        try {
+            await reportGameEnd(gameState, victory);
+            const survivalTime = Math.max(0, 600 - gameState.gameTime);
+            await gameValidationService.endGameSession(
+                finalScore,
+                victory,
+                survivalTime,
+                gameState.dotsCollected,
+                gameState.ghostsEaten
+            );
+        } catch (error) {
+            console.warn('遊戲驗證結束失敗:', error);
+        }
+    }
 
     // 提交分數到後端（如果已登入）
     submitScoreToBackend(finalScore, victory);
@@ -1677,7 +1735,9 @@ export function restartGame() {
     document.getElementById('gameOverScreen').style.display = 'none';
     document.getElementById('gameUI').style.display = 'none';
     gameState.level = 1;
-    initGame();
+    initGame().catch(error => {
+        console.error('重新開始遊戲失敗:', error);
+    });
 }
 
 export function backToMenu() { 
@@ -1715,7 +1775,9 @@ export function backToMenu() {
         gameState.map = null;
     } 
 
-    initStartScreenBackground();
+    initStartScreenBackground().catch(error => {
+        console.error('背景動畫重新初始化失敗:', error);
+    });
 }
 
 /**
