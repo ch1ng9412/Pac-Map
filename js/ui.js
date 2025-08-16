@@ -69,17 +69,60 @@ export function updateUI() {
     }
 }
 
-export function updateLeaderboardUI() {
+export async function updateLeaderboardUI() {
     const list = document.getElementById('leaderboardList');
-    list.innerHTML = '';
-    if (leaderboard.length === 0) {
-        list.innerHTML = '<li>暫無記錄</li>';
-    } else {
-        leaderboard.forEach(s => {
-            const li = document.createElement('li');
-            li.textContent = `${s} 分`;
-            list.appendChild(li);
-        });
+    list.innerHTML = '<li>載入中...</li>';
+
+    try {
+        // 從後端 API 獲取排行榜數據
+        const response = await fetch('http://localhost:8000/game/leaderboard?limit=10');
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        list.innerHTML = '';
+
+        if (!data.success || data.data.length === 0) {
+            list.innerHTML = '<li>暫無記錄</li>';
+        } else {
+            data.data.forEach((entry, index) => {
+                const li = document.createElement('li');
+
+                // 創建排行榜條目的 HTML
+                li.innerHTML = `
+                    <div class="leaderboard-entry">
+                        <span class="rank">#${entry.rank}</span>
+                        <div class="player-info">
+                            ${entry.user_picture ? `<img src="${entry.user_picture}" alt="頭像" class="player-avatar">` : ''}
+                            <span class="player-name">${entry.user_name}</span>
+                        </div>
+                        <div class="score-info">
+                            <span class="score">${entry.score} 分</span>
+                            <span class="map-name">${entry.map_name}</span>
+                        </div>
+                    </div>
+                `;
+
+                list.appendChild(li);
+            });
+        }
+
+    } catch (error) {
+        console.error('載入排行榜失敗:', error);
+        list.innerHTML = '<li>載入失敗，請稍後再試</li>';
+
+        // 如果後端不可用，回退到本地排行榜
+        if (leaderboard.length > 0) {
+            list.innerHTML = '';
+            leaderboard.forEach(s => {
+                const li = document.createElement('li');
+                li.textContent = `${s} 分 (本地記錄)`;
+                list.appendChild(li);
+            });
+        }
     }
 }
 

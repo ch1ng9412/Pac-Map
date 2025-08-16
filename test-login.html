@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>登入測試</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧪 Google 登入測試</h1>
+
+    <div class="test-section">
+      <h2>1. Google Sign-In 載入狀態</h2>
+      <div id="googleStatus" class="status info">檢查中...</div>
+    </div>
+
+    <div class="test-section">
+      <h2>2. 後端連線狀態</h2>
+      <div id="backendStatus" class="status info">檢查中...</div>
+    </div>
+
+    <div class="test-section">
+      <h2>3. Google 登入按鈕</h2>
+      <div
+        id="g_id_onload"
+        data-client_id="225638092115-2rjm7fr2me7k9k420v92m329sk6s3ho0.apps.googleusercontent.com"
+        data-callback="handleCredentialResponse"
+        data-auto_prompt="false"
+        data-cancel_on_tap_outside="false"
+      ></div>
+      <div class="g_id_signin" data-type="standard"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>4. 登入結果</h2>
+      <div id="loginResult" class="status info">等待登入...</div>
+      <div id="userInfo" style="display: none">
+        <h3>用戶資訊：</h3>
+        <pre id="userDetails"></pre>
+      </div>
+    </div>
+
+    <script>
+      // 檢查 Google Sign-In 載入狀態
+      function checkGoogleSignIn() {
+        const statusEl = document.getElementById("googleStatus");
+
+        if (typeof google !== "undefined" && google.accounts) {
+          statusEl.textContent = "✅ Google Sign-In 已載入";
+          statusEl.className = "status success";
+        } else {
+          statusEl.textContent = "❌ Google Sign-In 未載入";
+          statusEl.className = "status error";
+          setTimeout(checkGoogleSignIn, 500);
+        }
+      }
+
+      // 檢查後端連線狀態
+      async function checkBackend() {
+        const statusEl = document.getElementById("backendStatus");
+
+        try {
+          const response = await fetch("http://localhost:8000/health");
+          if (response.ok) {
+            statusEl.textContent = "✅ 後端連線正常";
+            statusEl.className = "status success";
+          } else {
+            statusEl.textContent = `❌ 後端回應錯誤: ${response.status}`;
+            statusEl.className = "status error";
+          }
+        } catch (error) {
+          statusEl.textContent = `❌ 後端連線失敗: ${error.message}`;
+          statusEl.className = "status error";
+        }
+      }
+
+      // Google 登入回調函數
+      window.handleCredentialResponse = async function (response) {
+        console.log("收到 Google 回應:", response);
+
+        // 防止任何可能的頁面重新載入
+        try {
+          if (window.event) {
+            window.event.preventDefault();
+            window.event.stopPropagation();
+          }
+        } catch (e) {
+          // 忽略錯誤
+        }
+
+        const resultEl = document.getElementById("loginResult");
+        const userInfoEl = document.getElementById("userInfo");
+        const userDetailsEl = document.getElementById("userDetails");
+
+        try {
+          resultEl.textContent = "正在驗證...";
+          resultEl.className = "status info";
+
+          // 發送到後端驗證
+          const loginResponse = await fetch(
+            "http://localhost:8000/auth/google/login",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                id_token: response.credential,
+              }),
+            }
+          );
+
+          if (!loginResponse.ok) {
+            throw new Error(
+              `HTTP ${loginResponse.status}: ${await loginResponse.text()}`
+            );
+          }
+
+          const data = await loginResponse.json();
+
+          resultEl.textContent = "✅ 登入成功！";
+          resultEl.className = "status success";
+
+          userInfoEl.style.display = "block";
+          userDetailsEl.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          console.error("登入錯誤:", error);
+          resultEl.textContent = `❌ 登入失敗: ${error.message}`;
+          resultEl.className = "status error";
+        }
+      };
+
+      // 頁面載入時執行檢查
+      window.addEventListener("load", () => {
+        checkGoogleSignIn();
+        checkBackend();
+      });
+    </script>
+  </body>
+</html>

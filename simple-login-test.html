@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>簡單登入測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        
+        .login-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #007bff;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        
+        pre {
+            text-align: left;
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        .manual-token {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fff;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 簡單登入測試</h1>
+    
+    <div class="status info">
+        <strong>目標：</strong>繞過重導向問題，直接測試後端登入功能
+    </div>
+    
+    <div class="login-section">
+        <h2>方法 1：使用 Google OAuth Playground</h2>
+        <p>我們可以使用 Google 的官方工具來獲取 ID Token，然後直接測試後端：</p>
+        
+        <ol style="text-align: left;">
+            <li>前往 <a href="https://developers.google.com/oauthplayground/" target="_blank">Google OAuth 2.0 Playground</a></li>
+            <li>在左側選擇 "Google OAuth2 API v2"</li>
+            <li>勾選 "https://www.googleapis.com/auth/userinfo.email" 和 "https://www.googleapis.com/auth/userinfo.profile"</li>
+            <li>點擊 "Authorize APIs"</li>
+            <li>完成 Google 登入</li>
+            <li>點擊 "Exchange authorization code for tokens"</li>
+            <li>複製 "id_token" 的值</li>
+        </ol>
+        
+        <div class="manual-token">
+            <h3>貼上您的 ID Token：</h3>
+            <textarea id="manualToken" placeholder="貼上從 Google OAuth Playground 獲得的 id_token..."></textarea>
+            <button onclick="testManualToken()">測試 Token</button>
+        </div>
+    </div>
+    
+    <div class="login-section">
+        <h2>方法 2：檢查 Google Cloud Console 設定</h2>
+        <p>確認您的設定是否正確：</p>
+        
+        <div style="text-align: left;">
+            <h3>📋 檢查清單：</h3>
+            <ul>
+                <li>✅ 已授權的 JavaScript 來源：<code>http://localhost:5500</code></li>
+                <li>✅ 已授權的重新導向 URI：<code>http://localhost:5500/debug-google-oauth.html</code></li>
+                <li>✅ OAuth 同意畫面已設定</li>
+                <li>✅ 您的 Gmail 地址已加入測試使用者</li>
+            </ul>
+            
+            <h3>⏰ 等待時間：</h3>
+            <p>Google Cloud Console 的設定變更需要 <strong>5-10 分鐘</strong> 才會生效。</p>
+        </div>
+        
+        <button onclick="checkGoogleSettings()">檢查當前設定</button>
+    </div>
+    
+    <div class="login-section">
+        <h2>方法 3：後端直接測試</h2>
+        <p>測試後端是否正常運作：</p>
+        <button onclick="testBackend()">測試後端健康狀態</button>
+        <button onclick="testGoogleAuthURL()">測試 Google Auth URL</button>
+    </div>
+    
+    <div id="results" style="margin-top: 30px;">
+        <h2>📊 測試結果</h2>
+        <div id="resultContent">
+            <p>等待測試...</p>
+        </div>
+    </div>
+
+    <script>
+        function logResult(title, status, data) {
+            const resultContent = document.getElementById('resultContent');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `status ${status}`;
+            resultDiv.innerHTML = `
+                <strong>[${timestamp}] ${title}:</strong><br>
+                <pre>${typeof data === 'object' ? JSON.stringify(data, null, 2) : data}</pre>
+            `;
+            
+            resultContent.appendChild(resultDiv);
+            resultContent.scrollTop = resultContent.scrollHeight;
+        }
+        
+        async function testManualToken() {
+            const token = document.getElementById('manualToken').value.trim();
+            
+            if (!token) {
+                logResult('手動 Token 測試', 'error', '請先貼上 ID Token');
+                return;
+            }
+            
+            try {
+                logResult('手動 Token 測試', 'info', '發送到後端驗證...');
+                
+                const response = await fetch('http://localhost:8000/auth/google/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id_token: token
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                logResult('手動 Token 測試', 'success', data);
+                
+            } catch (error) {
+                logResult('手動 Token 測試', 'error', error.message);
+            }
+        }
+        
+        async function testBackend() {
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    logResult('後端健康檢查', 'success', data);
+                } else {
+                    logResult('後端健康檢查', 'error', `HTTP ${response.status}: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                logResult('後端健康檢查', 'error', error.message);
+            }
+        }
+        
+        async function testGoogleAuthURL() {
+            try {
+                const response = await fetch('http://localhost:8000/auth/google/url');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    logResult('Google Auth URL', 'success', data);
+                } else {
+                    const errorText = await response.text();
+                    logResult('Google Auth URL', 'error', `HTTP ${response.status}: ${errorText}`);
+                }
+            } catch (error) {
+                logResult('Google Auth URL', 'error', error.message);
+            }
+        }
+        
+        function checkGoogleSettings() {
+            const settings = {
+                clientId: '225638092115-2rjm7fr2me7k9k420v92m329sk6s3ho0.apps.googleusercontent.com',
+                currentURL: window.location.href,
+                requiredJSOrigins: [
+                    'http://localhost:5500',
+                    'http://127.0.0.1:5500'
+                ],
+                requiredRedirectURIs: [
+                    'http://localhost:5500/debug-google-oauth.html',
+                    'http://localhost:5500/simple-login-test.html',
+                    'http://localhost:5500/index.html',
+                    'http://localhost:5500/',
+                    'http://localhost:8000/auth/google/callback'
+                ],
+                note: '請確認以上所有 URI 都已添加到 Google Cloud Console 中'
+            };
+            
+            logResult('Google 設定檢查', 'info', settings);
+        }
+        
+        // 頁面載入時自動檢查後端
+        window.addEventListener('load', () => {
+            testBackend();
+        });
+    </script>
+</body>
+</html>

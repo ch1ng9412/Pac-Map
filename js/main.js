@@ -4,11 +4,31 @@ import { updateLeaderboardUI } from './ui.js';
 import { initGame, pauseGame, resumeGame, tryStartMovementInDirection, restartGame, backToMenu, useBackpackItem} from './game.js';
 import { initStartScreenBackground } from './backgroundAnimation.js';
 import { toggleDevConsole, setupDevConsoleListeners } from './devConsole.js';
+import { initAuth } from './auth.js';
 
-document.addEventListener('DOMContentLoaded', () => { 
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOM 載入完成，開始初始化...');
+
     // --- Initial Setup ---
     setupSounds();
     updateLeaderboardUI();
+
+    // 初始化認證系統
+    console.log('🔐 初始化認證系統...');
+    initAuth();
+
+    // 等待 Google Sign-In SDK 載入後再次初始化
+    setTimeout(() => {
+        console.log('🔄 延遲重新初始化認證系統...');
+        initAuth();
+
+        // 檢查 handleGoogleLogin 是否可用
+        if (typeof window.handleGoogleLogin === 'function') {
+            console.log('✅ handleGoogleLogin 函數可用');
+        } else {
+            console.error('❌ handleGoogleLogin 函數不可用');
+        }
+    }, 1000);
     
     // Set initial screen states
     document.getElementById('startScreen').style.display = 'flex';

@@ -48,11 +48,56 @@ Using a modern Python project template leveraging `uv` for dependency management
    uv add <package_name>
    # Example: uv add pandas requests 可以安裝 pandas 和 requests 套件
    ```
-5. Run Code:
+5. 設定環境變數:
    ```bash
-   uv run src/main.py      # 使用虛擬環境執行 src/main.py
-   uv run jupyter lab      # 使用虛擬環境執行 Jupyterlab
+   # 複製環境變數範例檔案
+   cp .env.example .env
+
+   # 編輯 .env 檔案，填入你的 Google OAuth 設定
+   # 請參考下方的 "Google OAuth 設定" 章節
    ```
+
+6. Run Code:
+   ```bash
+   # 啟動後端伺服器
+   uv run start_server.py
+
+   # 或者直接執行 main.py
+   uv run src/main.py
+
+   # 執行 Jupyter Lab
+   uv run jupyter lab
+   ```
+
+## Google OAuth 設定
+
+1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
+2. 建立新專案或選擇現有專案
+3. 啟用 Google+ API 和 Google OAuth2 API
+4. 建立 OAuth 2.0 憑證：
+   - 前往「憑證」頁面
+   - 點擊「建立憑證」→「OAuth 2.0 用戶端 ID」
+   - 應用程式類型選擇「網頁應用程式」
+   - 已授權的重新導向 URI 加入：
+     - `http://localhost:8000/auth/google/callback`
+     - `http://127.0.0.1:8000/auth/google/callback`
+5. 複製 Client ID 和 Client Secret 到 `.env` 檔案
+
+## API 端點
+
+啟動伺服器後，可以在以下位址查看 API 文件：
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### 主要端點：
+- `GET /` - API 狀態檢查
+- `GET /health` - 健康檢查
+- `GET /auth/google/url` - 取得 Google OAuth 認證 URL
+- `POST /auth/google/login` - Google 登入
+- `GET /auth/me` - 取得當前用戶資訊
+- `POST /game/score` - 提交遊戲分數
+- `GET /game/leaderboard` - 取得排行榜
+- `GET /game/my-scores` - 取得我的分數記錄
 
 ## Recommanded VSCode/Cursor Extension
 - Must-have

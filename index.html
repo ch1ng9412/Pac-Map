@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Cross-Origin-Opener-Policy"
+      content="same-origin-allow-popups"
+    />
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none" />
     <title>OpenStreetMap 小精靈遊戲</title>
     <link
       rel="stylesheet"
@@ -44,28 +49,28 @@
       }
 
       .game-container {
-          position: relative;
-          width: 100vw;
-          height: 100vh;
-          background-color: #000; /* 确保背景是黑色的 */
-          
-          /* 使用 Flexbox 来让我们的游戏视口居中 */
-          display: flex;
-          justify-content: center;
-          align-items: center;
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        background-color: #000; /* 确保背景是黑色的 */
+
+        /* 使用 Flexbox 来让我们的游戏视口居中 */
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
       #game-viewport {
-          position: relative; /* 为内部的 #map 提供定位上下文 */
-          width: 100%;
-          height: 100%;
-          max-width: 100vw;
-          max-height: 100vh;
-          
-          /* *** 核心：设定固定的宽高比 *** */
-          /* 例如，我们设定一个 16:9 的宽高比 */
-          aspect-ratio: 16 / 9; 
-          
-          /* 
+        position: relative; /* 为内部的 #map 提供定位上下文 */
+        width: 100%;
+        height: 100%;
+        max-width: 100vw;
+        max-height: 100vh;
+
+        /* *** 核心：设定固定的宽高比 *** */
+        /* 例如，我们设定一个 16:9 的宽高比 */
+        aspect-ratio: 16 / 9;
+
+        /* 
           *  为了处理极端情况（例如一个非常窄的屏幕），
           *  我们需要确保视口本身不会超出屏幕。
           *  这可以通过 @media 查询或更复杂的 JS 来实现，
@@ -75,12 +80,12 @@
 
       /* 3. 修改 #map 的样式 */
       #map {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          /* 其他样式保持不变 */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        /* 其他样式保持不变 */
       }
 
       #map.fading-to-black {
@@ -684,42 +689,42 @@
         }
       }
       .food-icon {
-          font-size: 20px;
-          text-align: center;
-          line-height: 24px;
-          text-shadow: 0 0 5px white; /* 给 emoji 加一点光晕 */
+        font-size: 20px;
+        text-align: center;
+        line-height: 24px;
+        text-shadow: 0 0 5px white; /* 给 emoji 加一点光晕 */
       }
       .backpack-container {
-          position: absolute;
-          bottom: 20px;
-          left: 20px; /* 放在左下角 */
-          display: flex; /* 横向排列 */
-          gap: 10px; /* 格子之间的间距 */
-          z-index: 1000;
-          display: none; 
+        position: absolute;
+        bottom: 20px;
+        left: 20px; /* 放在左下角 */
+        display: flex; /* 横向排列 */
+        gap: 10px; /* 格子之间的间距 */
+        z-index: 1000;
+        display: none;
       }
       .backpack-slot {
-          width: 60px;
-          height: 60px;
-          background-color: rgba(0, 0, 0, 0.7);
-          border: 2px solid #555;
-          border-radius: 5px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          position: relative;
-          font-size: 28px; /* emoji 的大小 */
+        width: 60px;
+        height: 60px;
+        background-color: rgba(0, 0, 0, 0.7);
+        border: 2px solid #555;
+        border-radius: 5px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        font-size: 28px; /* emoji 的大小 */
       }
       .slot-key {
-          position: absolute;
-          top: 2px;
-          left: 4px;
-          font-size: 12px;
-          color: #ccc;
-          font-family: 'Cubic 11', cursive;
+        position: absolute;
+        top: 2px;
+        left: 4px;
+        font-size: 12px;
+        color: #ccc;
+        font-family: "Cubic 11", cursive;
       }
       .backpack-slot.filled {
-          border-color: #ffff00;
+        border-color: #ffff00;
       }
       .dev-console {
         position: absolute;
@@ -756,6 +761,128 @@
         outline: none;
         border-color: #0f0;
       }
+
+      /* 用戶認證區域樣式 */
+      .user-auth-section {
+        margin: 20px 0;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        border: 2px solid #ffff00;
+        border-radius: 10px;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .login-prompt {
+        text-align: center;
+      }
+
+      .login-prompt p {
+        color: #fff;
+        margin-bottom: 15px;
+        font-size: clamp(0.9rem, 3vw, 1.1rem);
+      }
+
+      .user-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px;
+        background: rgba(255, 255, 0, 0.1);
+        border-radius: 8px;
+      }
+
+      .user-avatar img {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid #ffff00;
+      }
+
+      .user-details {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .user-details span {
+        color: #ffff00;
+        font-weight: bold;
+        font-size: 1.1rem;
+      }
+
+      .logout-btn {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        align-self: flex-start;
+      }
+
+      .logout-btn:hover {
+        background-color: #c82333;
+      }
+
+      /* 排行榜樣式優化 */
+      .leaderboard-entry {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 0, 0.2);
+      }
+
+      .leaderboard-entry:last-child {
+        border-bottom: none;
+      }
+
+      .rank {
+        font-weight: bold;
+        color: #ffff00;
+        min-width: 40px;
+      }
+
+      .player-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        margin: 0 10px;
+      }
+
+      .player-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 1px solid #ffff00;
+      }
+
+      .player-name {
+        color: #fff;
+        font-weight: normal;
+      }
+
+      .score-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        text-align: right;
+      }
+
+      .score {
+        color: #ffff00;
+        font-weight: bold;
+      }
+
+      .map-name {
+        color: #ccc;
+        font-size: 0.8rem;
+      }
     </style>
   </head>
   <body>
@@ -771,18 +898,18 @@
 
       <div id="backpack-ui" class="backpack-container">
         <div class="backpack-slot" id="slot-0">
-            <span class="slot-key">1</span>
-            <span class="slot-item"></span>
+          <span class="slot-key">1</span>
+          <span class="slot-item"></span>
         </div>
         <div class="backpack-slot" id="slot-1">
-            <span class="slot-key">2</span>
-            <span class="slot-item"></span>
+          <span class="slot-key">2</span>
+          <span class="slot-item"></span>
         </div>
         <div class="backpack-slot" id="slot-2">
-            <span class="slot-key">3</span>
-            <span class="slot-item"></span>
+          <span class="slot-key">3</span>
+          <span class="slot-item"></span>
         </div>
-    </div>
+      </div>
 
       <div class="countdown" id="countdown"></div>
 
@@ -812,6 +939,43 @@
 
       <div class="screen-overlay start-screen" id="startScreen">
         <h1 class="game-title">PAC-MAP</h1>
+
+        <!-- 用戶登入區域 -->
+        <div class="user-auth-section" id="userAuthSection">
+          <!-- 未登入狀態 -->
+          <div class="login-prompt" id="loginPrompt">
+            <p>登入以保存您的遊戲記錄和排行榜</p>
+            <div
+              id="g_id_onload"
+              data-client_id="225638092115-2rjm7fr2me7k9k420v92m329sk6s3ho0.apps.googleusercontent.com"
+              data-callback="handleGoogleLogin"
+              data-auto_prompt="false"
+              data-cancel_on_tap_outside="false"
+              data-itp_support="true"
+            ></div>
+            <div
+              class="g_id_signin"
+              data-type="standard"
+              data-size="large"
+              data-theme="outline"
+              data-text="sign_in_with"
+              data-shape="rectangular"
+              data-logo_alignment="left"
+            ></div>
+          </div>
+
+          <!-- 已登入狀態 -->
+          <div class="user-info" id="userInfo" style="display: none">
+            <div class="user-avatar">
+              <img id="userAvatar" src="" alt="用戶頭像" />
+            </div>
+            <div class="user-details">
+              <span id="userName">用戶名稱</span>
+              <button class="logout-btn" id="logoutBtn">登出</button>
+            </div>
+          </div>
+        </div>
+
         <div class="start-screen-actions">
           <button class="pacman-pixel-button" id="startGameBtn">
             開始遊戲
@@ -921,6 +1085,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script type="module" src="js/main.js"></script>
     <audio id="bgm" loop>
       <source src="audio/Pacmap_bgm.wav" type="audio/wav" />

@@ -4,4 +4,17 @@ version = "0.1.0"
 description = "Pac-Map Backend"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = ["fastapi>=0.116.1", "jupyterlab>=4.4.4", "uvicorn>=0.35.0"]
+dependencies = [
+    "email-validator>=2.2.0",
+    "fastapi>=0.116.1",
+    "google-auth>=2.40.3",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.2",
+    "httpx>=0.28.1",
+    "jupyterlab>=4.4.4",
+    "python-dotenv>=1.1.1",
+    "python-jose[cryptography]>=3.5.0",
+    "python-multipart>=0.0.20",
+    "requests>=2.32.4",
+    "uvicorn>=0.35.0",
+]
