@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手機控制測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            min-height: 100vh;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+        button {
+            background: #2121de;
+            color: #ffff00;
+            border: 2px solid #000;
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        button:hover {
+            background: #4242ff;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #111;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .info { color: #0ff; }
+        .warning { color: #ff0; }
+        
+        /* 測試區域 */
+        .test-area {
+            width: 100%;
+            height: 200px;
+            border: 2px solid #333;
+            background: #111;
+            position: relative;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .test-pacman {
+            width: 20px;
+            height: 20px;
+            background: #ffff00;
+            border-radius: 50%;
+            position: absolute;
+            top: 90px;
+            left: 90px;
+            transition: all 0.2s ease;
+        }
+        
+        .direction-indicator {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 14px;
+            color: #0ff;
+        }
+        
+        /* 複製主要的手機控制樣式 */
+        .mobile-dpad {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 160px;
+            height: 160px;
+            z-index: 9999;
+            display: none;
+        }
+
+        .mobile-device .mobile-dpad {
+            display: block;
+        }
+
+        .dpad-button {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border: 2px solid #ffff00;
+            background: rgba(0, 0, 0, 0.8);
+            color: #ffff00;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s ease;
+        }
+
+        .dpad-button:active,
+        .dpad-button.active {
+            background: rgba(255, 255, 0, 0.3);
+            transform: scale(0.95);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .dpad-up { top: 0; left: 55px; }
+        .dpad-down { bottom: 0; left: 55px; }
+        .dpad-left { top: 55px; left: 0; }
+        .dpad-right { top: 55px; right: 0; }
+        .dpad-center {
+            top: 55px;
+            left: 55px;
+            background: rgba(255, 0, 0, 0.8);
+            border-color: #ff0000;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <h1>📱 手機控制系統測試</h1>
+    
+    <div class="test-section">
+        <h2>🔍 設備檢測</h2>
+        <button onclick="runDeviceDetection()">檢測設備</button>
+        <button onclick="toggleMobileMode()">切換手機模式</button>
+        <div id="deviceResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎮 虛擬方向鍵測試</h2>
+        <button onclick="showVirtualDPad()">顯示虛擬方向鍵</button>
+        <button onclick="hideVirtualDPad()">隱藏虛擬方向鍵</button>
+        <div id="dpadResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>👆 觸控手勢測試</h2>
+        <p>在下方區域滑動來測試手勢控制：</p>
+        <div class="test-area" id="testArea">
+            <div class="test-pacman" id="testPacman"></div>
+            <div class="direction-indicator" id="directionIndicator">等待輸入...</div>
+        </div>
+        <div id="gestureResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 控制事件日誌</h2>
+        <button onclick="clearLog()">清除日誌</button>
+        <div id="eventLog" class="result" style="height: 150px; overflow-y: auto;"></div>
+    </div>
+
+    <script type="module">
+        // 模擬遊戲狀態
+        const mockGameState = {
+            isGameOver: false,
+            canMove: true,
+            isPaused: false
+        };
+
+        // 模擬小精靈位置
+        let pacmanX = 90;
+        let pacmanY = 90;
+        let currentDirection = 'none';
+
+        // 事件日誌
+        let eventLog = [];
+
+        // 模擬 tryStartMovementInDirection 函數
+        function mockTryStartMovementInDirection(direction) {
+            logEvent(`移動指令: ${direction}`);
+            
+            const directionMap = {
+                'KeyW': { name: '上', dx: 0, dy: -20 },
+                'KeyS': { name: '下', dx: 0, dy: 20 },
+                'KeyA': { name: '左', dx: -20, dy: 0 },
+                'KeyD': { name: '右', dx: 20, dy: 0 }
+            };
+            
+            const move = directionMap[direction];
+            if (move) {
+                currentDirection = move.name;
+                pacmanX = Math.max(10, Math.min(170, pacmanX + move.dx));
+                pacmanY = Math.max(10, Math.min(170, pacmanY + move.dy));
+                
+                updateTestPacman();
+                updateDirectionIndicator();
+            }
+        }
+
+        // 模擬暫停/恢復函數
+        function mockPauseGame() {
+            mockGameState.isPaused = true;
+            logEvent('遊戲已暫停');
+        }
+
+        function mockResumeGame() {
+            mockGameState.isPaused = false;
+            logEvent('遊戲已恢復');
+        }
+
+        // 更新測試小精靈位置
+        function updateTestPacman() {
+            const pacman = document.getElementById('testPacman');
+            if (pacman) {
+                pacman.style.left = pacmanX + 'px';
+                pacman.style.top = pacmanY + 'px';
+            }
+        }
+
+        // 更新方向指示器
+        function updateDirectionIndicator() {
+            const indicator = document.getElementById('directionIndicator');
+            if (indicator) {
+                indicator.textContent = `當前方向: ${currentDirection}`;
+            }
+        }
+
+        // 記錄事件
+        function logEvent(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            eventLog.push(`[${timestamp}] ${message}`);
+            
+            const logElement = document.getElementById('eventLog');
+            if (logElement) {
+                logElement.innerHTML = eventLog.slice(-20).join('<br>');
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+        }
+
+        // 設備檢測測試
+        function runDeviceDetection() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const touchPoints = navigator.maxTouchPoints || 0;
+            const isTouchDevice = 'ontouchstart' in window;
+            const isMobileDevice = /android|iphone|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+            const isTabletDevice = /ipad/i.test(userAgent) || (/android/i.test(userAgent) && !/mobile/i.test(userAgent));
+            
+            const result = document.getElementById('deviceResult');
+            result.innerHTML = `
+                <div class="info">設備檢測結果:</div>
+                <div>User Agent: ${userAgent.substring(0, 80)}...</div>
+                <div>觸控點數: ${touchPoints}</div>
+                <div>支援觸控: ${isTouchDevice ? '是' : '否'}</div>
+                <div>手機設備: ${isMobileDevice ? '是' : '否'}</div>
+                <div>平板設備: ${isTabletDevice ? '是' : '否'}</div>
+                <div>螢幕尺寸: ${window.innerWidth} x ${window.innerHeight}</div>
+                <div>像素比: ${window.devicePixelRatio}</div>
+            `;
+            
+            logEvent('設備檢測完成');
+        }
+
+        // 切換手機模式
+        function toggleMobileMode() {
+            const body = document.body;
+            const isMobileMode = body.classList.contains('mobile-device');
+            
+            if (isMobileMode) {
+                body.classList.remove('mobile-device');
+                logEvent('已切換到桌面模式');
+            } else {
+                body.classList.add('mobile-device');
+                logEvent('已切換到手機模式');
+            }
+            
+            const result = document.getElementById('deviceResult');
+            const mode = isMobileMode ? '桌面' : '手機';
+            result.innerHTML += `<div class="success">已切換到${mode}模式</div>`;
+        }
+
+        // 顯示虛擬方向鍵
+        function showVirtualDPad() {
+            createMockDPad();
+            logEvent('虛擬方向鍵已顯示');
+        }
+
+        // 隱藏虛擬方向鍵
+        function hideVirtualDPad() {
+            removeMockDPad();
+            logEvent('虛擬方向鍵已隱藏');
+        }
+
+        // 創建模擬方向鍵
+        function createMockDPad() {
+            removeMockDPad();
+            
+            const dpadContainer = document.createElement('div');
+            dpadContainer.id = 'mock-dpad';
+            dpadContainer.className = 'mobile-dpad';
+            dpadContainer.style.display = 'block';
+            
+            const directions = [
+                { key: 'KeyW', label: '↑', class: 'dpad-up' },
+                { key: 'KeyA', label: '←', class: 'dpad-left' },
+                { key: 'KeyD', label: '→', class: 'dpad-right' },
+                { key: 'KeyS', label: '↓', class: 'dpad-down' }
+            ];
+            
+            directions.forEach(dir => {
+                const button = document.createElement('button');
+                button.className = `dpad-button ${dir.class}`;
+                button.textContent = dir.label;
+                button.dataset.direction = dir.key;
+                
+                button.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    button.classList.add('active');
+                    mockTryStartMovementInDirection(dir.key);
+                    if (navigator.vibrate) navigator.vibrate(50);
+                });
+                
+                button.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    button.classList.remove('active');
+                });
+                
+                button.addEventListener('mousedown', () => {
+                    button.classList.add('active');
+                    mockTryStartMovementInDirection(dir.key);
+                });
+                
+                button.addEventListener('mouseup', () => {
+                    button.classList.remove('active');
+                });
+                
+                dpadContainer.appendChild(button);
+            });
+            
+            // 暫停按鈕
+            const pauseButton = document.createElement('button');
+            pauseButton.className = 'dpad-button dpad-center';
+            pauseButton.textContent = '⏸';
+            pauseButton.addEventListener('click', () => {
+                if (mockGameState.isPaused) {
+                    mockResumeGame();
+                } else {
+                    mockPauseGame();
+                }
+            });
+            dpadContainer.appendChild(pauseButton);
+            
+            document.body.appendChild(dpadContainer);
+        }
+
+        // 移除模擬方向鍵
+        function removeMockDPad() {
+            const existing = document.getElementById('mock-dpad');
+            if (existing) {
+                existing.remove();
+            }
+        }
+
+        // 設置觸控手勢
+        function setupTouchGestures() {
+            const testArea = document.getElementById('testArea');
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            testArea.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                logEvent('觸控開始');
+            });
+            
+            testArea.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - touchStartX;
+                const deltaY = touch.clientY - touchStartY;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                if (distance > 30) {
+                    const direction = getSwipeDirection(deltaX, deltaY);
+                    if (direction) {
+                        mockTryStartMovementInDirection(direction);
+                    }
+                }
+            });
+            
+            testArea.addEventListener('touchend', () => {
+                logEvent('觸控結束');
+            });
+        }
+
+        // 計算滑動方向
+        function getSwipeDirection(deltaX, deltaY) {
+            const absX = Math.abs(deltaX);
+            const absY = Math.abs(deltaY);
+            
+            if (absX > absY) {
+                return deltaX > 0 ? 'KeyD' : 'KeyA';
+            } else {
+                return deltaY > 0 ? 'KeyS' : 'KeyW';
+            }
+        }
+
+        // 清除日誌
+        function clearLog() {
+            eventLog = [];
+            document.getElementById('eventLog').innerHTML = '';
+        }
+
+        // 暴露函數到全域範圍
+        window.runDeviceDetection = runDeviceDetection;
+        window.toggleMobileMode = toggleMobileMode;
+        window.showVirtualDPad = showVirtualDPad;
+        window.hideVirtualDPad = hideVirtualDPad;
+        window.clearLog = clearLog;
+
+        // 初始化
+        window.addEventListener('load', () => {
+            setupTouchGestures();
+            runDeviceDetection();
+            logEvent('測試頁面已載入');
+        });
+    </script>
+</body>
+</html>

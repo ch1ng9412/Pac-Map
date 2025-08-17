@@ -924,6 +924,206 @@
         margin: 5px;
         min-width: 120px;
       }
+
+      /* 手機控制樣式 */
+      .mobile-dpad {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 160px;
+        height: 160px;
+        z-index: 9999;
+        display: none; /* 預設隱藏，由 JS 控制顯示 */
+      }
+
+      .mobile-device .mobile-dpad {
+        display: block;
+      }
+
+      .dpad-button {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        border: 2px solid #ffff00;
+        background: rgba(0, 0, 0, 0.8);
+        color: #ffff00;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.1s ease;
+        font-family: "Cubic 11", cursive;
+      }
+
+      .dpad-button:active,
+      .dpad-button.active {
+        background: rgba(255, 255, 0, 0.3);
+        transform: scale(0.95);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .dpad-up {
+        top: 0;
+        left: 55px;
+      }
+
+      .dpad-down {
+        bottom: 0;
+        left: 55px;
+      }
+
+      .dpad-left {
+        top: 55px;
+        left: 0;
+      }
+
+      .dpad-right {
+        top: 55px;
+        right: 0;
+      }
+
+      .dpad-center {
+        top: 55px;
+        left: 55px;
+        background: rgba(255, 0, 0, 0.8);
+        border-color: #ff0000;
+        color: #ffffff;
+      }
+
+      .dpad-center:active,
+      .dpad-center.active {
+        background: rgba(255, 0, 0, 0.6);
+      }
+
+      /* 觸控回饋動畫 */
+      @keyframes buttonPress {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(0.95);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .dpad-button.pressed {
+        animation: buttonPress 0.1s ease;
+      }
+
+      /* 手機專用的觸控優化 */
+      .mobile-device .dpad-button {
+        /* 增加觸控區域 */
+        padding: 2px;
+        /* 防止選取文字 */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        /* 防止觸控時的高亮 */
+        -webkit-tap-highlight-color: transparent;
+        /* 防止長按選單 */
+        -webkit-touch-callout: none;
+      }
+
+      /* 觸控狀態指示器 */
+      .touch-indicator {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 255, 255, 0.8);
+        color: #000;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        z-index: 10000;
+        display: none;
+      }
+
+      .mobile-device .touch-indicator {
+        display: block;
+      }
+
+      /* 手機專用 UI 調整 */
+      @media (max-width: 768px) {
+        .mobile-device .fps-overlay {
+          top: 10px;
+          left: 10px;
+          right: auto;
+          font-size: 10px;
+        }
+
+        .mobile-device .dev-console {
+          display: none; /* 手機上隱藏開發者控制台 */
+        }
+
+        .mobile-device #gameOverScreen,
+        .mobile-device #startScreen {
+          padding: 10px;
+        }
+
+        .mobile-device .pacman-pixel-button {
+          min-height: 44px; /* 觸控友善的最小尺寸 */
+          padding: 12px 20px;
+          font-size: 16px;
+        }
+
+        .mobile-device .leaderboard-entry {
+          padding: 12px;
+          font-size: 14px;
+        }
+      }
+
+      /* 橫向模式調整 */
+      @media (max-width: 768px) and (orientation: landscape) {
+        .mobile-dpad {
+          bottom: 10px;
+          right: 10px;
+          width: 140px;
+          height: 140px;
+        }
+
+        .dpad-button {
+          width: 45px;
+          height: 45px;
+          font-size: 16px;
+        }
+
+        .dpad-up {
+          left: 47.5px;
+        }
+
+        .dpad-down {
+          left: 47.5px;
+        }
+
+        .dpad-left {
+          top: 47.5px;
+        }
+
+        .dpad-right {
+          top: 47.5px;
+        }
+
+        .dpad-center {
+          top: 47.5px;
+          left: 47.5px;
+        }
+      }
+
+      /* 隱藏桌面專用元素 */
+      .mobile-device .desktop-only {
+        display: none !important;
+      }
+
+      .mobile-device .keyboard-hint {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
@@ -1027,6 +1227,9 @@
           <button class="pacman-pixel-button" id="leaderboardBtn">
             排行榜
           </button>
+          <button class="pacman-pixel-button" id="toggleControlBtn">
+            📱 切換控制模式
+          </button>
         </div>
         <div class="content-toggle-container">
           <div class="instructions" id="instructionsContent">
@@ -1122,6 +1325,9 @@
 
       <!-- FPS 顯示 -->
       <div class="fps-overlay" id="fpsDisplay">FPS: --</div>
+
+      <!-- 觸控狀態指示器 -->
+      <div class="touch-indicator" id="touchIndicator">觸控模式</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
