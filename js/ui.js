@@ -67,6 +67,43 @@ export function updateUI() {
             slotEl.title = '空格';
         }
     }
+    // 小地圖顯示地標
+    const mm = gameState.minimap;
+    const aq = gameState.questSystem.activeQuest;
+
+    if (mm.map && mm.currentQuestPoiLayer) {
+        
+        // 1. 永远先清空旧的地标
+        mm.currentQuestPoiLayer.clearLayers();
+
+        // 2. 检查是否有任务
+        if (aq && aq.type === 'visit_poi') {
+            const targetPoiType = aq.poiType;
+            
+            // 3. 遍历主游戏世界的所有地标
+            gameState.pois.forEach(poi => {
+                // 如果地标类型与任务目标匹配...
+                if (poi.type === targetPoiType) {
+
+                    // --- *** 关键新增检查：该地标是否已经被访问过？ *** ---
+                    // aq.visitedPoiIds 是一个 Set，.has() 方法效率很高
+                    if (!aq.visitedPoiIds.has(poi.id)) {
+                        // 只有“未被访问”的任务目标，才会被显示在小地图上
+                        
+                        const minimapPoiIcon = L.divIcon({
+                            className: `minimap-poi-icon ${poi.type} quest-target`,
+                            iconSize: [10, 10],
+                            iconAnchor: [5, 5]
+                        });
+
+                        const minimapMarker = L.marker(poi.marker.getLatLng(), { icon: minimapPoiIcon });
+
+                        mm.currentQuestPoiLayer.addLayer(minimapMarker);
+                    }
+                }
+            });
+        }
+    }
 }
 
 export async function updateLeaderboardUI() {

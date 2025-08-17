@@ -78,7 +78,8 @@ export let gameState = {
         map: null,                // 小地图的 Leaflet 实例
         playerMarker: null,       // 小地图上玩家的标记
         poisonCircle: null,       // 小地图上的毒圈
-        nextPoisonCircle: null    // 小地图上的下一圈预告
+        nextPoisonCircle: null,    // 小地图上的下一圈预告
+        currentQuestPoiLayer: null 
     },
     questSystem: {
         activeQuest: null,        // 当前激活的任务物件

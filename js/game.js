@@ -48,6 +48,7 @@ export async function initGame() {
     resetGameState();
     showLoadingScreen('正在載入地圖資料...');
 
+    let  poiElements = [];
     const center = config.center;
 
     // 嘗試使用後端 API 載入地圖數據
@@ -77,21 +78,23 @@ export async function initGame() {
             })
         ]);
 
+        poiElements = poiData.elements;
+
         await generateRoadNetworkGeneric(bounds, roadData, gameState);
 
         // 設置 POI 數據（如果有的話）
-        if (poiData && poiData.elements) {
-            gameState.pois = poiData.elements.filter(element =>
-                element.type === 'node' && element.lat && element.lon
-            ).map(element => ({
-                id: element.id,
-                type: element.tags?.amenity || element.tags?.shop || element.tags?.historic || element.tags?.leisure || element.tags?.tourism || 'unknown',
-                name: element.tags?.name,
-                lat: element.lat,
-                lng: element.lon,
-                tags: element.tags
-            }));
-        }
+        // if (poiData && poiData.elements) {
+        //     gameState.pois = poiData.elements.filter(element =>
+        //         element.type === 'node' && element.lat && element.lon
+        //     ).map(element => ({
+        //         id: element.id,
+        //         type: element.tags?.amenity || element.tags?.shop || element.tags?.historic || element.tags?.leisure || element.tags?.tourism || 'unknown',
+        //         name: element.tags?.name,
+        //         lat: element.lat,
+        //         lng: element.lon,
+        //         tags: element.tags
+        //     }));
+        // }
     }
 
     setTimeout(() => {
@@ -101,7 +104,7 @@ export async function initGame() {
             console.error('無法初始化遊戲元素，因為沒有有效的道路位置。');
             return;
         }
-        initGameElements(gameState.pois, center, config.bounds);
+        initGameElements(poiElements, center, config.bounds);
         startGameCountdown();
     }, 1000);
 }
@@ -122,6 +125,7 @@ function resetGameState() {
         gameState.minimap.playerMarker = null;
         gameState.minimap.poisonCircle = null;
         gameState.minimap.nextPoisonCircle = null;
+        gameState.minimap.currentQuestPoiLayer = null;
     }
     gameState.backpack = {
         items: [null, null, null],
@@ -180,45 +184,41 @@ function resetGameState() {
     }
 }
 
-function initGameElements(poiData, center, bounds) { 
+function initGameElements(poiElements, center, bounds) {
     // ---- 步骤 1: 清理旧的地标数据 ----
     gameState.pois = [];
     let elementsToDisplay = [];
 
-    if (poiData && poiData.elements && poiData.elements.length > 0) {
-        
-        // ---- 步骤 2: 基于距离智能筛选地标 (方案三) ----
-        console.log(`原始地标数量: ${poiData.elements.length}`);
+    // ---- 步骤 2: 检查并筛选传入的地标元素数组 ----
+    // *** 关键修正：直接检查 poiElements 数组本身 ***
+    if (poiElements && poiElements.length > 0) {
+        console.log(`步骤 1: 成功接收到 ${poiElements.length} 个原始地标。`);
 
-        const MIN_DISTANCE_BETWEEN_POIS = 70; // 地标之间的最小距离（单位：公尺）
+        // 基于距离智能筛选地标
+        const MIN_DISTANCE_BETWEEN_POIS = 70;
         const finalPois = [];
-
-        // 随机打乱原始数组，这确保了每次游戏筛选出的地标组合都不同，增加了重玩性。
-        const shuffledElements = [...poiData.elements].sort(() => 0.5 - Math.random());
+        const shuffledElements = [...poiElements].sort(() => 0.5 - Math.random()); // 直接使用 poiElements
 
         shuffledElements.forEach(element => {
-            if (element.type !== 'node') return; // 只处理节点类型的地标
-
+            if (element.type !== 'node') return;
             const currentPos = L.latLng(element.lat, element.lon);
             let isTooClose = false;
-
-            // 核心逻辑：检查当前地标是否与任何“已经选入最终列表”的地标离得太近
             for (const finalPoi of finalPois) {
                 const finalPoiPos = L.latLng(finalPoi.lat, finalPoi.lon);
                 if (currentPos.distanceTo(finalPoiPos) < MIN_DISTANCE_BETWEEN_POIS) {
                     isTooClose = true;
-                    break; // 一旦发现太近，就没必要再和其他点比较了，直接跳出内层循环
+                    break;
                 }
             }
-
-            // 如果遍历完所有已选中的点，都没有发现太近的，就把这个地标选入最终列表
             if (!isTooClose) {
                 finalPois.push(element);
             }
         });
         
-        elementsToDisplay = finalPois; // 使用筛选后的地标列表进行后续操作
-        console.log(`按距离筛选后，最终显示的地标数量: ${elementsToDisplay.length}`);
+        elementsToDisplay = finalPois;
+        console.log(`步骤 2: 按距离筛选后，剩下 ${elementsToDisplay.length} 个地标准备显示。`);
+    } else {
+        console.log("步骤 1: 接收到的地标数组为空或无效，跳过地标处理。");
     }
 
     // ---- 步骤 3: 统计并输出筛选后的地标数量 ----
@@ -483,7 +483,6 @@ function initMinimap() {
     // 如果已存在旧的小地图，先销毁
     if (mm.map) {
         mm.map.remove();
-        mm.map = null;
     }
 
     // 从主地图的配置中获取中心点
@@ -502,6 +501,11 @@ function initMinimap() {
         doubleClickZoom: false,
         keyboard: false
     });
+
+    if (mm.currentQuestPoiLayer) {
+        mm.currentQuestPoiLayer.clearLayers();
+    }
+    mm.currentQuestPoiLayer = L.layerGroup().addTo(mm.map);
 
     // 为小地图添加地图图块
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -792,45 +796,38 @@ export function startGhostDecisionMaking() {
 }
 
 function gameLoop(timestamp) {
+    // --- 步骤 1: 基础控制 (暂停/结束) ---
     if (gameState.isGameOver || gameState.isPaused) {
         setLastFrameTime(timestamp);
         setGameLoopRequestId(requestAnimationFrame(gameLoop));
         return;
     }
+    
+    // 立即请求下一帧，确保循环持续
+    setGameLoopRequestId(requestAnimationFrame(gameLoop));
 
-    // 計算並更新 FPS
-    updateFPS(timestamp);
-
-    manageAutoPilot();
-    updateMinimap();
-
+    // --- 步骤 2: 时间计算 ---
     let rawDeltaTime = timestamp - lastFrameTime;
     if (rawDeltaTime > MAX_DELTA_TIME) {
         rawDeltaTime = MAX_DELTA_TIME;
     }
     setLastFrameTime(timestamp);
-
     let deltaTime = rawDeltaTime * gameState.gameSpeedMultiplier;
     
+    // --- 步骤 3: 游戏状态更新 (先计算，后渲染) ---
     const pc = gameState.poisonCircle;
 
-    // 1. 检查是否到了该启动新一轮缩圈的时间
+    // a. 更新毒圈状态
     if (!pc.isShrinking && timestamp > pc.nextShrinkTime) {
         startNextShrink();
     }
-
-    // 2. 如果正在缩圈，就更新半径
     if (pc.isShrinking) {
         pc.currentRadius -= pc.shrinkSpeed * (deltaTime / 1000);
-        
-        // 检查是否已经到达目标
         if (pc.currentRadius <= pc.targetRadius) {
             pc.currentRadius = pc.targetRadius;
-            pc.isShrinking = false; // 标记本轮缩小结束
+            pc.isShrinking = false;
             console.log("毒圈缩小完成！");
 
-            // *** 关键逻辑：缩小完成后，立即准备下一轮 ***
-            // 重新计算下一轮的目标，但不立即开始缩小
             const nextTargetRadius = pc.currentRadius * 0.8;
             pc.targetRadius = Math.max(nextTargetRadius, 50);
 
@@ -839,26 +836,57 @@ function gameLoop(timestamp) {
                 pc.center = getRandomPointInCircle(pc.center, randomCenterRadius);
             }
             
-            // 设置下一次“开始缩小”的时间戳
-            pc.nextShrinkTime = performance.now() + 30000; // 30秒后
-            
+            pc.nextShrinkTime = performance.now() + 30000;
             console.log(`下一轮预告已显示。将在 30 秒后开始缩小。`);
         }
     }
-    
-    updatePoisonCircleSVG();
-    // 檢查玩家是否在圈外
-    checkPlayerInPoison(timestamp);
 
+    // b. 更新玩家与毒圈的关系
+    checkPlayerInPoison(timestamp);
+    
+    // c. 更新 AI
+    manageAutoPilot();
+
+    // d. 更新角色位置
     updatePacmanSmoothMovement(deltaTime); 
     gameState.ghosts.forEach(ghost => {
-        const ghostElement = ghost.marker ? ghost.marker.getElement() : null;
-        if (!(ghostElement && ghostElement.classList.contains('ghost-eaten'))) {
+        if (ghost.marker && !ghost.marker.getElement().classList.contains('ghost-eaten')) {
             updateGhostSmoothMovement(ghost, deltaTime); 
         }
     });
 
-    setGameLoopRequestId(requestAnimationFrame(gameLoop));
+    // --- 步骤 4: UI 更新 (所有状态计算完毕后，最后执行) ---
+    
+    // a. 更新主 UI
+    updateUI(); // 假设 FPS 显示在这里面
+    
+    // b. 更新小地图
+    updateMinimap();
+    
+    // c. 更新毒圈视觉
+    updatePoisonCircleSVG();
+
+    // d. 更新小地图倒计时
+    const minimapOverlay = document.getElementById('minimap-timer-overlay');
+    const countdownEl = document.getElementById('minimap-timer-countdown');
+
+    if (minimapOverlay && countdownEl) {
+        // 使用更新后的 pc 状态来判断
+        if (!pc.isShrinking) {
+            minimapOverlay.style.display = 'flex';
+            const timeLeftMs = pc.nextShrinkTime - timestamp;
+            if (timeLeftMs > 0) {
+                const timeLeftSec = Math.ceil(timeLeftMs / 1000);
+                const minutes = Math.floor(timeLeftSec / 60);
+                const seconds = timeLeftSec % 60;
+                countdownEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                countdownEl.textContent = "00:00";
+            }
+        } else {
+            minimapOverlay.style.display = 'none';
+        }
+    }
 }
 
 function updateFPS(timestamp) {
@@ -1262,8 +1290,7 @@ function handleQuestProgress(visitedPoi) {
     aq.progress++;
 
     console.log(`抵达 "${visitedPoi.name}"！任务进度: ${aq.progress}/${aq.targetCount}`);
-    
-    // 在这里可以添加一个短暂的视觉/音效提示，比如在屏幕上显示 "+1"
+    playPowerPelletSound();
     
     updateUI(); // 更新UI显示进度
 
@@ -1524,6 +1551,15 @@ function initPoisonCircle() {
         pc.circleObject = null;
     }
     if(pc.damageInterval) clearInterval(pc.damageInterval);
+
+    pc.nextShrinkTime = performance.now() + 30000;
+    
+    // 确保计时器在游戏刚开始时被隐藏
+    const minimapOverlay = document.getElementById('minimap-timer-overlay');
+    if (minimapOverlay) {
+        minimapOverlay.style.display = 'none'; 
+    }
+
 
     // *** 新逻辑：设置 SVG ***
     setupPoisonCircleSVG();
