@@ -2,6 +2,22 @@ export let soundsReady = false;
 let introSynth, dotSynth, powerPelletSynth, eatGhostSynth, deathSynth;
 let dotSoundTimeout;
 let dotSoundIsCoolingDown = false;
+let audioContextStarted = false;
+
+// 啟動 AudioContext（需要用戶互動）
+async function startAudioContext() {
+    if (typeof Tone !== 'undefined' && !audioContextStarted) {
+        try {
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+                console.log('🔊 AudioContext 已啟動');
+            }
+            audioContextStarted = true;
+        } catch (error) {
+            console.warn('AudioContext 啟動失敗:', error);
+        }
+    }
+}
 
 export function setupSounds() {
     if (typeof Tone !== 'undefined') {
@@ -45,22 +61,24 @@ export function setupSounds() {
     }
 }
 
-export function playStartSound() {
+export async function playStartSound() {
     if (!soundsReady || !Tone.now || !introSynth) return;
+    await startAudioContext();
     const now = Tone.now();
     introSynth.triggerAttackRelease(["C4", "E4", "G4"], "8n", now);
     introSynth.triggerAttackRelease(["E4", "G4", "C5"], "8n", now + 0.25);
     introSynth.triggerAttackRelease(["G4", "C5", "E5"], "4n", now + 0.5);
 }
 
-export function playDotSound() {
+export async function playDotSound() {
     if (!soundsReady || !Tone.now || !dotSynth) return;
-    clearTimeout(dotSoundTimeout); 
+    await startAudioContext();
+    clearTimeout(dotSoundTimeout);
     dotSoundTimeout = setTimeout(() => {
-        if (dotSynth && typeof dotSynth.triggerAttackRelease === 'function') { 
+        if (dotSynth && typeof dotSynth.triggerAttackRelease === 'function') {
             dotSynth.triggerAttackRelease("C4", "32n", Tone.now());
         }
-    }, 10); 
+    }, 10);
 }
 
 export function playPowerPelletSound() {

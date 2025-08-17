@@ -5,6 +5,8 @@ import { initGame, pauseGame, resumeGame, tryStartMovementInDirection, restartGa
 import { initStartScreenBackground } from './backgroundAnimation.js';
 import { toggleDevConsole, setupDevConsoleListeners } from './devConsole.js';
 import { initAuth } from './auth.js';
+import { initMobileControls, detectDevice, toggleControlMode, showVirtualDPad, hideVirtualDPad } from './mobileControls.js';
+import { initSettings, showSettingsModal } from './settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOM 載入完成，開始初始化...');
@@ -12,6 +14,36 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Setup ---
     setupSounds();
     updateLeaderboardUI();
+
+    // 初始化手機控制系統
+    console.log('📱 初始化手機控制系統...');
+    const deviceInfo = initMobileControls();
+    console.log('📱 設備資訊:', deviceInfo);
+
+    // 設定控制模式按鈕的初始文字
+    setTimeout(() => {
+        const currentMode = window.mobileControls?.getCurrentControlMode();
+        if (currentMode) {
+            const buttonText = currentMode.controlMode === 'mobile' ? '⌨️ 切換到桌面模式' : '📱 切換到手機模式';
+            document.getElementById('toggleControlBtn').textContent = buttonText;
+        }
+    }, 100);
+
+    // 添加用戶互動來啟動音頻上下文
+    document.addEventListener('click', async () => {
+        if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
+            try {
+                await Tone.start();
+                console.log('🔊 AudioContext 已通過用戶互動啟動');
+            } catch (error) {
+                console.warn('AudioContext 啟動失敗:', error);
+            }
+        }
+    }, { once: true });
+
+    // 初始化設定系統
+    console.log('⚙️ 初始化設定系統...');
+    initSettings();
 
     // 初始化認證系統
     console.log('🔐 初始化認證系統...');
@@ -70,6 +102,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isVisible) document.getElementById('instructionsContent').style.display = 'none';
     });
 
+    // 控制模式切換按鈕
+    document.getElementById('toggleControlBtn').addEventListener('click', () => {
+        toggleControlMode();
+        const currentMode = window.mobileControls?.getCurrentControlMode();
+        if (currentMode) {
+            const modeText = currentMode.controlMode === 'mobile' ? '手機' : '桌面';
+            const buttonText = currentMode.controlMode === 'mobile' ? '⌨️ 切換到桌面模式' : '📱 切換到手機模式';
+            document.getElementById('toggleControlBtn').textContent = buttonText;
+            console.log(`🔄 已切換到${modeText}控制模式`);
+        }
+    });
+
+    // 設定按鈕
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+        showSettingsModal();
+    });
+
     // Map Selection Screen Buttons
     document.querySelectorAll('#mapSelectionScreen .map-button').forEach(button => {
         button.addEventListener('click', async (e) => {
@@ -101,6 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Pause Screen Buttons
     document.getElementById('resumeGameBtn').addEventListener('click', resumeGame);
+    document.getElementById('pauseSettingsBtn').addEventListener('click', () => {
+        showSettingsModal();
+    });
     document.getElementById('backToMenuBtnPause').addEventListener('click', backToMenu);
 
     // Game Over Screen Buttons

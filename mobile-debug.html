@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手機除錯頁面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background: #000;
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .section {
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background: #111;
+        }
+        .title {
+            color: #ffff00;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .info {
+            color: #0ff;
+            margin: 3px 0;
+            word-break: break-all;
+        }
+        .success {
+            color: #0f0;
+        }
+        .error {
+            color: #f00;
+        }
+        .warning {
+            color: #ff0;
+        }
+        button {
+            background: #2121de;
+            color: #ffff00;
+            border: 2px solid #000;
+            padding: 8px 12px;
+            margin: 5px 2px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        button:active {
+            background: #4242ff;
+        }
+        .test-result {
+            margin: 8px 0;
+            padding: 8px;
+            background: #222;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        .big-button {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>📱 手機除錯頁面</h1>
+    
+    <div class="section">
+        <div class="title">🌐 當前環境資訊</div>
+        <div class="info" id="currentUrl">載入中...</div>
+        <div class="info" id="hostname">載入中...</div>
+        <div class="info" id="protocol">載入中...</div>
+        <div class="info" id="port">載入中...</div>
+        <div class="info" id="userAgent">載入中...</div>
+    </div>
+
+    <div class="section">
+        <div class="title">⚙️ 配置檢測結果</div>
+        <div class="info" id="isDevelopment">載入中...</div>
+        <div class="info" id="isLocalFile">載入中...</div>
+        <div class="info" id="apiBaseUrl">載入中...</div>
+        <div class="info" id="configStatus">載入中...</div>
+    </div>
+
+    <div class="section">
+        <div class="title">🔗 API 連線測試</div>
+        <button class="big-button" onclick="testApiConnection()">測試 API 連線</button>
+        <div class="test-result" id="apiTestResult">點擊按鈕開始測試</div>
+    </div>
+
+    <div class="section">
+        <div class="title">🎮 遊戲功能測試</div>
+        <button onclick="testLeaderboard()">測試排行榜</button>
+        <button onclick="testAuth()">測試認證</button>
+        <button onclick="testScore()">測試分數提交</button>
+        <div class="test-result" id="gameTestResult">選擇功能進行測試</div>
+    </div>
+
+    <div class="section">
+        <div class="title">🔧 手動修復</div>
+        <button onclick="forceApiUrl()">強制設定 API 地址</button>
+        <button onclick="clearCache()">清除快取</button>
+        <button onclick="reloadPage()">重新載入頁面</button>
+        <div class="test-result" id="fixResult">手動修復選項</div>
+    </div>
+
+    <script type="module">
+        // 載入配置模組
+        let config, buildApiUrl, checkBackendConnection;
+        
+        try {
+            const configModule = await import('./js/config.js');
+            config = configModule.config;
+            buildApiUrl = configModule.buildApiUrl;
+            checkBackendConnection = configModule.checkBackendConnection;
+        } catch (error) {
+            console.error('載入配置模組失敗:', error);
+        }
+
+        // 顯示環境資訊
+        function showEnvironmentInfo() {
+            document.getElementById('currentUrl').textContent = `完整 URL: ${window.location.href}`;
+            document.getElementById('hostname').textContent = `主機名: ${window.location.hostname}`;
+            document.getElementById('protocol').textContent = `協定: ${window.location.protocol}`;
+            document.getElementById('port').textContent = `埠口: ${window.location.port || '預設'}`;
+            document.getElementById('userAgent').textContent = `User Agent: ${navigator.userAgent.substring(0, 80)}...`;
+        }
+
+        // 顯示配置資訊
+        function showConfigInfo() {
+            if (!config) {
+                document.getElementById('configStatus').innerHTML = '<span class="error">❌ 配置模組載入失敗</span>';
+                return;
+            }
+
+            const isDev = config.environment.isDevelopment;
+            const isLocal = config.environment.isLocalFile;
+            const apiUrl = config.api.baseUrl;
+
+            document.getElementById('isDevelopment').innerHTML = `開發環境: <span class="${isDev ? 'warning' : 'info'}">${isDev ? '是' : '否'}</span>`;
+            document.getElementById('isLocalFile').innerHTML = `本地檔案: <span class="${isLocal ? 'warning' : 'info'}">${isLocal ? '是' : '否'}</span>`;
+            document.getElementById('apiBaseUrl').innerHTML = `API 地址: <span class="info">${apiUrl}</span>`;
+            document.getElementById('configStatus').innerHTML = '<span class="success">✅ 配置載入成功</span>';
+        }
+
+        // 測試 API 連線
+        async function testApiConnection() {
+            const resultDiv = document.getElementById('apiTestResult');
+            resultDiv.innerHTML = '<span class="info">🔄 正在測試 API 連線...</span>';
+
+            if (!buildApiUrl) {
+                resultDiv.innerHTML = '<span class="error">❌ 配置模組未載入</span>';
+                return;
+            }
+
+            const apiUrl = buildApiUrl('/health');
+            resultDiv.innerHTML += `<br>測試地址: ${apiUrl}`;
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch(apiUrl);
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <span class="success">✅ API 連線成功</span><br>
+                        地址: ${apiUrl}<br>
+                        回應時間: ${duration}ms<br>
+                        狀態: ${response.status}<br>
+                        資料: ${JSON.stringify(data)}
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <span class="error">❌ API 回應錯誤</span><br>
+                        地址: ${apiUrl}<br>
+                        狀態碼: ${response.status}<br>
+                        狀態文字: ${response.statusText}
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <span class="error">❌ API 連線失敗</span><br>
+                    地址: ${apiUrl}<br>
+                    錯誤: ${error.message}<br>
+                    類型: ${error.name}
+                `;
+            }
+        }
+
+        // 測試排行榜
+        async function testLeaderboard() {
+            const resultDiv = document.getElementById('gameTestResult');
+            resultDiv.innerHTML = '<span class="info">🔄 測試排行榜...</span>';
+
+            try {
+                const apiUrl = buildApiUrl('/game/leaderboard?limit=3');
+                const response = await fetch(apiUrl);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <span class="success">✅ 排行榜測試成功</span><br>
+                        記錄數量: ${data.data ? data.data.length : 0}<br>
+                        資料: ${JSON.stringify(data).substring(0, 200)}...
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ 排行榜測試失敗: ${response.status}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ 排行榜測試錯誤: ${error.message}</span>`;
+            }
+        }
+
+        // 測試認證
+        async function testAuth() {
+            const resultDiv = document.getElementById('gameTestResult');
+            resultDiv.innerHTML = '<span class="info">🔄 測試認證...</span>';
+
+            try {
+                const apiUrl = buildApiUrl('/auth/me');
+                const response = await fetch(apiUrl);
+                
+                resultDiv.innerHTML = `
+                    <span class="${response.ok ? 'success' : 'warning'}">
+                        ${response.ok ? '✅' : '⚠️'} 認證測試完成
+                    </span><br>
+                    狀態: ${response.status}<br>
+                    ${response.status === 401 ? '(未登入狀態，這是正常的)' : ''}
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ 認證測試錯誤: ${error.message}</span>`;
+            }
+        }
+
+        // 測試分數提交
+        async function testScore() {
+            const resultDiv = document.getElementById('gameTestResult');
+            resultDiv.innerHTML = '<span class="warning">⚠️ 分數提交需要登入，這裡只測試端點可達性</span>';
+
+            try {
+                const apiUrl = buildApiUrl('/game/score');
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ test: true })
+                });
+                
+                resultDiv.innerHTML += `<br><span class="info">分數端點狀態: ${response.status}</span>`;
+            } catch (error) {
+                resultDiv.innerHTML += `<br><span class="error">分數端點錯誤: ${error.message}</span>`;
+            }
+        }
+
+        // 強制設定 API 地址
+        function forceApiUrl() {
+            const currentHost = window.location.hostname;
+            const newApiUrl = `${window.location.protocol}//${currentHost}:8000`;
+            
+            if (config) {
+                config.api.baseUrl = newApiUrl;
+                document.getElementById('fixResult').innerHTML = `
+                    <span class="success">✅ API 地址已強制設定為:</span><br>
+                    ${newApiUrl}<br>
+                    <span class="info">請重新測試 API 連線</span>
+                `;
+                
+                // 更新顯示
+                showConfigInfo();
+            } else {
+                document.getElementById('fixResult').innerHTML = '<span class="error">❌ 配置物件不存在</span>';
+            }
+        }
+
+        // 清除快取
+        function clearCache() {
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                document.getElementById('fixResult').innerHTML = '<span class="success">✅ 本地快取已清除</span>';
+            } catch (error) {
+                document.getElementById('fixResult').innerHTML = `<span class="error">❌ 清除快取失敗: ${error.message}</span>`;
+            }
+        }
+
+        // 重新載入頁面
+        function reloadPage() {
+            window.location.reload(true);
+        }
+
+        // 暴露函數到全域
+        window.testApiConnection = testApiConnection;
+        window.testLeaderboard = testLeaderboard;
+        window.testAuth = testAuth;
+        window.testScore = testScore;
+        window.forceApiUrl = forceApiUrl;
+        window.clearCache = clearCache;
+        window.reloadPage = reloadPage;
+
+        // 頁面載入時執行
+        window.addEventListener('load', () => {
+            showEnvironmentInfo();
+            showConfigInfo();
+        });
+    </script>
+</body>
+</html>

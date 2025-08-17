@@ -2,7 +2,10 @@
 <html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <meta
       http-equiv="Cross-Origin-Opener-Policy"
       content="same-origin-allow-popups"
@@ -25,11 +28,23 @@
         padding: 0;
         box-sizing: border-box;
       }
+      html {
+        height: 100%;
+        /* 使用 vh 單位確保適配手機螢幕 */
+        height: 100vh;
+        /* 支援 iOS Safari 的安全區域 */
+        height: 100dvh; /* 動態視窗高度 */
+      }
       body {
         font-family: "Cubic 11", cursive;
         background: #000;
         overflow: hidden;
         color: #fff;
+        height: 100%;
+        width: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
       }
 
       /* FPS 右上角顯示 */
@@ -51,7 +66,9 @@
         position: relative;
         width: 100vw;
         height: 100vh;
+        height: 100dvh; /* 使用動態視窗高度 */
         background-color: #000; /* 确保背景是黑色的 */
+        overflow: hidden; /* 防止內容溢出 */
 
         /* 使用 Flexbox 来让我们的游戏视口居中 */
         display: flex;
@@ -430,7 +447,7 @@
         animation: blinkRed 0.8s infinite steps(1, end); /* 調整閃爍速度 */
       }
       #minimap-container {
-        position: absolute;
+        position: fixed; /* 改為 fixed，相對於視窗定位 */
         bottom: 20px;
         right: 20px;
         width: 200px; /* 小地图宽度 */
@@ -944,6 +961,635 @@
         color: #ccc;
         font-size: 0.8rem;
       }
+
+      /* 本地記錄樣式 */
+      .local-entry {
+        background: rgba(255, 149, 0, 0.1);
+        border-left: 3px solid #ff9500;
+      }
+
+      .local-entry .rank {
+        color: #ff9500;
+      }
+
+      .local-entry .score {
+        color: #ff9500;
+      }
+
+      /* 登入提示樣式 */
+      .high-score-login-prompt {
+        color: white;
+      }
+
+      .high-score-login-prompt h3 {
+        color: #ffff00;
+        margin-bottom: 15px;
+      }
+
+      .high-score-login-prompt ul {
+        text-align: left;
+        margin: 15px 0;
+        padding-left: 20px;
+      }
+
+      .high-score-login-prompt li {
+        margin: 8px 0;
+        color: #ccc;
+      }
+
+      /* 遷移提示樣式 */
+      .migration-prompt .pacman-pixel-button {
+        margin: 5px;
+        min-width: 120px;
+      }
+
+      /* 手機控制樣式 */
+      .mobile-dpad {
+        position: fixed;
+        bottom: calc(env(safe-area-inset-bottom) + 15px);
+        right: calc(env(safe-area-inset-right) + 15px);
+        width: 140px; /* 縮小虛擬方向鍵 */
+        height: 140px; /* 縮小虛擬方向鍵 */
+        z-index: 9999;
+        display: none; /* 預設隱藏，由 JS 控制顯示 */
+      }
+
+      .mobile-device .mobile-dpad {
+        display: block;
+      }
+
+      .dpad-button {
+        position: absolute;
+        width: 44px; /* 縮小按鈕 */
+        height: 44px; /* 縮小按鈕 */
+        border: 2px solid #ffff00;
+        background: rgba(0, 0, 0, 0.8);
+        color: #ffff00;
+        font-size: 16px; /* 縮小字體 */
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.1s ease;
+        font-family: "Cubic 11", cursive;
+      }
+
+      .dpad-button:active,
+      .dpad-button.active {
+        background: rgba(255, 255, 0, 0.3);
+        transform: scale(0.95);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .dpad-up {
+        top: 0;
+        left: 48px; /* 調整位置適應新尺寸 */
+      }
+
+      .dpad-down {
+        bottom: 0;
+        left: 48px; /* 調整位置適應新尺寸 */
+      }
+
+      .dpad-left {
+        top: 48px; /* 調整位置適應新尺寸 */
+        left: 0;
+      }
+
+      .dpad-right {
+        top: 48px; /* 調整位置適應新尺寸 */
+        right: 0;
+      }
+
+      .dpad-center {
+        top: 48px; /* 調整位置適應新尺寸 */
+        left: 48px; /* 調整位置適應新尺寸 */
+        background: rgba(255, 0, 0, 0.8);
+        border-color: #ff0000;
+        color: #ffffff;
+      }
+
+      .dpad-center:active,
+      .dpad-center.active {
+        background: rgba(255, 0, 0, 0.6);
+      }
+
+      /* 觸控回饋動畫 */
+      @keyframes buttonPress {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(0.95);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .dpad-button.pressed {
+        animation: buttonPress 0.1s ease;
+      }
+
+      /* 手機專用的觸控優化 */
+      .mobile-device .dpad-button {
+        /* 增加觸控區域 */
+        padding: 2px;
+        /* 防止選取文字 */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        /* 防止觸控時的高亮 */
+        -webkit-tap-highlight-color: transparent;
+        /* 防止長按選單 */
+        -webkit-touch-callout: none;
+      }
+
+      /* 觸控狀態指示器 */
+      .touch-indicator {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 255, 255, 0.8);
+        color: #000;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        z-index: 10000;
+        display: none;
+      }
+
+      .mobile-device .touch-indicator {
+        display: block;
+      }
+
+      /* 手機專用 UI 調整 */
+      @media (max-width: 768px) {
+        /* 確保所有螢幕覆蓋層適配手機螢幕 */
+        .screen-overlay {
+          height: 100vh;
+          height: 100dvh;
+          max-height: 100vh;
+          max-height: 100dvh;
+        }
+        .mobile-device .fps-overlay {
+          top: 10px;
+          left: 10px;
+          right: auto;
+          font-size: 10px;
+        }
+
+        .mobile-device .dev-console {
+          display: none; /* 手機上隱藏開發者控制台 */
+        }
+
+        .mobile-device #gameOverScreen,
+        .mobile-device #startScreen {
+          padding: 10px;
+        }
+
+        .mobile-device .pacman-pixel-button {
+          min-height: 44px; /* 觸控友善的最小尺寸 */
+          padding: 12px 20px;
+          font-size: 16px;
+        }
+
+        .mobile-device .leaderboard-entry {
+          padding: 12px;
+          font-size: 14px;
+        }
+
+        /* 手機版物品欄調整 - 垂直堆疊布局 */
+        .mobile-device .backpack-container {
+          bottom: calc(env(safe-area-inset-bottom) + 15px); /* 更貼近底部 */
+          left: 10px; /* 與小地圖對齊左側 */
+          gap: 6px; /* 縮小間距 */
+          flex-direction: row; /* 確保水平排列 */
+        }
+
+        .mobile-device .backpack-slot {
+          width: 45px; /* 縮小物品欄格子 */
+          height: 45px; /* 縮小物品欄格子 */
+        }
+
+        .mobile-device .backpack-slot .slot-key {
+          font-size: 10px; /* 縮小按鍵提示 */
+        }
+
+        .mobile-device .backpack-slot .slot-item {
+          font-size: 16px; /* 調整物品圖示大小 */
+        }
+
+        /* 響應式縮放 - 超小螢幕 */
+        @media (max-width: 480px) and (max-height: 640px) {
+          .mobile-device #minimap-container {
+            width: 70px; /* 進一步縮小 */
+            height: 70px;
+            bottom: calc(
+              env(safe-area-inset-bottom) + 60px
+            ); /* 調整間距，更貼近底部 */
+          }
+
+          .mobile-device .backpack-slot {
+            width: 35px; /* 進一步縮小 */
+            height: 35px;
+          }
+
+          .mobile-device .backpack-slot .slot-key {
+            font-size: 8px;
+          }
+
+          .mobile-device .backpack-slot .slot-item {
+            font-size: 14px;
+          }
+
+          .mobile-dpad {
+            width: 120px; /* 縮小虛擬方向鍵 */
+            height: 120px;
+          }
+
+          .dpad-button {
+            width: 38px;
+            height: 38px;
+            font-size: 14px;
+          }
+
+          .dpad-up,
+          .dpad-down {
+            left: 41px;
+          }
+
+          .dpad-left,
+          .dpad-right,
+          .dpad-center {
+            top: 41px;
+          }
+
+          .dpad-center {
+            left: 41px;
+          }
+        }
+
+        /* 手機版小地圖調整 - 垂直堆疊布局 */
+        .mobile-device #minimap-container {
+          width: 90px; /* 適中大小 */
+          height: 90px;
+          bottom: calc(
+            env(safe-area-inset-bottom) + 70px
+          ); /* 在物品欄上方，更貼近底部 */
+          left: 10px; /* 左下角位置 */
+          right: auto;
+        }
+
+        /* 手機版遊戲結算畫面調整 */
+        .mobile-device .game-over-screen {
+          padding: 20px 15px;
+          padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+          box-sizing: border-box;
+          max-height: 100vh;
+          max-height: 100dvh;
+          overflow-y: auto;
+        }
+
+        .mobile-device .game-over-screen h2 {
+          font-size: 1.8rem;
+          margin-bottom: 15px;
+        }
+
+        .mobile-device .game-over-screen .ui-row {
+          margin: 15px 0 !important;
+        }
+
+        .mobile-device .game-over-screen .ui-row span {
+          font-size: 1.4rem !important;
+        }
+
+        .mobile-device #newHighScore {
+          font-size: 1.2rem !important;
+          margin: 8px 0 !important;
+        }
+
+        .mobile-device .game-over-screen .pacman-pixel-button {
+          margin: 8px 5px;
+          width: calc(50% - 10px);
+          display: inline-block;
+          text-align: center;
+        }
+      }
+
+      /* 橫向模式調整 */
+      @media (max-width: 768px) and (orientation: landscape) {
+        .mobile-dpad {
+          bottom: calc(env(safe-area-inset-bottom) + 10px);
+          right: calc(env(safe-area-inset-right) + 10px);
+          width: 140px;
+          height: 140px;
+        }
+
+        .dpad-button {
+          width: 45px;
+          height: 45px;
+          font-size: 16px;
+        }
+
+        .dpad-up {
+          left: 47.5px;
+        }
+
+        .dpad-down {
+          left: 47.5px;
+        }
+
+        .dpad-left {
+          top: 47.5px;
+        }
+
+        .dpad-right {
+          top: 47.5px;
+        }
+
+        .dpad-center {
+          top: 47.5px;
+          left: 47.5px;
+        }
+
+        /* 橫向模式調整 - 也使用垂直堆疊 */
+        .mobile-device #minimap-container {
+          width: 70px; /* 橫向模式縮小 */
+          height: 70px;
+          bottom: calc(
+            env(safe-area-inset-bottom) + 55px
+          ); /* 在物品欄上方，更貼近底部 */
+          left: 5px;
+          right: auto;
+        }
+
+        /* 橫向模式物品欄調整 */
+        .mobile-device .backpack-container {
+          bottom: calc(env(safe-area-inset-bottom) + 10px); /* 更貼近底部 */
+          left: 5px; /* 與小地圖對齊 */
+        }
+
+        .mobile-device .backpack-slot {
+          width: 35px; /* 橫向模式更小 */
+          height: 35px;
+        }
+
+        .mobile-device .backpack-slot .slot-key {
+          font-size: 8px;
+        }
+
+        .mobile-device .backpack-slot .slot-item {
+          font-size: 12px;
+        }
+      }
+
+      /* 隱藏桌面專用元素 */
+      .mobile-device .desktop-only {
+        display: none !important;
+      }
+
+      .mobile-device .keyboard-hint {
+        display: none !important;
+      }
+
+      /* 設定介面樣式 */
+      .settings-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+      }
+
+      .settings-content {
+        background: #1a1a1a;
+        border: 3px solid #ffff00;
+        border-radius: 10px;
+        padding: 20px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 0 20px rgba(255, 255, 0, 0.3);
+      }
+
+      .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+      }
+
+      .settings-header h2 {
+        color: #ffff00;
+        margin: 0;
+        font-family: "Cubic 11", cursive;
+      }
+
+      .close-btn {
+        background: none;
+        border: none;
+        color: #ffff00;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 3px;
+        transition: background 0.2s;
+      }
+
+      .close-btn:hover {
+        background: rgba(255, 255, 0, 0.2);
+      }
+
+      .settings-body {
+        margin-bottom: 20px;
+      }
+
+      .setting-item {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #2a2a2a;
+        border-radius: 5px;
+        border: 1px solid #444;
+      }
+
+      .setting-label {
+        display: flex;
+        align-items: center;
+        color: #fff;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        cursor: pointer;
+        font-family: "Cubic 11", cursive;
+      }
+
+      .setting-label input[type="checkbox"] {
+        display: none;
+      }
+
+      .checkmark {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #ffff00;
+        border-radius: 3px;
+        margin-right: 10px;
+        position: relative;
+        background: #000;
+        transition: all 0.2s;
+      }
+
+      .setting-label input[type="checkbox"]:checked + .checkmark {
+        background: #ffff00;
+      }
+
+      .setting-label input[type="checkbox"]:checked + .checkmark::after {
+        content: "✓";
+        position: absolute;
+        top: -2px;
+        left: 2px;
+        color: #000;
+        font-weight: bold;
+        font-size: 14px;
+      }
+
+      .setting-description {
+        color: #ccc;
+        font-size: 12px;
+        margin-top: 5px;
+        line-height: 1.4;
+      }
+
+      .volume-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .volume-control input[type="range"] {
+        flex: 1;
+        height: 6px;
+        background: #444;
+        border-radius: 3px;
+        outline: none;
+        -webkit-appearance: none;
+      }
+
+      .volume-control input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #ffff00;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      .volume-control input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #ffff00;
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+      }
+
+      .volume-control input[type="range"]:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      #volumeValue {
+        color: #ffff00;
+        font-weight: bold;
+        min-width: 40px;
+        text-align: center;
+      }
+
+      .settings-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        border-top: 2px solid #333;
+        padding-top: 15px;
+      }
+
+      .settings-footer .pacman-pixel-button {
+        flex: 1;
+        margin: 0;
+      }
+
+      /* 遊戲中設定按鈕樣式 */
+      .game-settings-btn {
+        background: rgba(0, 0, 0, 0.8);
+        color: #ffff00;
+        border: 2px solid #ffff00;
+        padding: 8px 16px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-family: "Cubic 11", cursive;
+        font-size: 14px;
+        transition: all 0.2s ease;
+      }
+
+      .game-settings-btn:hover {
+        background: rgba(255, 255, 0, 0.2);
+        transform: scale(1.05);
+      }
+
+      .game-settings-btn:active {
+        transform: scale(0.95);
+      }
+
+      /* 手機版設定介面調整 */
+      @media (max-width: 768px) {
+        .settings-content {
+          width: 95%;
+          padding: 15px;
+          max-height: 90vh;
+        }
+
+        .settings-header h2 {
+          font-size: 1.2rem;
+        }
+
+        .setting-item {
+          padding: 12px;
+          margin-bottom: 15px;
+        }
+
+        .setting-label {
+          font-size: 14px;
+        }
+
+        .settings-footer {
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .settings-footer .pacman-pixel-button {
+          width: 100%;
+          margin: 0;
+        }
+
+        .mobile-device .game-settings-btn {
+          padding: 12px 20px;
+          font-size: 16px;
+          min-height: 44px; /* 觸控友善尺寸 */
+        }
+      }
     </style>
   </head>
   <body>
@@ -989,6 +1635,17 @@
         <div class="ui-row">
           <span>剩餘點數: <span id="dotsLeft">0</span></span>
           <span>最高分: <span id="highScore">0</span></span>
+        </div>
+
+        <!-- 遊戲中設定按鈕 -->
+        <div class="ui-row">
+          <button
+            class="game-settings-btn"
+            id="gameSettingsBtn"
+            onclick="window.gameSettings?.showSettingsModal()"
+          >
+            ⚙️ 設定
+          </button>
         </div>
 
         <!-- *** 新增：任务显示区域 *** -->
@@ -1048,6 +1705,12 @@
           <button class="pacman-pixel-button" id="leaderboardBtn">
             排行榜
           </button>
+          <button class="pacman-pixel-button" id="toggleControlBtn">
+            📱 切換控制模式
+          </button>
+          <button class="pacman-pixel-button" id="settingsBtn">
+            ⚙️ 遊戲設定
+          </button>
         </div>
         <div class="content-toggle-container">
           <div class="instructions" id="instructionsContent">
@@ -1094,6 +1757,9 @@
       <div class="screen-overlay pause-screen" id="pauseScreen">
         <h2>遊戲暫停</h2>
         <button class="pacman-pixel-button" id="resumeGameBtn">繼續遊戲</button>
+        <button class="pacman-pixel-button" id="pauseSettingsBtn">
+          ⚙️ 遊戲設定
+        </button>
         <button class="pacman-pixel-button" id="backToMenuBtnPause">
           回到主選單
         </button>
@@ -1148,11 +1814,15 @@
 
       <!-- FPS 顯示 -->
       <div class="fps-overlay" id="fpsDisplay">FPS: --</div>
+
+      <!-- 觸控狀態指示器 -->
+      <div class="touch-indicator" id="touchIndicator">觸控模式</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script type="module" src="js/settings.js"></script>
     <script type="module" src="js/main.js"></script>
     <audio id="bgm" loop>
       <source src="audio/Pacmap_bgm.wav" type="audio/wav" />

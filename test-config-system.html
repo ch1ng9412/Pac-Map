@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置系統測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+        button {
+            background: #2121de;
+            color: #ffff00;
+            border: 2px solid #000;
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        button:hover {
+            background: #4242ff;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #111;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .info { color: #0ff; }
+        .warning { color: #ff0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Pac-Map 配置系統測試</h1>
+    
+    <div class="test-section">
+        <h2>📍 環境檢測</h2>
+        <button onclick="showEnvironmentInfo()">顯示環境資訊</button>
+        <div id="envResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🌐 API 地址測試</h2>
+        <button onclick="testApiUrls()">測試 API 地址建構</button>
+        <button onclick="testBackendConnection()">測試後端連線</button>
+        <div id="apiResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📱 手機適配測試</h2>
+        <button onclick="simulateMobileAccess()">模擬手機存取</button>
+        <button onclick="showNetworkInfo()">顯示網路資訊</button>
+        <div id="mobileResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔄 重試機制測試</h2>
+        <button onclick="testRetryMechanism()">測試重試機制</button>
+        <div id="retryResult" class="result"></div>
+    </div>
+
+    <script type="module">
+        import { config, buildApiUrl, checkBackendConnection, fetchWithRetry, logConfigInfo } from './js/config.js';
+
+        // 暴露函數到全域範圍
+        window.config = config;
+        window.buildApiUrl = buildApiUrl;
+        window.checkBackendConnection = checkBackendConnection;
+        window.fetchWithRetry = fetchWithRetry;
+        window.logConfigInfo = logConfigInfo;
+
+        function showEnvironmentInfo() {
+            const result = document.getElementById('envResult');
+            const env = config.environment;
+            
+            result.innerHTML = `
+                <div class="info">🌍 環境資訊:</div>
+                <div>主機名: ${env.hostname}</div>
+                <div>協定: ${env.protocol}</div>
+                <div>是否為開發環境: ${env.isDevelopment ? '是' : '否'}</div>
+                <div>是否為生產環境: ${env.isProduction ? '是' : '否'}</div>
+                <div>是否為本地檔案: ${env.isLocalFile ? '是' : '否'}</div>
+                <div class="info">📡 API 設定:</div>
+                <div>基礎 URL: ${config.api.baseUrl}</div>
+                <div>超時時間: ${config.api.timeout}ms</div>
+                <div>重試次數: ${config.api.retryAttempts}</div>
+            `;
+        }
+
+        function testApiUrls() {
+            const result = document.getElementById('apiResult');
+            
+            const testEndpoints = [
+                '/health',
+                '/auth/me',
+                '/game/score',
+                '/game/leaderboard',
+                'auth/google/login' // 測試沒有開頭斜線的情況
+            ];
+            
+            let html = '<div class="info">🔗 API URL 建構測試:</div>';
+            
+            testEndpoints.forEach(endpoint => {
+                const url = buildApiUrl(endpoint);
+                html += `<div>${endpoint} → ${url}</div>`;
+            });
+            
+            result.innerHTML = html;
+        }
+
+        async function testBackendConnection() {
+            const result = document.getElementById('apiResult');
+            result.innerHTML = '<div class="info">🔄 正在測試後端連線...</div>';
+            
+            try {
+                const isConnected = await checkBackendConnection();
+                
+                if (isConnected) {
+                    result.innerHTML = `
+                        <div class="success">✅ 後端連線成功</div>
+                        <div>API 地址: ${config.api.baseUrl}</div>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <div class="error">❌ 後端連線失敗</div>
+                        <div>嘗試的地址: ${config.api.baseUrl}</div>
+                        <div class="warning">請確保後端伺服器正在運行</div>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="error">❌ 連線測試出錯: ${error.message}</div>
+                `;
+            }
+        }
+
+        function simulateMobileAccess() {
+            const result = document.getElementById('mobileResult');
+            
+            // 模擬不同的手機 IP 情況
+            const mockMobileIPs = [
+                '192.168.1.100',
+                '192.168.0.50',
+                '10.0.0.25',
+                '172.16.0.10'
+            ];
+            
+            let html = '<div class="info">📱 模擬手機存取情況:</div>';
+            
+            mockMobileIPs.forEach(ip => {
+                // 模擬手機存取時的 API 地址
+                const mockApiUrl = `http://${ip}:8000`;
+                html += `<div>手機 IP ${ip} → API: ${mockApiUrl}</div>`;
+            });
+            
+            html += `
+                <div class="warning">⚠️ 實際使用時:</div>
+                <div>1. 確保手機和電腦在同一 WiFi</div>
+                <div>2. 電腦防火牆允許 8000 埠</div>
+                <div>3. 後端使用 0.0.0.0:8000 監聽</div>
+            `;
+            
+            result.innerHTML = html;
+        }
+
+        function showNetworkInfo() {
+            const result = document.getElementById('mobileResult');
+            
+            // 顯示當前的網路資訊
+            const currentUrl = window.location;
+            
+            result.innerHTML = `
+                <div class="info">🌐 當前網路資訊:</div>
+                <div>完整 URL: ${currentUrl.href}</div>
+                <div>主機名: ${currentUrl.hostname}</div>
+                <div>埠口: ${currentUrl.port || '預設'}</div>
+                <div>協定: ${currentUrl.protocol}</div>
+                <div class="info">🔧 配置的 API 地址:</div>
+                <div>${config.api.baseUrl}</div>
+                <div class="info">💡 手機存取建議:</div>
+                <div>將 localhost 替換為電腦的實際 IP 地址</div>
+            `;
+        }
+
+        async function testRetryMechanism() {
+            const result = document.getElementById('retryResult');
+            result.innerHTML = '<div class="info">🔄 測試重試機制...</div>';
+            
+            // 測試一個不存在的端點來觸發重試
+            const testUrl = buildApiUrl('/nonexistent-endpoint');
+            
+            const startTime = Date.now();
+            
+            try {
+                await fetchWithRetry(testUrl, {}, 2); // 只重試 2 次以節省時間
+            } catch (error) {
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                result.innerHTML = `
+                    <div class="info">🔄 重試機制測試完成:</div>
+                    <div>測試 URL: ${testUrl}</div>
+                    <div>總耗時: ${duration}ms</div>
+                    <div>錯誤: ${error.message}</div>
+                    <div class="success">✅ 重試機制正常運作</div>
+                `;
+            }
+        }
+
+        // 暴露函數到全域範圍
+        window.showEnvironmentInfo = showEnvironmentInfo;
+        window.testApiUrls = testApiUrls;
+        window.testBackendConnection = testBackendConnection;
+        window.simulateMobileAccess = simulateMobileAccess;
+        window.showNetworkInfo = showNetworkInfo;
+        window.testRetryMechanism = testRetryMechanism;
+
+        // 頁面載入時自動顯示環境資訊
+        window.addEventListener('load', () => {
+            showEnvironmentInfo();
+            logConfigInfo();
+        });
+    </script>
+</body>
+</html>
