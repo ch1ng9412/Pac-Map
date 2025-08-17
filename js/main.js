@@ -5,7 +5,7 @@ import { initGame, pauseGame, resumeGame, tryStartMovementInDirection, restartGa
 import { initStartScreenBackground } from './backgroundAnimation.js';
 import { toggleDevConsole, setupDevConsoleListeners } from './devConsole.js';
 import { initAuth } from './auth.js';
-import { initMobileControls, detectDevice, toggleControlMode } from './mobileControls.js';
+import { initMobileControls, detectDevice, toggleControlMode, showVirtualDPad, hideVirtualDPad } from './mobileControls.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOM 載入完成，開始初始化...');

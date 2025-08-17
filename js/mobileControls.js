@@ -91,7 +91,7 @@ export function initMobileControls() {
  * 啟用手機控制
  */
 function enableMobileControls() {
-    createVirtualDPad();
+    // 只設置觸控手勢和 UI，不立即顯示虛擬方向鍵
     setupTouchGestures();
     setupMobileUI();
     virtualButtonsVisible = true;
@@ -440,6 +440,24 @@ export function toggleControlMode() {
 }
 
 /**
+ * 顯示虛擬方向鍵（遊戲開始時調用）
+ */
+export function showVirtualDPad() {
+    if (virtualButtonsVisible && !dpadContainer) {
+        createVirtualDPad();
+        console.log('✅ 虛擬方向鍵已顯示');
+    }
+}
+
+/**
+ * 隱藏虛擬方向鍵（遊戲結束時調用）
+ */
+export function hideVirtualDPad() {
+    removeVirtualDPad();
+    console.log('✅ 虛擬方向鍵已隱藏');
+}
+
+/**
  * 獲取當前控制模式
  */
 export function getCurrentControlMode() {
@@ -508,6 +526,8 @@ if (typeof window !== 'undefined') {
         initMobileControls,
         toggleControlMode,
         getCurrentControlMode,
+        showVirtualDPad,
+        hideVirtualDPad,
         updateTouchIndicator,
         checkVibrationSupport,
         vibrate

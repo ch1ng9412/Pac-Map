@@ -827,7 +827,7 @@ function startGameCountdown() {
     }, 1000);
 }
 
-async function startGame() { 
+async function startGame() {
     document.getElementById('gameUI').style.display = 'block';
 
     const minimapContainer = document.getElementById('minimap-container');
@@ -837,6 +837,11 @@ async function startGame() {
     const backpackContainer = document.getElementById('backpack-ui');
     if (backpackContainer) {
         backpackContainer.style.display = 'flex'; // 因为它是 flex 布局，所以用 'flex'
+    }
+
+    // 顯示手機虛擬方向鍵
+    if (typeof window.mobileControls?.showVirtualDPad === 'function') {
+        window.mobileControls.showVirtualDPad();
     }
 
     if (gameState.minimap.map) {
@@ -1546,6 +1551,11 @@ export async function endGame(victory) {
     // 更新本地排行榜（向後兼容）
     updateLeaderboard(gameState.score);
 
+    // 隱藏手機虛擬方向鍵
+    if (typeof window.mobileControls?.hideVirtualDPad === 'function') {
+        window.mobileControls.hideVirtualDPad();
+    }
+
     // 更新 UI
     document.getElementById('finalScore').textContent = finalScore;
     document.getElementById('gameOverTitle').textContent = victory ? '🎉 過關成功!' : ' 遊戲結束';
@@ -1930,7 +1940,12 @@ export function backToMenu() {
     document.getElementById('mapSelectionScreen').style.display = 'none'; 
     document.getElementById('instructionsContent').style.display = 'none'; 
     document.getElementById('leaderboardContent').style.display = 'none';
-    document.getElementById('startScreen').style.display = 'flex'; 
+    document.getElementById('startScreen').style.display = 'flex';
+
+    // 隱藏手機虛擬方向鍵
+    if (typeof window.mobileControls?.hideVirtualDPad === 'function') {
+        window.mobileControls.hideVirtualDPad();
+    }
 
     stopBGM();
     if (gameLoopRequestId) cancelAnimationFrame(gameLoopRequestId);
