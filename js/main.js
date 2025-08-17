@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         const currentMode = window.mobileControls?.getCurrentControlMode();
         if (currentMode) {
-            const buttonText = currentMode.controlMode === 'mobile' ? '🖱️ 切換到桌面模式' : '📱 切換到手機模式';
+            const buttonText = currentMode.controlMode === 'mobile' ? '⌨️ 切換到桌面模式' : '📱 切換到手機模式';
             document.getElementById('toggleControlBtn').textContent = buttonText;
         }
     }, 100);
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentMode = window.mobileControls?.getCurrentControlMode();
         if (currentMode) {
             const modeText = currentMode.controlMode === 'mobile' ? '手機' : '桌面';
-            const buttonText = currentMode.controlMode === 'mobile' ? '🖱️ 切換到桌面模式' : '📱 切換到手機模式';
+            const buttonText = currentMode.controlMode === 'mobile' ? '⌨️ 切換到桌面模式' : '📱 切換到手機模式';
             document.getElementById('toggleControlBtn').textContent = buttonText;
             console.log(`🔄 已切換到${modeText}控制模式`);
         }
