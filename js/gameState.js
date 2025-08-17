@@ -44,6 +44,7 @@ export let gameState = {
     powerModeTimer: null,
     dotsCollected: 0,
     totalDots: 0,
+    ghostsEaten: 0,
     canMove: false, 
     roadNetwork: [], 
     validPositions: [], 

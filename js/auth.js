@@ -60,9 +60,10 @@ async function handleGoogleLogin(response) {
 
         showAuthMessage('登入成功！', 'success');
 
-        // 確保狀態持久化
+        // 檢查並提示本地分數遷移
         setTimeout(() => {
             updateAuthUI();
+            checkAndOfferLocalScoreMigration();
         }, 100);
 
     } catch (error) {
@@ -406,4 +407,213 @@ export async function authenticatedFetch(url, options = {}) {
     }
     
     return response;
+}
+
+// === 本地分數遷移功能 ===
+
+/**
+ * 獲取本地分數記錄
+ */
+function getLocalScores() {
+    try {
+        const scores = localStorage.getItem('pac_map_local_scores');
+        return scores ? JSON.parse(scores) : [];
+    } catch (error) {
+        console.error('讀取本地分數失敗:', error);
+        return [];
+    }
+}
+
+/**
+ * 檢查並提供本地分數遷移
+ */
+function checkAndOfferLocalScoreMigration() {
+    const localScores = getLocalScores();
+
+    if (localScores.length === 0) {
+        console.log('沒有本地分數需要遷移');
+        return;
+    }
+
+    console.log(`發現 ${localScores.length} 個本地分數記錄`);
+
+    // 顯示遷移提示
+    showMigrationPrompt(localScores);
+}
+
+/**
+ * 顯示遷移提示
+ */
+function showMigrationPrompt(localScores) {
+    const promptDiv = document.createElement('div');
+    promptDiv.className = 'migration-prompt';
+    promptDiv.innerHTML = `
+        <div class="migration-content">
+            <h3>🔄 發現本地遊戲記錄</h3>
+            <p>我們發現您有 <strong>${localScores.length}</strong> 個本地分數記錄</p>
+            <p>是否要同步到雲端？這樣您就可以在全球排行榜中看到這些分數。</p>
+            <div class="migration-buttons">
+                <button class="pacman-pixel-button" onclick="startMigration()">
+                    同步到雲端
+                </button>
+                <button class="pacman-pixel-button" onclick="skipMigration()" style="background-color: #666;">
+                    稍後再說
+                </button>
+                <button class="pacman-pixel-button" onclick="deleteMigration()" style="background-color: #dc3545;">
+                    刪除本地記錄
+                </button>
+            </div>
+        </div>
+    `;
+
+    // 添加樣式
+    promptDiv.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+
+    const content = promptDiv.querySelector('.migration-content');
+    content.style.cssText = `
+        background: #000;
+        border: 3px solid #ffff00;
+        border-radius: 10px;
+        padding: 30px;
+        text-align: center;
+        max-width: 500px;
+        color: white;
+    `;
+
+    const buttons = promptDiv.querySelector('.migration-buttons');
+    buttons.style.cssText = `
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    `;
+
+    document.body.appendChild(promptDiv);
+
+    // 暴露函數到全域範圍
+    window.startMigration = () => startMigration(promptDiv);
+    window.skipMigration = () => skipMigration(promptDiv);
+    window.deleteMigration = () => deleteMigration(promptDiv);
+}
+
+/**
+ * 開始遷移本地分數
+ */
+async function startMigration(promptDiv) {
+    const localScores = getLocalScores();
+    let successCount = 0;
+    let failCount = 0;
+
+    // 更新提示內容
+    const content = promptDiv.querySelector('.migration-content');
+    content.innerHTML = `
+        <h3>🔄 正在同步分數...</h3>
+        <p>請稍候，正在將您的本地記錄同步到雲端</p>
+        <div class="progress">進度：0 / ${localScores.length}</div>
+    `;
+
+    for (let i = 0; i < localScores.length; i++) {
+        const score = localScores[i];
+        try {
+            await submitScoreToBackend({
+                score: score.score,
+                level: score.level || 1,
+                map_index: score.map_index || 0,
+                survival_time: score.survival_time || 0,
+                dots_collected: score.dots_collected || 0,
+                ghosts_eaten: score.ghosts_eaten || 0
+            });
+            successCount++;
+        } catch (error) {
+            console.error('遷移分數失敗:', error);
+            failCount++;
+        }
+
+        // 更新進度
+        const progress = promptDiv.querySelector('.progress');
+        if (progress) {
+            progress.textContent = `進度：${i + 1} / ${localScores.length}`;
+        }
+    }
+
+    // 顯示結果
+    content.innerHTML = `
+        <h3>✅ 同步完成</h3>
+        <p>成功同步：${successCount} 個記錄</p>
+        ${failCount > 0 ? `<p style="color: #ff6b6b;">失敗：${failCount} 個記錄</p>` : ''}
+        <button class="pacman-pixel-button" onclick="finishMigration(${successCount > 0})">
+            確定
+        </button>
+    `;
+
+    window.finishMigration = (shouldClearLocal) => finishMigration(promptDiv, shouldClearLocal);
+}
+
+/**
+ * 跳過遷移
+ */
+function skipMigration(promptDiv) {
+    document.body.removeChild(promptDiv);
+    showAuthMessage('已跳過分數同步，您可以稍後在設定中進行同步', 'info');
+}
+
+/**
+ * 刪除本地記錄
+ */
+function deleteMigration(promptDiv) {
+    if (confirm('確定要刪除所有本地記錄嗎？此操作無法復原。')) {
+        localStorage.removeItem('pac_map_local_scores');
+        document.body.removeChild(promptDiv);
+        showAuthMessage('本地記錄已刪除', 'info');
+    }
+}
+
+/**
+ * 完成遷移
+ */
+function finishMigration(promptDiv, shouldClearLocal) {
+    if (shouldClearLocal) {
+        localStorage.removeItem('pac_map_local_scores');
+        showAuthMessage('分數同步完成，本地記錄已清除', 'success');
+    } else {
+        showAuthMessage('分數同步完成', 'success');
+    }
+
+    document.body.removeChild(promptDiv);
+
+    // 更新排行榜顯示
+    if (typeof updateLeaderboardUI === 'function') {
+        updateLeaderboardUI();
+    }
+}
+
+/**
+ * 提交分數到後端（用於遷移）
+ */
+async function submitScoreToBackend(scoreData) {
+    const response = await authenticatedFetch('http://localhost:8000/game/score', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scoreData)
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
 }

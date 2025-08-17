@@ -1,5 +1,24 @@
 import { gameState, leaderboard } from './gameState.js';
 
+// 輔助函數：獲取本地分數記錄
+function getLocalScores() {
+    try {
+        const scores = localStorage.getItem('pac_map_local_scores');
+        return scores ? JSON.parse(scores) : [];
+    } catch (error) {
+        console.error('讀取本地分數失敗:', error);
+        return [];
+    }
+}
+
+// 輔助函數：檢查用戶是否已登入
+function isUserLoggedIn() {
+    // 檢查是否有用戶資訊和 token
+    const user = localStorage.getItem('pac_map_user');
+    const token = localStorage.getItem('pac_map_token');
+    return !!(user && token);
+}
+
 export function updateUI() { 
     document.getElementById('score').textContent = gameState.score; 
     document.getElementById('level').textContent = gameState.level; 
@@ -82,16 +101,21 @@ export async function updateLeaderboardUI() {
         }
 
         const data = await response.json();
+        const globalScores = data.success ? data.data : [];
+
+        // 獲取本地分數
+        const localScores = getLocalScores();
 
         list.innerHTML = '';
 
-        if (!data.success || data.data.length === 0) {
-            list.innerHTML = '<li>暫無記錄</li>';
-        } else {
-            data.data.forEach((entry, index) => {
-                const li = document.createElement('li');
+        // 顯示全球排行榜
+        if (globalScores.length > 0) {
+            const globalHeader = document.createElement('li');
+            globalHeader.innerHTML = '<h4 style="color: #ffff00; margin: 10px 0;">🌍 全球排行榜</h4>';
+            list.appendChild(globalHeader);
 
-                // 創建排行榜條目的 HTML
+            globalScores.forEach((entry, index) => {
+                const li = document.createElement('li');
                 li.innerHTML = `
                     <div class="leaderboard-entry">
                         <span class="rank">#${entry.rank}</span>
@@ -105,23 +129,91 @@ export async function updateLeaderboardUI() {
                         </div>
                     </div>
                 `;
-
                 list.appendChild(li);
             });
         }
 
+        // 顯示本地記錄（如果用戶未登入且有本地記錄）
+        if (localScores.length > 0 && !isUserLoggedIn()) {
+            const localHeader = document.createElement('li');
+            localHeader.innerHTML = '<h4 style="color: #ff9500; margin: 15px 0 10px 0;">📱 您的本地記錄</h4>';
+            list.appendChild(localHeader);
+
+            localScores.slice(0, 5).forEach((entry, index) => {
+                const li = document.createElement('li');
+                const mapNames = ["台北市中心", "台中市區", "高雄市區"];
+                const mapName = mapNames[entry.map_index] || "未知地圖";
+
+                li.innerHTML = `
+                    <div class="leaderboard-entry local-entry">
+                        <span class="rank">#${index + 1}</span>
+                        <div class="player-info">
+                            <span class="player-name">您</span>
+                        </div>
+                        <div class="score-info">
+                            <span class="score">${entry.score} 分</span>
+                            <span class="map-name">${mapName}</span>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+
+            // 添加登入提示
+            const loginHint = document.createElement('li');
+            loginHint.innerHTML = `
+                <div style="text-align: center; margin: 10px 0; padding: 10px; background: rgba(255, 149, 0, 0.1); border-radius: 5px;">
+                    <small style="color: #ff9500;">💡 登入即可將本地記錄同步到全球排行榜</small>
+                </div>
+            `;
+            list.appendChild(loginHint);
+        }
+
+        // 如果沒有任何記錄
+        if (globalScores.length === 0 && localScores.length === 0) {
+            list.innerHTML = '<li>暫無記錄</li>';
+        }
+
     } catch (error) {
         console.error('載入排行榜失敗:', error);
-        list.innerHTML = '<li>載入失敗，請稍後再試</li>';
 
-        // 如果後端不可用，回退到本地排行榜
-        if (leaderboard.length > 0) {
-            list.innerHTML = '';
+        // 如果後端不可用，只顯示本地排行榜
+        const localScores = getLocalScores();
+        list.innerHTML = '';
+
+        if (localScores.length > 0) {
+            const localHeader = document.createElement('li');
+            localHeader.innerHTML = '<h4 style="color: #ff9500; margin: 10px 0;">📱 本地記錄</h4>';
+            list.appendChild(localHeader);
+
+            localScores.slice(0, 10).forEach((entry, index) => {
+                const li = document.createElement('li');
+                const mapNames = ["台北市中心", "台中市區", "高雄市區"];
+                const mapName = mapNames[entry.map_index] || "未知地圖";
+
+                li.innerHTML = `
+                    <div class="leaderboard-entry local-entry">
+                        <span class="rank">#${index + 1}</span>
+                        <div class="player-info">
+                            <span class="player-name">您</span>
+                        </div>
+                        <div class="score-info">
+                            <span class="score">${entry.score} 分</span>
+                            <span class="map-name">${mapName}</span>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        } else if (leaderboard.length > 0) {
+            // 回退到舊的本地排行榜
             leaderboard.forEach(s => {
                 const li = document.createElement('li');
                 li.textContent = `${s} 分 (本地記錄)`;
                 list.appendChild(li);
             });
+        } else {
+            list.innerHTML = '<li>載入失敗，請稍後再試</li>';
         }
     }
 }

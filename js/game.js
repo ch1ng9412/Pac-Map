@@ -2,6 +2,146 @@ import { gameState, mapConfigs, MAX_MAP_ZOOM, NUMBER_OF_GHOSTS, PACMAN_BASE_SPEE
 import { soundsReady, setupSounds, playStartSound, playDotSound, playPowerPelletSound, playEatGhostSound, playDeathSound } from './audio.js';
 import { updateUI, updateLeaderboardUI, updatePacmanIconRotation, showLoadingScreen, hideLoadingScreen } from './ui.js';
 import { stopBackgroundAnimation, initStartScreenBackground } from './backgroundAnimation.js';
+import { isLoggedIn, authenticatedFetch } from './auth.js';
+
+// === 本地分數管理 ===
+
+/**
+ * 獲取本地分數記錄
+ */
+function getLocalScores() {
+    try {
+        const scores = localStorage.getItem('pac_map_local_scores');
+        return scores ? JSON.parse(scores) : [];
+    } catch (error) {
+        console.error('讀取本地分數失敗:', error);
+        return [];
+    }
+}
+
+/**
+ * 保存分數到本地
+ */
+function saveLocalScore(scoreData) {
+    try {
+        const scores = getLocalScores();
+        const newScore = {
+            ...scoreData,
+            id: Date.now(), // 使用時間戳作為 ID
+            created_at: new Date().toISOString(),
+            is_local: true
+        };
+
+        scores.push(newScore);
+
+        // 按分數排序，保留前 20 筆
+        scores.sort((a, b) => b.score - a.score);
+        if (scores.length > 20) {
+            scores.splice(20);
+        }
+
+        localStorage.setItem('pac_map_local_scores', JSON.stringify(scores));
+        console.log('本地分數已保存:', newScore);
+        return newScore;
+    } catch (error) {
+        console.error('保存本地分數失敗:', error);
+        return null;
+    }
+}
+
+/**
+ * 清除本地分數記錄
+ */
+function clearLocalScores() {
+    try {
+        localStorage.removeItem('pac_map_local_scores');
+        console.log('本地分數記錄已清除');
+    } catch (error) {
+        console.error('清除本地分數失敗:', error);
+    }
+}
+
+// === 後端分數提交 ===
+
+/**
+ * 提交分數到後端
+ */
+async function submitScoreToBackend(scoreData) {
+    try {
+        console.log('正在提交分數到後端...', scoreData);
+
+        const response = await authenticatedFetch('http://localhost:8000/game/score', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(scoreData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('分數提交成功:', result);
+
+        // 提交成功後更新排行榜
+        updateLeaderboardUI();
+
+        return result;
+    } catch (error) {
+        console.error('提交分數失敗:', error);
+
+        // 如果是網路錯誤，顯示友善的錯誤訊息
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            showScoreSubmissionError('網路連線失敗，分數已保存在本地');
+        } else if (error.message.includes('登入已過期')) {
+            showScoreSubmissionError('登入已過期，請重新登入後分數將自動同步');
+        } else {
+            showScoreSubmissionError('分數提交失敗，已保存在本地');
+        }
+
+        throw error;
+    }
+}
+
+/**
+ * 顯示分數提交錯誤訊息
+ */
+function showScoreSubmissionError(message) {
+    // 創建錯誤提示元素
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'score-submission-error';
+    errorDiv.textContent = message;
+
+    // 添加樣式
+    errorDiv.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 12px 20px;
+        background-color: #ff6b6b;
+        color: white;
+        border-radius: 6px;
+        font-weight: bold;
+        z-index: 9999;
+        transition: opacity 0.3s ease;
+        max-width: 300px;
+        font-size: 14px;
+    `;
+
+    document.body.appendChild(errorDiv);
+
+    // 5秒後自動移除
+    setTimeout(() => {
+        errorDiv.style.opacity = '0';
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.parentNode.removeChild(errorDiv);
+            }
+        }, 300);
+    }, 5000);
+}
 import { fetchRoadData, fetchPOIData, generateRoadNetworkGeneric, findNearestRoadPositionGeneric, drawVisualRoads, getRandomPointInCircle } from './map.js';
 import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual, bfsDistance} from './ai.js';
 import { logToDevConsole } from './devConsole.js';
@@ -109,9 +249,9 @@ function resetGameState() {
         maxHealth: 100
     };
 
-    gameState.score = 0; gameState.gameTime = 600; 
-    gameState.isPaused = false; gameState.isGameOver = false; gameState.isLosingLife = false; 
-    gameState.powerMode = false; gameState.dotsCollected = 0;
+    gameState.score = 0; gameState.gameTime = 600;
+    gameState.isPaused = false; gameState.isGameOver = false; gameState.isLosingLife = false;
+    gameState.powerMode = false; gameState.dotsCollected = 0; gameState.ghostsEaten = 0;
     gameState.ghostSpawnPoints = []; gameState.pacmanLevelStartPoint = null;
     gameState.baseScatterPoints = []; 
     gameState.pacmanMovement = { isMoving: false, startPositionLatLng: null, destinationNodeLatLng: null, totalDistanceToDestinationNode: 0, distanceTraveledThisSegment: 0, lastIntendedDirectionKey: null, currentFacingDirection: 'left' };
@@ -1166,14 +1306,15 @@ function deactivatePowerMode() {
     });
 }
 
-function eatGhost(ghost) { 
+function eatGhost(ghost) {
     if (!ghost || !ghost.marker) return;
     const ghostElement = ghost.marker.getElement();
-    if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return; 
-    
+    if (ghostElement && ghostElement.classList.contains('ghost-eaten')) return;
+
     playEatGhostSound();
     gameState.score += 150;
-    if (ghostElement) ghostElement.classList.add('ghost-eaten'); 
+    gameState.ghostsEaten++; // 增加吃鬼計數
+    if (ghostElement) ghostElement.classList.add('ghost-eaten');
     ghost.movement.isMoving = false;
     
     setTimeout(() => { 
@@ -1344,7 +1485,7 @@ function nextLevel() {
     startGameCountdown();
 }
 
-export function endGame(victory) { 
+export async function endGame(victory) {
     gameState.isGameOver = true;
     gameState.canMove = false;
     stopBGM();
@@ -1358,20 +1499,152 @@ export function endGame(victory) {
 
     gameState.pacmanMovement.isMoving = false;
     gameState.pacmanMovement.lastIntendedDirectionKey = null;
-    gameState.ghosts.forEach(g => { if(g.movement) g.movement.isMoving = false; }); 
-    
-    gameState.autoPilotMode = false; 
+    gameState.ghosts.forEach(g => { if(g.movement) g.movement.isMoving = false; });
+
+    gameState.autoPilotMode = false;
     gameState.cleverMode = false;
     gameState.autoPilotPath = [];
     gameState.autoPilotTarget = null;
-    
+
     const finalScore = calculateFinalScore(gameState.score);
+
+    // 準備分數資料
+    const gameEndTime = performance.now();
+    const totalSurvivalTimeMs = gameEndTime - gameState.gameStartTime;
+    const totalSurvivalTimeSec = Math.floor(totalSurvivalTimeMs / 1000);
+
+    const scoreData = {
+        score: finalScore,
+        level: gameState.level,
+        map_index: gameState.currentMapIndex,
+        survival_time: totalSurvivalTimeSec,
+        dots_collected: gameState.dotsCollected,
+        ghosts_eaten: gameState.ghostsEaten || 0
+    };
+
+    // 根據登入狀態處理分數
+    if (isLoggedIn()) {
+        console.log('用戶已登入，提交分數到後端');
+        try {
+            await submitScoreToBackend(scoreData);
+            console.log('分數提交成功');
+        } catch (error) {
+            console.log('分數提交失敗，保存到本地作為備份');
+            saveLocalScore(scoreData);
+        }
+    } else {
+        console.log('用戶未登入，保存分數到本地');
+        saveLocalScore(scoreData);
+
+        // 顯示登入提示（如果是高分）
+        if (isHighScore(finalScore)) {
+            showLoginPromptAfterGame(finalScore);
+        }
+    }
+
+    // 更新本地排行榜（向後兼容）
     updateLeaderboard(gameState.score);
+
+    // 更新 UI
     document.getElementById('finalScore').textContent = finalScore;
     document.getElementById('gameOverTitle').textContent = victory ? '🎉 過關成功!' : ' 遊戲結束';
     document.getElementById('newHighScore').style.display = isNewRecord(finalScore) ? 'block' : 'none';
     document.getElementById('gameOverScreen').style.display = 'flex';
 }
+
+/**
+ * 判斷是否為高分
+ */
+function isHighScore(score) {
+    const localScores = getLocalScores();
+    if (localScores.length === 0) return score > 1000; // 如果沒有記錄，1000分以上算高分
+
+    const topScore = Math.max(...localScores.map(s => s.score));
+    return score > topScore * 0.8; // 超過最高分的80%算高分
+}
+
+/**
+ * 顯示遊戲結束後的登入提示
+ */
+function showLoginPromptAfterGame(score) {
+    // 檢查是否已經有提示元素
+    let promptDiv = document.getElementById('loginPromptAfterGame');
+
+    if (!promptDiv) {
+        // 創建登入提示元素
+        promptDiv = document.createElement('div');
+        promptDiv.id = 'loginPromptAfterGame';
+        promptDiv.className = 'login-prompt-after-game';
+
+        // 添加到遊戲結束畫面
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        if (gameOverScreen) {
+            gameOverScreen.appendChild(promptDiv);
+        }
+    }
+
+    promptDiv.innerHTML = `
+        <div class="high-score-login-prompt">
+            <h3>🏆 恭喜獲得高分！</h3>
+            <p>您的分數：<strong>${score}</strong> 分</p>
+            <p>🌟 登入即可：</p>
+            <ul>
+                <li>保存分數到雲端</li>
+                <li>參與全球排行榜</li>
+                <li>查看詳細遊戲統計</li>
+                <li>同步所有本地記錄</li>
+            </ul>
+            <button class="pacman-pixel-button" onclick="showLoginModal()">
+                立即登入
+            </button>
+            <button class="pacman-pixel-button" onclick="hideLoginPromptAfterGame()" style="background-color: #666;">
+                稍後再說
+            </button>
+        </div>
+    `;
+
+    // 添加樣式
+    promptDiv.style.cssText = `
+        margin-top: 20px;
+        padding: 20px;
+        background: rgba(255, 255, 0, 0.1);
+        border: 2px solid #ffff00;
+        border-radius: 10px;
+        text-align: center;
+        max-width: 400px;
+    `;
+
+    promptDiv.style.display = 'block';
+}
+
+/**
+ * 隱藏登入提示
+ */
+function hideLoginPromptAfterGame() {
+    const promptDiv = document.getElementById('loginPromptAfterGame');
+    if (promptDiv) {
+        promptDiv.style.display = 'none';
+    }
+}
+
+/**
+ * 顯示登入模態框（簡單實作）
+ */
+function showLoginModal() {
+    // 隱藏遊戲結束畫面，顯示主畫面的登入區域
+    document.getElementById('gameOverScreen').style.display = 'none';
+    document.getElementById('startScreen').style.display = 'flex';
+
+    // 滾動到登入區域
+    const loginSection = document.getElementById('userAuthSection');
+    if (loginSection) {
+        loginSection.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// 將函數暴露到全域範圍，供 HTML 中的 onclick 使用
+window.showLoginModal = showLoginModal;
+window.hideLoginPromptAfterGame = hideLoginPromptAfterGame;
 
 function updateLeaderboard(score) {
     if (typeof score === 'number') {
