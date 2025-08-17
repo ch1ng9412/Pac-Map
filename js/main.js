@@ -49,18 +49,18 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('🔐 初始化認證系統...');
     initAuth();
 
-    // 等待 Google Sign-In SDK 載入後再次初始化
-    setTimeout(() => {
-        console.log('🔄 延遲重新初始化認證系統...');
-        initAuth();
+    // // 等待 Google Sign-In SDK 載入後再次初始化
+    // setTimeout(() => {
+    //     console.log('🔄 延遲重新初始化認證系統...');
+    //     initAuth();
 
-        // 檢查 handleGoogleLogin 是否可用
-        if (typeof window.handleGoogleLogin === 'function') {
-            console.log('✅ handleGoogleLogin 函數可用');
-        } else {
-            console.error('❌ handleGoogleLogin 函數不可用');
-        }
-    }, 1000);
+    //     // 檢查 handleGoogleLogin 是否可用
+    //     if (typeof window.handleGoogleLogin === 'function') {
+    //         console.log('✅ handleGoogleLogin 函數可用');
+    //     } else {
+    //         console.error('❌ handleGoogleLogin 函數不可用');
+    //     }
+    // }, 1000);
     
     // Set initial screen states
     document.getElementById('startScreen').style.display = 'flex';
@@ -71,7 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('instructionsContent').style.display = 'none';
     document.getElementById('leaderboardContent').style.display = 'none';
 
-    initStartScreenBackground(); 
+    // 初始化背景動畫
+    console.log('🎬 正在初始化背景動畫...');
+    initStartScreenBackground().catch(error => {
+        console.error('❌ 背景動畫初始化失敗:', error);
+    });
     setupDevConsoleListeners();
 
     // --- Event Listeners ---
@@ -131,7 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!soundsReady) { 
                 setupSounds();
             }
-            initGame(); 
+            initGame().catch(error => {
+                console.error('遊戲初始化失敗:', error);
+            });
         });
     });
     

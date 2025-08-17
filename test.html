@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test</title>
+</head>
+<body>
+    <h1>JavaScript Test</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        try {
+            console.log('Testing imports...');
+            
+            // Test basic imports
+            import('./js/gameState.js').then(module => {
+                console.log('gameState.js loaded successfully');
+                document.getElementById('output').innerHTML += '<p>gameState.js: OK</p>';
+            }).catch(err => {
+                console.error('gameState.js failed:', err);
+                document.getElementById('output').innerHTML += '<p>gameState.js: ERROR - ' + err.message + '</p>';
+            });
+            
+            import('./js/auth.js').then(module => {
+                console.log('auth.js loaded successfully');
+                document.getElementById('output').innerHTML += '<p>auth.js: OK</p>';
+            }).catch(err => {
+                console.error('auth.js failed:', err);
+                document.getElementById('output').innerHTML += '<p>auth.js: ERROR - ' + err.message + '</p>';
+            });
+            
+            import('./js/gameValidationService.js').then(module => {
+                console.log('gameValidationService.js loaded successfully');
+                document.getElementById('output').innerHTML += '<p>gameValidationService.js: OK</p>';
+            }).catch(err => {
+                console.error('gameValidationService.js failed:', err);
+                document.getElementById('output').innerHTML += '<p>gameValidationService.js: ERROR - ' + err.message + '</p>';
+            });
+            
+            import('./js/game.js').then(module => {
+                console.log('game.js loaded successfully');
+                document.getElementById('output').innerHTML += '<p>game.js: OK</p>';
+            }).catch(err => {
+                console.error('game.js failed:', err);
+                document.getElementById('output').innerHTML += '<p>game.js: ERROR - ' + err.message + '</p>';
+            });
+            
+            import('./js/backgroundAnimation.js').then(module => {
+                console.log('backgroundAnimation.js loaded successfully');
+                document.getElementById('output').innerHTML += '<p>backgroundAnimation.js: OK</p>';
+            }).catch(err => {
+                console.error('backgroundAnimation.js failed:', err);
+                document.getElementById('output').innerHTML += '<p>backgroundAnimation.js: ERROR - ' + err.message + '</p>';
+            });
+            
+        } catch (error) {
+            console.error('Test failed:', error);
+            document.getElementById('output').innerHTML += '<p>Test failed: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

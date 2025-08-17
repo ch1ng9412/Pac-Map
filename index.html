@@ -28,7 +28,6 @@
         padding: 0;
         box-sizing: border-box;
       }
-
       html {
         height: 100%;
         /* 使用 vh 單位確保適配手機螢幕 */
@@ -36,7 +35,6 @@
         /* 支援 iOS Safari 的安全區域 */
         height: 100dvh; /* 動態視窗高度 */
       }
-
       body {
         font-family: "Cubic 11", cursive;
         background: #000;
@@ -120,6 +118,7 @@
         background-color: #000;
         filter: brightness(0.35) grayscale(0.1);
         transition: opacity 0.5s ease-in-out;
+        opacity: 1;
       }
 
       .screen-overlay {
@@ -470,6 +469,67 @@
         border-radius: 50%;
         border: 2px solid white;
         box-shadow: 0 0 8px #ffff00;
+      }
+      .minimap-poi-icon {
+          border-radius: 50%;
+          border: 1px solid rgba(255, 255, 255, 0.7);
+          box-shadow: 0 0 3px black;
+          opacity: 0.8;
+      }
+      .minimap-poi-icon.monument-icon { background-color: #dd0e0e; }
+      .minimap-poi-icon.store-icon { background-color: #1bc431; }
+      .minimap-poi-icon.park-icon { background-color: #006400; }
+      .minimap-poi-icon.hotel-icon { background-color: #1bc431; }
+      .minimap-poi-icon.bank-icon { background-color: #d1e428; }
+      .minimap-poi-icon.restaurant-icon { background-color: #dd0e0e; }
+      .minimap-poi-icon.cafe-icon { background-color: #1bc431; }
+      .minimap-poi-icon.bubble-tea-icon { background-color: #1bc431; }
+      .minimap-poi-icon.atm-icon { background-color: #d1e428; }
+
+      .minimap-poi-icon.quest-target {
+          transform: scale(1.8); /* 放大 */
+          border: 2px solid white;
+          opacity: 1;
+          z-index: 1000 !important; /* 确保高亮图标在最顶层 */
+          
+          /* 添加一个发光的动画 */
+          animation: pulse 1.5s infinite ease-in-out;
+      }
+
+      .minimap-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          
+          display: flex;
+          flex-direction: column; /* 垂直排列 */
+          justify-content: center;
+          align-items: center;
+          
+          padding: 4px 0;
+          background-color: rgba(0, 0, 0, 0.6); /* 半透明黑色背景 */
+          color: white;
+          
+          font-family: 'Cubic 11', cursive;
+          text-shadow: 1px 1px 2px black;
+          pointer-events: none; /* 确保它不会影响地图的鼠标交互 */
+
+          z-index: 2000;
+
+          /* 默认隐藏，我们用 JS 控制显示 */
+          display: none;
+      }
+
+      #minimap-timer-label {
+          font-size: 12px;
+          color: #ccc;
+      }
+
+      #minimap-timer-countdown {
+          font-size: 24px;
+          color: #ffff00; /* 倒计时用黄色突出 */
+          font-weight: bold;
       }
 
       @keyframes blinkRed {
@@ -1610,6 +1670,7 @@
               data-auto_prompt="false"
               data-cancel_on_tap_outside="false"
               data-itp_support="true"
+              data-use_fedcm_for_prompt="true"
             ></div>
             <div
               class="g_id_signin"
@@ -1732,6 +1793,11 @@
 
       <div id="minimap-container">
         <div id="minimap"></div>
+
+        <div id="minimap-timer-overlay" class="minimap-overlay">
+            <span id="minimap-timer-label">下次縮圈</span>
+            <span id="minimap-timer-countdown">--:--</span>
+        </div>
       </div>
 
       <div class="dev-console" id="devConsole">

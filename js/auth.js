@@ -16,15 +16,46 @@ let accessToken = null;
 async function handleGoogleLogin(response) {
     console.log('🔑 收到 Google 登入回應', response);
 
+    // 強制防止頁面重新載入
+    const preventReload = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        }
+        return false;
+    };
+
     // 防止頁面重新載入或重導向
     try {
         if (window.event) {
-            window.event.preventDefault();
-            window.event.stopPropagation();
+            preventReload(window.event);
         }
     } catch (e) {
         // 忽略錯誤
     }
+
+    // 額外防止頁面重新載入
+    if (typeof event !== 'undefined' && event) {
+        try {
+            preventReload(event);
+        } catch (e) {
+            // 忽略錯誤
+        }
+    }
+
+    // 添加全域事件監聽器來防止重新載入
+    const preventUnload = (e) => {
+        e.preventDefault();
+        return false;
+    };
+
+    window.addEventListener('beforeunload', preventUnload, { once: true });
+
+    // 在處理完成後移除監聽器
+    setTimeout(() => {
+        window.removeEventListener('beforeunload', preventUnload);
+    }, 5000);
 
     try {
         showAuthMessage('正在登入...', 'info');
@@ -64,6 +95,9 @@ async function handleGoogleLogin(response) {
             updateAuthUI();
             checkAndOfferLocalScoreMigration();
         }, 100);
+
+        // 防止任何可能的頁面重新載入
+        return false;
 
     } catch (error) {
         console.error('❌ 登入錯誤:', error);
