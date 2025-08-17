@@ -3,6 +3,7 @@ import { soundsReady, setupSounds, playStartSound, playDotSound, playPowerPellet
 import { updateUI, updateLeaderboardUI, updatePacmanIconRotation, showLoadingScreen, hideLoadingScreen } from './ui.js';
 import { stopBackgroundAnimation, initStartScreenBackground } from './backgroundAnimation.js';
 import { isLoggedIn, authenticatedFetch } from './auth.js';
+import { buildApiUrl } from './config.js';
 
 // === 本地分數管理 ===
 
@@ -70,7 +71,7 @@ async function submitScoreToBackend(scoreData) {
     try {
         console.log('正在提交分數到後端...', scoreData);
 
-        const response = await authenticatedFetch('http://localhost:8000/game/score', {
+        const response = await authenticatedFetch(buildApiUrl('/game/score'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

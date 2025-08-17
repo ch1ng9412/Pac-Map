@@ -2,8 +2,7 @@
  * 認證系統 - 處理 Google 登入和用戶狀態管理
  */
 
-// 後端 API 基礎 URL
-const API_BASE = 'http://localhost:8000';
+import { buildApiUrl } from './config.js';
 
 // 用戶狀態
 let currentUser = null;
@@ -31,7 +30,7 @@ async function handleGoogleLogin(response) {
         showAuthMessage('正在登入...', 'info');
 
         // 發送 ID token 到後端進行驗證
-        const loginResponse = await fetch(`${API_BASE}/auth/google/login`, {
+        const loginResponse = await fetch(buildApiUrl('/auth/google/login'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -298,7 +297,7 @@ async function validateStoredToken() {
     console.log('🔍 開始驗證 Token...');
 
     try {
-        const response = await fetch(`${API_BASE}/auth/me`, {
+        const response = await fetch(buildApiUrl('/auth/me'), {
             headers: {
                 'Authorization': `Bearer ${accessToken}`
             }
@@ -603,7 +602,7 @@ function finishMigration(promptDiv, shouldClearLocal) {
  * 提交分數到後端（用於遷移）
  */
 async function submitScoreToBackend(scoreData) {
-    const response = await authenticatedFetch('http://localhost:8000/game/score', {
+    const response = await authenticatedFetch(buildApiUrl('/game/score'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

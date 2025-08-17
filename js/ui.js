@@ -1,4 +1,5 @@
 import { gameState, leaderboard } from './gameState.js';
+import { buildApiUrl } from './config.js';
 
 // 輔助函數：獲取本地分數記錄
 function getLocalScores() {
@@ -94,7 +95,7 @@ export async function updateLeaderboardUI() {
 
     try {
         // 從後端 API 獲取排行榜數據
-        const response = await fetch('http://localhost:8000/game/leaderboard?limit=10');
+        const response = await fetch(buildApiUrl('/game/leaderboard?limit=10'));
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

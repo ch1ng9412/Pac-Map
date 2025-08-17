@@ -74,8 +74,20 @@ function checkModules() {
 // 5. 檢查後端連線
 async function checkBackend() {
     console.log('\n5. 檢查後端連線:');
+
+    // 動態檢測 API 地址
+    const getApiUrl = () => {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:8000';
+        }
+        return `${window.location.protocol}//${window.location.hostname}:8000`;
+    };
+
+    const apiUrl = getApiUrl();
+    console.log('使用 API 地址:', apiUrl);
+
     try {
-        const response = await fetch('http://localhost:8000/health');
+        const response = await fetch(`${apiUrl}/health`);
         if (response.ok) {
             const data = await response.json();
             console.log('✅ 後端連線正常:', data);
