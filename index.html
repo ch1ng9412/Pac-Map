@@ -1296,6 +1296,240 @@
       .mobile-device .keyboard-hint {
         display: none !important;
       }
+
+      /* 設定介面樣式 */
+      .settings-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+      }
+
+      .settings-content {
+        background: #1a1a1a;
+        border: 3px solid #ffff00;
+        border-radius: 10px;
+        padding: 20px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 0 20px rgba(255, 255, 0, 0.3);
+      }
+
+      .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+      }
+
+      .settings-header h2 {
+        color: #ffff00;
+        margin: 0;
+        font-family: "Cubic 11", cursive;
+      }
+
+      .close-btn {
+        background: none;
+        border: none;
+        color: #ffff00;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 3px;
+        transition: background 0.2s;
+      }
+
+      .close-btn:hover {
+        background: rgba(255, 255, 0, 0.2);
+      }
+
+      .settings-body {
+        margin-bottom: 20px;
+      }
+
+      .setting-item {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #2a2a2a;
+        border-radius: 5px;
+        border: 1px solid #444;
+      }
+
+      .setting-label {
+        display: flex;
+        align-items: center;
+        color: #fff;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        cursor: pointer;
+        font-family: "Cubic 11", cursive;
+      }
+
+      .setting-label input[type="checkbox"] {
+        display: none;
+      }
+
+      .checkmark {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #ffff00;
+        border-radius: 3px;
+        margin-right: 10px;
+        position: relative;
+        background: #000;
+        transition: all 0.2s;
+      }
+
+      .setting-label input[type="checkbox"]:checked + .checkmark {
+        background: #ffff00;
+      }
+
+      .setting-label input[type="checkbox"]:checked + .checkmark::after {
+        content: "✓";
+        position: absolute;
+        top: -2px;
+        left: 2px;
+        color: #000;
+        font-weight: bold;
+        font-size: 14px;
+      }
+
+      .setting-description {
+        color: #ccc;
+        font-size: 12px;
+        margin-top: 5px;
+        line-height: 1.4;
+      }
+
+      .volume-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .volume-control input[type="range"] {
+        flex: 1;
+        height: 6px;
+        background: #444;
+        border-radius: 3px;
+        outline: none;
+        -webkit-appearance: none;
+      }
+
+      .volume-control input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #ffff00;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      .volume-control input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #ffff00;
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+      }
+
+      .volume-control input[type="range"]:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      #volumeValue {
+        color: #ffff00;
+        font-weight: bold;
+        min-width: 40px;
+        text-align: center;
+      }
+
+      .settings-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        border-top: 2px solid #333;
+        padding-top: 15px;
+      }
+
+      .settings-footer .pacman-pixel-button {
+        flex: 1;
+        margin: 0;
+      }
+
+      /* 遊戲中設定按鈕樣式 */
+      .game-settings-btn {
+        background: rgba(0, 0, 0, 0.8);
+        color: #ffff00;
+        border: 2px solid #ffff00;
+        padding: 8px 16px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-family: "Cubic 11", cursive;
+        font-size: 14px;
+        transition: all 0.2s ease;
+      }
+
+      .game-settings-btn:hover {
+        background: rgba(255, 255, 0, 0.2);
+        transform: scale(1.05);
+      }
+
+      .game-settings-btn:active {
+        transform: scale(0.95);
+      }
+
+      /* 手機版設定介面調整 */
+      @media (max-width: 768px) {
+        .settings-content {
+          width: 95%;
+          padding: 15px;
+          max-height: 90vh;
+        }
+
+        .settings-header h2 {
+          font-size: 1.2rem;
+        }
+
+        .setting-item {
+          padding: 12px;
+          margin-bottom: 15px;
+        }
+
+        .setting-label {
+          font-size: 14px;
+        }
+
+        .settings-footer {
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .settings-footer .pacman-pixel-button {
+          width: 100%;
+          margin: 0;
+        }
+
+        .mobile-device .game-settings-btn {
+          padding: 12px 20px;
+          font-size: 16px;
+          min-height: 44px; /* 觸控友善尺寸 */
+        }
+      }
     </style>
   </head>
   <body>
@@ -1341,6 +1575,17 @@
         <div class="ui-row">
           <span>剩餘點數: <span id="dotsLeft">0</span></span>
           <span>最高分: <span id="highScore">0</span></span>
+        </div>
+
+        <!-- 遊戲中設定按鈕 -->
+        <div class="ui-row">
+          <button
+            class="game-settings-btn"
+            id="gameSettingsBtn"
+            onclick="window.gameSettings?.showSettingsModal()"
+          >
+            ⚙️ 設定
+          </button>
         </div>
 
         <!-- *** 新增：任务显示区域 *** -->
@@ -1402,6 +1647,9 @@
           <button class="pacman-pixel-button" id="toggleControlBtn">
             📱 切換控制模式
           </button>
+          <button class="pacman-pixel-button" id="settingsBtn">
+            ⚙️ 遊戲設定
+          </button>
         </div>
         <div class="content-toggle-container">
           <div class="instructions" id="instructionsContent">
@@ -1448,6 +1696,9 @@
       <div class="screen-overlay pause-screen" id="pauseScreen">
         <h2>遊戲暫停</h2>
         <button class="pacman-pixel-button" id="resumeGameBtn">繼續遊戲</button>
+        <button class="pacman-pixel-button" id="pauseSettingsBtn">
+          ⚙️ 遊戲設定
+        </button>
         <button class="pacman-pixel-button" id="backToMenuBtnPause">
           回到主選單
         </button>
@@ -1505,6 +1756,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script type="module" src="js/settings.js"></script>
     <script type="module" src="js/main.js"></script>
     <audio id="bgm" loop>
       <source src="audio/Pacmap_bgm.wav" type="audio/wav" />

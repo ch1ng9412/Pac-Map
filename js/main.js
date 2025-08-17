@@ -6,6 +6,7 @@ import { initStartScreenBackground } from './backgroundAnimation.js';
 import { toggleDevConsole, setupDevConsoleListeners } from './devConsole.js';
 import { initAuth } from './auth.js';
 import { initMobileControls, detectDevice, toggleControlMode, showVirtualDPad, hideVirtualDPad } from './mobileControls.js';
+import { initSettings, showSettingsModal } from './settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOM 載入完成，開始初始化...');
@@ -39,6 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }, { once: true });
+
+    // 初始化設定系統
+    console.log('⚙️ 初始化設定系統...');
+    initSettings();
 
     // 初始化認證系統
     console.log('🔐 初始化認證系統...');
@@ -105,6 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 設定按鈕
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+        showSettingsModal();
+    });
+
     // Map Selection Screen Buttons
     document.querySelectorAll('#mapSelectionScreen .map-button').forEach(button => {
         button.addEventListener('click', async (e) => {
@@ -134,6 +144,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Pause Screen Buttons
     document.getElementById('resumeGameBtn').addEventListener('click', resumeGame);
+    document.getElementById('pauseSettingsBtn').addEventListener('click', () => {
+        showSettingsModal();
+    });
     document.getElementById('backToMenuBtnPause').addEventListener('click', backToMenu);
 
     // Game Over Screen Buttons
