@@ -198,24 +198,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Keyboard controls
     document.addEventListener('keydown', (e) => {
-        console.log('🎮 按鍵事件:', e.key, e.code);
-
         if (e.key === '`') {
             e.preventDefault();
             toggleDevConsole();
             return;
         }
 
-        console.log('🔍 遊戲狀態檢查:', {
-            isDevConsoleOpen: gameState.isDevConsoleOpen,
-            autoPilotMode: gameState.autoPilotMode,
-            cleverMode: gameState.cleverMode,
-            isGameOver: gameState.isGameOver,
-            canMove: gameState.canMove,
-            isLosingLife: gameState.isLosingLife,
-            isPaused: gameState.isPaused,
-            pacmanExists: !!gameState.pacman
-        });
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            // ESC 鍵暫停/恢復遊戲（只在遊戲進行中有效）
+            if (!gameState.isGameOver && !gameState.isLosingLife && gameState.pacman) {
+                if (gameState.isPaused) resumeGame();
+                else pauseGame();
+            }
+            return;
+        }
 
         if (gameState.isDevConsoleOpen || gameState.autoPilotMode || gameState.cleverMode) return;
 

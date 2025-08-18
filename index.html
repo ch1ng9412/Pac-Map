@@ -471,65 +471,83 @@
         box-shadow: 0 0 8px #ffff00;
       }
       .minimap-poi-icon {
-          border-radius: 50%;
-          border: 1px solid rgba(255, 255, 255, 0.7);
-          box-shadow: 0 0 3px black;
-          opacity: 0.8;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        box-shadow: 0 0 3px black;
+        opacity: 0.8;
       }
-      .minimap-poi-icon.monument-icon { background-color: #dd0e0e; }
-      .minimap-poi-icon.store-icon { background-color: #1bc431; }
-      .minimap-poi-icon.park-icon { background-color: #006400; }
-      .minimap-poi-icon.hotel-icon { background-color: #1bc431; }
-      .minimap-poi-icon.bank-icon { background-color: #d1e428; }
-      .minimap-poi-icon.restaurant-icon { background-color: #dd0e0e; }
-      .minimap-poi-icon.cafe-icon { background-color: #1bc431; }
-      .minimap-poi-icon.bubble-tea-icon { background-color: #1bc431; }
-      .minimap-poi-icon.atm-icon { background-color: #d1e428; }
+      .minimap-poi-icon.monument-icon {
+        background-color: #dd0e0e;
+      }
+      .minimap-poi-icon.store-icon {
+        background-color: #1bc431;
+      }
+      .minimap-poi-icon.park-icon {
+        background-color: #006400;
+      }
+      .minimap-poi-icon.hotel-icon {
+        background-color: #1bc431;
+      }
+      .minimap-poi-icon.bank-icon {
+        background-color: #d1e428;
+      }
+      .minimap-poi-icon.restaurant-icon {
+        background-color: #dd0e0e;
+      }
+      .minimap-poi-icon.cafe-icon {
+        background-color: #1bc431;
+      }
+      .minimap-poi-icon.bubble-tea-icon {
+        background-color: #1bc431;
+      }
+      .minimap-poi-icon.atm-icon {
+        background-color: #d1e428;
+      }
 
       .minimap-poi-icon.quest-target {
-          transform: scale(1.8); /* 放大 */
-          border: 2px solid white;
-          opacity: 1;
-          z-index: 1000 !important; /* 确保高亮图标在最顶层 */
-          
-          /* 添加一个发光的动画 */
-          animation: pulse 1.5s infinite ease-in-out;
+        transform: scale(1.8); /* 放大 */
+        border: 2px solid white;
+        opacity: 1;
+        z-index: 1000 !important; /* 确保高亮图标在最顶层 */
+
+        /* 添加一个发光的动画 */
+        animation: pulse 1.5s infinite ease-in-out;
       }
 
       .minimap-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          
-          display: flex;
-          flex-direction: column; /* 垂直排列 */
-          justify-content: center;
-          align-items: center;
-          
-          padding: 4px 0;
-          background-color: rgba(0, 0, 0, 0.6); /* 半透明黑色背景 */
-          color: white;
-          
-          font-family: 'Cubic 11', cursive;
-          text-shadow: 1px 1px 2px black;
-          pointer-events: none; /* 确保它不会影响地图的鼠标交互 */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
 
-          z-index: 2000;
+        display: flex;
+        flex-direction: column; /* 垂直排列 */
+        justify-content: center;
+        align-items: center;
 
-          /* 默认隐藏，我们用 JS 控制显示 */
-          display: none;
+        padding: 4px 0;
+        background-color: rgba(0, 0, 0, 0.6); /* 半透明黑色背景 */
+        color: white;
+
+        font-family: "Cubic 11", cursive;
+        text-shadow: 1px 1px 2px black;
+        pointer-events: none; /* 确保它不会影响地图的鼠标交互 */
+
+        z-index: 2000;
+
+        /* 默认隐藏，我们用 JS 控制显示 */
+        display: none;
       }
 
       #minimap-timer-label {
-          font-size: 12px;
-          color: #ccc;
+        font-size: 12px;
+        color: #ccc;
       }
 
       #minimap-timer-countdown {
-          font-size: 24px;
-          color: #ffff00; /* 倒计时用黄色突出 */
-          font-weight: bold;
+        font-size: 24px;
+        color: #ffff00; /* 倒计时用黄色突出 */
+        font-weight: bold;
       }
 
       @keyframes blinkRed {
@@ -1531,28 +1549,6 @@
         margin: 0;
       }
 
-      /* 遊戲中設定按鈕樣式 */
-      .game-settings-btn {
-        background: rgba(0, 0, 0, 0.8);
-        color: #ffff00;
-        border: 2px solid #ffff00;
-        padding: 8px 16px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-family: "Cubic 11", cursive;
-        font-size: 14px;
-        transition: all 0.2s ease;
-      }
-
-      .game-settings-btn:hover {
-        background: rgba(255, 255, 0, 0.2);
-        transform: scale(1.05);
-      }
-
-      .game-settings-btn:active {
-        transform: scale(0.95);
-      }
-
       /* 手機版設定介面調整 */
       @media (max-width: 768px) {
         .settings-content {
@@ -1582,12 +1578,6 @@
         .settings-footer .pacman-pixel-button {
           width: 100%;
           margin: 0;
-        }
-
-        .mobile-device .game-settings-btn {
-          padding: 12px 20px;
-          font-size: 16px;
-          min-height: 44px; /* 觸控友善尺寸 */
         }
       }
     </style>
@@ -1635,17 +1625,6 @@
         <div class="ui-row">
           <span>剩餘點數: <span id="dotsLeft">0</span></span>
           <span>最高分: <span id="highScore">0</span></span>
-        </div>
-
-        <!-- 遊戲中設定按鈕 -->
-        <div class="ui-row">
-          <button
-            class="game-settings-btn"
-            id="gameSettingsBtn"
-            onclick="window.gameSettings?.showSettingsModal()"
-          >
-            ⚙️ 設定
-          </button>
         </div>
 
         <!-- *** 新增：任务显示区域 *** -->
@@ -1795,8 +1774,8 @@
         <div id="minimap"></div>
 
         <div id="minimap-timer-overlay" class="minimap-overlay">
-            <span id="minimap-timer-label">下次縮圈</span>
-            <span id="minimap-timer-countdown">--:--</span>
+          <span id="minimap-timer-label">下次縮圈</span>
+          <span id="minimap-timer-countdown">--:--</span>
         </div>
       </div>
 

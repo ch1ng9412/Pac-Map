@@ -36,6 +36,7 @@ export let gameState = {
     gameTime: 600, 
     gameStartTime: 0,
     isPaused: false,
+    pauseStartTime: null,
     isGameOver: false,
     isRoundTransitioning: false,
     currentMapIndex: 0,

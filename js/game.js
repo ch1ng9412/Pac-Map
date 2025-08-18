@@ -511,31 +511,15 @@ function initGameElements(poiElements, center, bounds) {
         else gameState.baseScatterPoints.push(gameState.validPositions[0]); 
     }
 
-    console.log('🛣️ 開始繪製道路...');
     drawVisualRoads();
-
-    console.log('👻 開始創建小精靈...', center);
     createPacman(center);
-
-    console.log('👹 開始創建鬼怪...', gameState.ghostSpawnPoints.length);
     createGhosts();
-
-    console.log('🔵 開始生成豆子...', gameState.validPositions.length);
     generateDots(gameState.map.getBounds());
-
-    console.log('☠️ 初始化毒圈...');
     initPoisonCircle();
-
-    console.log('🗺️ 初始化小地圖...');
     initMinimap();
-
-    console.log('🎮 更新 UI...');
     updateUI();
 
-    console.log('✅ 遊戲元素初始化完成！');
-    console.log('🔍 adjacencyList 大小:', gameState.adjacencyList.size);
-    console.log('🔍 validPositions 數量:', gameState.validPositions.length);
-    console.log('🔍 roadNetwork 數量:', gameState.roadNetwork.length);
+    console.log('✅ 遊戲初始化完成 - 道路:', gameState.roadNetwork.length, '豆子:', gameState.validPositions.length);
 }
 
 function generateFoodItems() {
@@ -868,7 +852,6 @@ function generateDots(bounds) {
 }
 
 function startGameCountdown() {
-    console.log('⏰ 開始倒數計時...');
     const countdown = document.getElementById('countdown');
     if (!countdown) {
         console.error('❌ 找不到倒數計時元素');
@@ -878,17 +861,14 @@ function startGameCountdown() {
     countdown.style.display = 'block';
     let count = 3;
     gameState.canMove = false;
-    console.log('🚫 設置 canMove = false');
 
     const countInterval = setInterval(async () => {
-        console.log('⏰ 倒數:', count);
         countdown.textContent = count;
         count--;
         if (count < 0) {
             clearInterval(countInterval);
             countdown.style.display = 'none';
             gameState.canMove = true;
-            console.log('✅ 設置 canMove = true，開始遊戲！');
             await startGame();
         }
     }, 1000);
@@ -1184,28 +1164,12 @@ function updatePacmanSmoothMovement(deltaTime) {
 }
 
 export function tryStartMovementInDirection(directionKey) {
-    console.log('🎮 嘗試移動:', directionKey);
-
-    if (!gameState.pacman) {
-        console.error('❌ 小精靈不存在');
-        return;
-    }
-
-    if (gameState.pacmanMovement.isMoving) {
-        console.log('⏸️ 小精靈正在移動中，忽略新的移動指令');
-        return;
-    }
+    if (!gameState.pacman || gameState.pacmanMovement.isMoving) return;
 
     let currentPacmanLatLng = gameState.pacman.getLatLng();
-    console.log('📍 當前小精靈位置:', currentPacmanLatLng);
-
     let currentPacmanNode = findNearestRoadPositionGeneric(currentPacmanLatLng.lat, currentPacmanLatLng.lng, gameState.validPositions);
-    console.log('🛣️ 最近的道路節點:', currentPacmanNode);
 
-    if (!currentPacmanNode) {
-        console.error('❌ 找不到最近的道路節點');
-        return;
-    }
+    if (!currentPacmanNode) return;
 
     gameState.pacman.setLatLng(currentPacmanNode);
     currentPacmanLatLng = L.latLng(currentPacmanNode[0], currentPacmanNode[1]);
@@ -1216,16 +1180,11 @@ export function tryStartMovementInDirection(directionKey) {
         case 'KeyS': desiredLat -= stepDistanceForDirection; break;
         case 'KeyA': desiredLng -= stepDistanceForDirection; break;
         case 'KeyD': desiredLng += stepDistanceForDirection; break;
-        default:
-            console.log('❌ 無效的方向鍵:', directionKey);
-            return;
+        default: return;
     }
-
-    console.log('🎯 期望移動到:', [desiredLat, desiredLng]);
 
     let bestCandidateNode = null, minAngleDiff = Math.PI;
     const neighbors = getNeighbors(currentPacmanNode);
-    console.log('🔗 鄰居節點數量:', neighbors.length);
     for (const neighborNode of neighbors) { 
          if (positionsAreEqual(currentPacmanNode, neighborNode)) continue; 
          const vecToNeighborY = neighborNode[0] - currentPacmanNode[0], vecToNeighborX = neighborNode[1] - currentPacmanNode[1]; 
@@ -1241,26 +1200,21 @@ export function tryStartMovementInDirection(directionKey) {
 
     let newFacingDirection = gameState.pacmanMovement.currentFacingDirection;
     if (bestCandidateNode) {
-        console.log('✅ 找到最佳候選節點:', bestCandidateNode);
         const pm = gameState.pacmanMovement;
         pm.startPositionLatLng = currentPacmanLatLng;
         pm.destinationNodeLatLng = L.latLng(bestCandidateNode[0], bestCandidateNode[1]);
         pm.totalDistanceToDestinationNode = pm.startPositionLatLng.distanceTo(pm.destinationNodeLatLng);
-        console.log('📏 移動距離:', pm.totalDistanceToDestinationNode);
 
         if (pm.totalDistanceToDestinationNode > 0.1) {
             pm.distanceTraveledThisSegment = 0;
             pm.isMoving = true;
-            console.log('🚀 開始移動！');
             const dy = bestCandidateNode[0] - currentPacmanNode[0], dx = bestCandidateNode[1] - currentPacmanNode[1];
             if (Math.abs(dx) > Math.abs(dy)) newFacingDirection = dx > 0 ? 'right' : 'left';
             else newFacingDirection = dy > 0 ? 'up' : 'down';
         } else {
-            console.log('⚠️ 距離太短，不移動');
             pm.isMoving = false;
         }
     } else {
-        console.log('❌ 找不到可移動的鄰居節點');
         switch(directionKey) {
             case 'KeyW': newFacingDirection = 'up'; break;
             case 'KeyS': newFacingDirection = 'down'; break;
@@ -2085,27 +2039,39 @@ function stopBGM() {
     }
 }
 
-export function pauseGame() { 
-    if (gameState.isGameOver || gameState.isLosingLife) return; 
+export function pauseGame() {
+    if (gameState.isGameOver || gameState.isLosingLife) return;
 
     if (bgmAudio) {
         bgmAudio.volume = 0.2;
     }
 
-    gameState.isPaused = true; 
-    if (ghostDecisionInterval) clearInterval(ghostDecisionInterval); 
-    setGhostDecisionInterval(null); 
-    document.getElementById('pauseScreen').style.display = 'flex'; 
+    // 記錄暫停時間，用於恢復時調整毒圈倒數
+    gameState.pauseStartTime = performance.now();
+
+    gameState.isPaused = true;
+    if (ghostDecisionInterval) clearInterval(ghostDecisionInterval);
+    setGhostDecisionInterval(null);
+    document.getElementById('pauseScreen').style.display = 'flex';
 }
 
-export function resumeGame() { 
+export function resumeGame() {
     if (bgmAudio) {
         bgmAudio.volume = 0.4;
     }
-    gameState.isPaused = false; 
-    setLastFrameTime(performance.now()); 
-    if (!gameState.isGameOver && !gameState.isLosingLife) startGhostDecisionMaking(); 
-    document.getElementById('pauseScreen').style.display = 'none'; 
+
+    // 計算暫停時間並調整毒圈倒數
+    if (gameState.pauseStartTime) {
+        const pauseDuration = performance.now() - gameState.pauseStartTime;
+        gameState.poisonCircle.nextShrinkTime += pauseDuration;
+        console.log('🔄 恢復遊戲，調整毒圈倒數時間:', pauseDuration, 'ms');
+        gameState.pauseStartTime = null;
+    }
+
+    gameState.isPaused = false;
+    setLastFrameTime(performance.now());
+    if (!gameState.isGameOver && !gameState.isLosingLife) startGhostDecisionMaking();
+    document.getElementById('pauseScreen').style.display = 'none';
 }
 
 export function restartGame() {
