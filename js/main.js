@@ -5,7 +5,7 @@ import { initGame, pauseGame, resumeGame, tryStartMovementInDirection, restartGa
 import { initStartScreenBackground } from './backgroundAnimation.js';
 import { toggleDevConsole, setupDevConsoleListeners } from './devConsole.js';
 import { initAuth } from './auth.js';
-import { initMobileControls, detectDevice, toggleControlMode, showVirtualDPad, hideVirtualDPad } from './mobileControls.js';
+import { initMobileControls, detectDevice, toggleControlMode, showVirtualDPad, hideVirtualDPad, showTouchIndicator, hideTouchIndicator, updateControlModeIndicator } from './mobileControls.js';
 import { initSettings, showSettingsModal } from './settings.js';
 import { checkBackendConnection, logConfigInfo } from './config.js';
 
@@ -32,6 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('📱 初始化手機控制系統...');
     const deviceInfo = initMobileControls();
     console.log('📱 設備資訊:', deviceInfo);
+
+    // 在主畫面顯示觸控指示器
+    showTouchIndicator();
 
     // 設定控制模式按鈕的初始文字
     setTimeout(() => {
@@ -103,6 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('instructionsContent').style.display = 'none';
             document.getElementById('leaderboardContent').style.display = 'none';
             document.getElementById('mapSelectionScreen').style.display = 'flex';
+            // 進入地圖選擇畫面時隱藏觸控指示器
+            hideTouchIndicator();
         });
         console.log('✅ 開始遊戲按鈕事件監聽器已註冊');
     } else {
@@ -148,6 +153,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const buttonText = currentMode.controlMode === 'mobile' ? '⌨️ 切換到桌面模式' : '📱 切換到手機模式';
             document.getElementById('toggleControlBtn').textContent = buttonText;
             console.log(`🔄 已切換到${modeText}控制模式`);
+
+            // 更新觸控指示器
+            updateControlModeIndicator();
         }
     });
 

@@ -886,9 +886,12 @@ async function startGame() {
         backpackContainer.style.display = 'flex'; // 因为它是 flex 布局，所以用 'flex'
     }
 
-    // 顯示手機虛擬方向鍵
+    // 顯示手機虛擬方向鍵並隱藏觸控指示器
     if (typeof window.mobileControls?.showVirtualDPad === 'function') {
         window.mobileControls.showVirtualDPad();
+    }
+    if (typeof window.mobileControls?.hideTouchIndicator === 'function') {
+        window.mobileControls.hideTouchIndicator();
     }
 
     if (gameState.minimap.map) {
@@ -2106,6 +2109,11 @@ export function backToMenu() {
     // 隱藏手機虛擬方向鍵
     if (typeof window.mobileControls?.hideVirtualDPad === 'function') {
         window.mobileControls.hideVirtualDPad();
+    }
+
+    // 回到主選單時顯示觸控指示器
+    if (typeof window.mobileControls?.showTouchIndicator === 'function') {
+        window.mobileControls.showTouchIndicator();
     }
 
     stopBGM();

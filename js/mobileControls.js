@@ -212,7 +212,9 @@ function handleDPadTouchEnd(event) {
     }, 100);
 
     // 重置觸控指示器
-    updateTouchIndicator('觸控模式');
+    setTimeout(() => {
+        updateControlModeIndicator();
+    }, 500);
 }
 
 /**
@@ -437,6 +439,9 @@ export function toggleControlMode() {
         enableMobileControls();
         console.log('📱 已切換到手機控制模式');
     }
+
+    // 更新觸控指示器顯示
+    updateControlModeIndicator();
 }
 
 /**
@@ -499,6 +504,47 @@ function updateTouchIndicator(message) {
     }
 }
 
+/**
+ * 顯示觸控指示器
+ */
+export function showTouchIndicator() {
+    const indicator = document.getElementById('touchIndicator');
+    if (indicator) {
+        if (virtualButtonsVisible) {
+            indicator.textContent = '觸控模式';
+            indicator.style.display = 'block';
+        } else {
+            indicator.textContent = '鍵盤模式';
+            indicator.style.display = 'block';
+        }
+    }
+}
+
+/**
+ * 隱藏觸控指示器
+ */
+export function hideTouchIndicator() {
+    const indicator = document.getElementById('touchIndicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+}
+
+/**
+ * 更新控制模式指示器
+ */
+export function updateControlModeIndicator() {
+    const indicator = document.getElementById('touchIndicator');
+    if (indicator && indicator.style.display !== 'none') {
+        // 只有在指示器可見時才更新文字
+        if (virtualButtonsVisible) {
+            indicator.textContent = '觸控模式';
+        } else {
+            indicator.textContent = '鍵盤模式';
+        }
+    }
+}
+
 
 
 /**
@@ -529,6 +575,9 @@ if (typeof window !== 'undefined') {
         showVirtualDPad,
         hideVirtualDPad,
         updateTouchIndicator,
+        showTouchIndicator,
+        hideTouchIndicator,
+        updateControlModeIndicator,
         checkVibrationSupport,
         vibrate
     };

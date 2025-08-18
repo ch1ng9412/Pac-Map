@@ -104,18 +104,23 @@ function applyVolumeSettings() {
 export function showSettingsModal() {
     // 檢查是否已存在設定介面
     let settingsModal = document.getElementById('settingsModal');
-    
+
     if (!settingsModal) {
         createSettingsModal();
         settingsModal = document.getElementById('settingsModal');
     }
-    
+
     // 更新設定介面的值
     updateSettingsUI();
-    
+
     // 顯示設定介面
     settingsModal.style.display = 'flex';
-    
+
+    // 在設定畫面顯示觸控指示器
+    if (typeof window.mobileControls?.showTouchIndicator === 'function') {
+        window.mobileControls.showTouchIndicator();
+    }
+
     console.log('⚙️ 設定介面已顯示');
 }
 
@@ -127,7 +132,21 @@ export function hideSettingsModal() {
     if (settingsModal) {
         settingsModal.style.display = 'none';
     }
-    
+
+    // 檢查當前是否在主畫面，如果是則顯示觸控指示器，否則隱藏
+    const startScreen = document.getElementById('startScreen');
+    if (startScreen && startScreen.style.display !== 'none') {
+        // 在主畫面，顯示觸控指示器
+        if (typeof window.mobileControls?.showTouchIndicator === 'function') {
+            window.mobileControls.showTouchIndicator();
+        }
+    } else {
+        // 不在主畫面，隱藏觸控指示器
+        if (typeof window.mobileControls?.hideTouchIndicator === 'function') {
+            window.mobileControls.hideTouchIndicator();
+        }
+    }
+
     console.log('⚙️ 設定介面已隱藏');
 }
 
