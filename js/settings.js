@@ -57,7 +57,25 @@ export function getSetting(key) {
  */
 export function setSetting(key, value) {
     currentSettings[key] = value;
-    applySettings();
+
+    // 根據設定類型應用相應的設定
+    switch(key) {
+        case 'showFPS':
+            applyFPSDisplay();
+            break;
+        case 'gameVolume':
+        case 'soundEnabled':
+            applyVolumeSettings();
+            break;
+        case 'showVirtualKeyboard':
+            applyVirtualKeyboardSettings();
+            break;
+        default:
+            // 對於未知的設定，應用所有設定
+            applySettings();
+            break;
+    }
+
     saveSettings();
 }
 
@@ -91,13 +109,18 @@ function applyFPSDisplay() {
 function applyVolumeSettings() {
     // 設定 Tone.js 音量
     if (typeof Tone !== 'undefined' && Tone.Destination) {
-        Tone.Destination.volume.value = currentSettings.soundEnabled ? 
+        Tone.Destination.volume.value = currentSettings.soundEnabled ?
             20 * Math.log10(currentSettings.gameVolume) : -Infinity;
     }
-    
+
     // 設定 HTML5 音頻元素音量
     const audioElements = document.querySelectorAll('audio');
     audioElements.forEach(audio => {
+        // 檢查是否為 BGM 且遊戲處於暫停狀態
+        if (audio.id === 'bgm' && typeof gameState !== 'undefined' && gameState.isPaused) {
+            // 如果是暫停狀態，保持暫停音量不變
+            return;
+        }
         audio.volume = currentSettings.soundEnabled ? currentSettings.gameVolume : 0;
     });
 }
@@ -289,7 +312,10 @@ function updateSettingsUI() {
  * 切換 FPS 顯示
  */
 export function toggleFPS() {
-    setSetting('showFPS', !currentSettings.showFPS);
+    // 直接更新設定，不調用 setSetting 避免重新應用音量設定
+    currentSettings.showFPS = !currentSettings.showFPS;
+    applyFPSDisplay();
+    saveSettings();
     console.log('🔄 FPS 顯示:', currentSettings.showFPS ? '開啟' : '關閉');
 }
 
@@ -298,7 +324,11 @@ export function toggleFPS() {
  */
 export function toggleVirtualKeyboard() {
     const newValue = !currentSettings.showVirtualKeyboard;
-    setSetting('showVirtualKeyboard', newValue);
+
+    // 直接更新設定，不調用 setSetting 避免重新應用音量設定
+    currentSettings.showVirtualKeyboard = newValue;
+    applyVirtualKeyboardSettings();
+    saveSettings();
 
     // 同步更新控制模式
     if (typeof window.mobileControls?.getCurrentControlMode === 'function') {
