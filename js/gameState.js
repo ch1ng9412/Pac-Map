@@ -165,7 +165,8 @@ export const mapConfigs = new Proxy({}, {
 export const foodDatabase = {
     'restaurant-icon': [
         { name: '牛肉麵', icon: '🍜', heal: 30 },
-        { name: '月餅', icon: '🥟', heal: 20 }
+        { name: '水餃', icon: '🥟', heal: 20 },
+        { name: '月餅', icon: '🥮', heal: 20 }
     ],
     'cafe-icon': [
         { name: '濃縮咖啡', icon: '☕', heal: 15 },
