@@ -6,7 +6,8 @@
 // 預設設定
 const DEFAULT_SETTINGS = {
     showFPS: true,
-    gameVolume: 0.7,
+    bgmVolume: 0.7,
+    sfxVolume: 0.7,
     soundEnabled: true,
     showVirtualKeyboard: false
 };
@@ -63,7 +64,8 @@ export function setSetting(key, value) {
         case 'showFPS':
             applyFPSDisplay();
             break;
-        case 'gameVolume':
+        case 'bgmVolume':
+        case 'sfxVolume':
         case 'soundEnabled':
             applyVolumeSettings();
             break;
@@ -107,13 +109,13 @@ function applyFPSDisplay() {
  * 應用音量設定
  */
 function applyVolumeSettings() {
-    // 設定 Tone.js 音量
+    // 設定 Tone.js 音量（音效）
     if (typeof Tone !== 'undefined' && Tone.Destination) {
         Tone.Destination.volume.value = currentSettings.soundEnabled ?
-            20 * Math.log10(currentSettings.gameVolume) : -Infinity;
+            20 * Math.log10(currentSettings.sfxVolume) : -Infinity;
     }
 
-    // 設定 HTML5 音頻元素音量
+    // 設定 HTML5 音頻元素音量（舊的 BGM 系統）
     const audioElements = document.querySelectorAll('audio');
     audioElements.forEach(audio => {
         // 檢查是否為 BGM 且遊戲處於暫停狀態
@@ -121,8 +123,14 @@ function applyVolumeSettings() {
             // 如果是暫停狀態，保持暫停音量不變
             return;
         }
-        audio.volume = currentSettings.soundEnabled ? currentSettings.gameVolume : 0;
+        audio.volume = currentSettings.soundEnabled ? currentSettings.bgmVolume : 0;
     });
+
+    // 設定新的 BGM 系統音量
+    if (typeof window.setBGMVolume === 'function') {
+        const volume = currentSettings.soundEnabled ? currentSettings.bgmVolume : 0;
+        window.setBGMVolume(volume);
+    }
 }
 
 /**
@@ -243,13 +251,24 @@ function createSettingsModal() {
                         <div class="setting-description">開啟或關閉遊戲音效</div>
                     </div>
                     
-                    <!-- 音量設定 -->
+                    <!-- BGM 音量設定 -->
                     <div class="setting-item">
-                        <label class="setting-label">遊戲音量</label>
+                        <label class="setting-label">背景音樂音量</label>
                         <div class="volume-control">
-                            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" 
-                                   onchange="window.gameSettings.setVolume(this.value)">
-                            <span id="volumeValue">70%</span>
+                            <input type="range" id="bgmVolumeSlider" min="0" max="1" step="0.1"
+                                   onchange="window.gameSettings.setBGMVolume(this.value)">
+                            <span id="bgmVolumeValue">70%</span>
+                        </div>
+                        <div class="setting-description">調整背景音樂音量</div>
+                    </div>
+
+                    <!-- 音效音量設定 -->
+                    <div class="setting-item">
+                        <label class="setting-label">音效音量</label>
+                        <div class="volume-control">
+                            <input type="range" id="sfxVolumeSlider" min="0" max="1" step="0.1"
+                                   onchange="window.gameSettings.setSFXVolume(this.value)">
+                            <span id="sfxVolumeValue">70%</span>
                         </div>
                         <div class="setting-description">調整遊戲音效音量</div>
                     </div>
@@ -298,13 +317,22 @@ function updateSettingsUI() {
         soundEnabledCheckbox.checked = currentSettings.soundEnabled;
     }
     
-    // 更新音量滑桿
-    const volumeSlider = document.getElementById('volumeSlider');
-    const volumeValue = document.getElementById('volumeValue');
-    if (volumeSlider && volumeValue) {
-        volumeSlider.value = currentSettings.gameVolume;
-        volumeValue.textContent = Math.round(currentSettings.gameVolume * 100) + '%';
-        volumeSlider.disabled = !currentSettings.soundEnabled;
+    // 更新 BGM 音量滑桿
+    const bgmVolumeSlider = document.getElementById('bgmVolumeSlider');
+    const bgmVolumeValue = document.getElementById('bgmVolumeValue');
+    if (bgmVolumeSlider && bgmVolumeValue) {
+        bgmVolumeSlider.value = currentSettings.bgmVolume;
+        bgmVolumeValue.textContent = Math.round(currentSettings.bgmVolume * 100) + '%';
+        bgmVolumeSlider.disabled = !currentSettings.soundEnabled;
+    }
+
+    // 更新音效音量滑桿
+    const sfxVolumeSlider = document.getElementById('sfxVolumeSlider');
+    const sfxVolumeValue = document.getElementById('sfxVolumeValue');
+    if (sfxVolumeSlider && sfxVolumeValue) {
+        sfxVolumeSlider.value = currentSettings.sfxVolume;
+        sfxVolumeValue.textContent = Math.round(currentSettings.sfxVolume * 100) + '%';
+        sfxVolumeSlider.disabled = !currentSettings.soundEnabled;
     }
 }
 
@@ -371,19 +399,35 @@ export function toggleSound() {
 }
 
 /**
- * 設定音量
+ * 設定 BGM 音量
  */
-export function setVolume(volume) {
+export function setBGMVolume(volume) {
     const volumeValue = parseFloat(volume);
-    setSetting('gameVolume', volumeValue);
-    
+    setSetting('bgmVolume', volumeValue);
+
     // 更新顯示
-    const volumeValueSpan = document.getElementById('volumeValue');
+    const volumeValueSpan = document.getElementById('bgmVolumeValue');
     if (volumeValueSpan) {
         volumeValueSpan.textContent = Math.round(volumeValue * 100) + '%';
     }
-    
-    console.log('🔊 音量設定為:', Math.round(volumeValue * 100) + '%');
+
+    console.log('🎵 BGM 音量設定為:', Math.round(volumeValue * 100) + '%');
+}
+
+/**
+ * 設定音效音量
+ */
+export function setSFXVolume(volume) {
+    const volumeValue = parseFloat(volume);
+    setSetting('sfxVolume', volumeValue);
+
+    // 更新顯示
+    const volumeValueSpan = document.getElementById('sfxVolumeValue');
+    if (volumeValueSpan) {
+        volumeValueSpan.textContent = Math.round(volumeValue * 100) + '%';
+    }
+
+    console.log('🔊 音效音量設定為:', Math.round(volumeValue * 100) + '%');
 }
 
 /**
@@ -413,7 +457,8 @@ export function initSettings() {
             toggleFPS,
             toggleVirtualKeyboard,
             toggleSound,
-            setVolume,
+            setBGMVolume,
+            setSFXVolume,
             resetSettings,
             getSetting,
             setSetting
