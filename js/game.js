@@ -333,6 +333,7 @@ function initGameElements(poiElements, center, bounds) {
 
     // ---- 步骤 2: 检查并筛选传入的地标元素数组 ----
     // *** 关键修正：直接检查 poiElements 数组本身 ***
+    
     if (poiElements && poiElements.length > 0) {
         console.log(`步骤 1: 成功接收到 ${poiElements.length} 个原始地标。`);
 
@@ -430,6 +431,44 @@ function initGameElements(poiElements, center, bounds) {
             });
         }
     });
+
+    const currentMapConfig = mapConfigs[gameState.currentMapIndex];
+    console.log("当前地图索引 (currentMapIndex):", gameState.currentMapIndex);
+    console.log("当前地图配置 (currentMapConfig):", currentMapConfig);
+    if (currentMapConfig.specialPois) {
+        currentMapConfig.specialPois.forEach(specialPoi => {
+            
+            // 为特殊地标创建图标
+            const poiIcon = L.divIcon({
+                className: 'poi-icon-container',
+                iconSize: [32, 46], // 图标可以做得更大更醒目
+                iconAnchor: [16, 46],
+                html: `<div class="poi-icon-wrapper">
+                         <div class="poi-icon ${specialPoi.type}">
+                           <span class="poi-letter">${specialPoi.letter}</span>
+                         </div>
+                         <div class="poi-title">${specialPoi.name}</div>
+                       </div>`
+            });
+
+            const poiMarker = L.marker(specialPoi.coords, { icon: poiIcon })
+                .addTo(gameState.map)
+                .bindPopup(`<b>${specialPoi.name}</b>`);
+            
+            // **将特殊地标也加入到 gameState.pois 数组中**
+            // 这样它就可以被任务系统、碰撞检测等统一处理
+            gameState.pois.push({
+                marker: poiMarker,
+                type: specialPoi.type,
+                name: specialPoi.name,
+                id: specialPoi.id // 使用我们定义的唯一ID
+            });
+        });
+        console.log(`成功创建了 ${currentMapConfig.specialPois.length} 个特殊地标。`);
+    }
+    else{
+        console.log(`失敗`);
+    }
 
     generateFoodItems();
     initializeQuests();
@@ -575,6 +614,18 @@ function initializeQuests() {
     qs.completedQuests = 0;
 
     const existingPoiTypes = new Set(gameState.pois.map(p => p.type));
+    const existingPoiIds = new Set(gameState.pois.map(p => p.id)); // <-- 获取所有地标的ID
+
+    // --- *** 新增：检查 101 是否存在，并为其创建专属任务 *** ---
+    if (existingPoiIds.has('special-taipei-101')) {
+        qs.availableQuests.push({
+            type: 'visit_specific_poi', // 使用一个新的任务类型
+            poiId: 'special-taipei-101', // 任务目标是这个特定的ID
+            targetCount: 1,
+            description: '任务：抵达地标【台北 101】',
+            reward: 5000
+        });
+    }
 
     if (existingPoiTypes.has('store-icon')) {
         qs.availableQuests.push({
@@ -1295,6 +1346,17 @@ function checkCollisions() {
                     // 玩家抵达了一个任务目标！
                     handleQuestProgress(poi);
                 }
+            }
+            else if (aq.type === 'visit_specific_poi') {
+                gameState.pois.forEach(poi => {
+                    // 只检查 ID 是否匹配，且未被访问
+                    if (poi.id === aq.poiId && !aq.visitedPoiIds.has(poi.id)) {
+                        const poiPos = poi.marker.getLatLng();
+                        if (pacmanPos.distanceTo(poiPos) < 15) { // 可以给特殊地标一个更大的抵达范围
+                            handleQuestProgress(poi);
+                        }
+                    }
+                });
             }
         });
     }

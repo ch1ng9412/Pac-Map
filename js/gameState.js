@@ -112,55 +112,67 @@ export let startScreenMapState = {
     isInitialized: false
 };
 
-// 地圖設定
-// 地圖配置 - 使用函數來延遲 Leaflet 的使用
-export function getMapConfigs() {
+function getMapConfigs() {
+    // 确保 Leaflet (L) 已经加载，否则无法创建 L.latLngBounds
+    if (typeof L === 'undefined') {
+        console.error("Leaflet (L) is not loaded yet. Map configs cannot be fully initialized.");
+        // 返回一个不包含 Leaflet 对象的简化版本，以避免崩溃
+        return [
+            { name: "台北市中心", center: [25.0330, 121.5654] },
+            { name: "台中市區", center: [24.1477, 120.6736] },
+            { name: "高雄市區", center: [22.6273, 120.3014] }
+        ];
+    }
+    
+    // Leaflet 已加载，返回完整的配置
     return [
         {
             name: "台北市中心",
-            center: [25.0330, 121.5654],
+            // 将中心点设为 101，并确保 bounds 包含它
+            center: [25.033344, 121.564880], // 台北 101
             zoom: MAX_MAP_ZOOM,
-            getBounds: () => L.latLngBounds(
-                [25.0290, 121.5604], // 西南角 (SouthWest)
-                [25.0370, 121.5704]  // 東北角 (NorthEast)
-            )
+            // 重新定义一个包含 101 的 bounds
+            bounds: L.latLngBounds(
+                [25.0290, 121.5604], // 西南角
+                [25.0370, 121.5704]  // 东北角
+            ),
+            dotGeneration: { mode: 'fixed', value: 600 },
+            // 将 specialPois 放在这里！
+            specialPois: [
+                {
+                    id: 'special-taipei-101',
+                    type: 'landmark-icon',
+                    name: '台北 101',
+                    letter: '★',
+                    coords: [25.03334456320205, 121.56488038364033]
+                }
+            ]
         },
         {
             name: "台中市區",
             center: [24.1477, 120.6736],
             zoom: MAX_MAP_ZOOM,
-            getBounds: () => L.latLngBounds(
-                [24.1437, 120.6686], // 西南角 (SouthWest)
-                [24.1517, 120.6786]  // 東北角 (NorthEast)
+            // 注意：这里我们不再用 getBounds 函数，而是直接存储 bounds 对象
+            bounds: L.latLngBounds(
+                [24.1437, 120.6686],
+                [24.1517, 120.6786]
             )
+            // 台中地图没有 specialPois，所以不写这个属性
         },
         {
             name: "高雄市區",
             center: [22.6273, 120.3014],
             zoom: MAX_MAP_ZOOM,
-            getBounds: () => L.latLngBounds(
-                [22.6233, 120.2964], // 西南角 (SouthWest)
-                [22.6313, 120.3064]  // 東北角 (NorthEast)
+            bounds: L.latLngBounds(
+                [22.6233, 120.2964],
+                [22.6313, 120.3064]
             )
         }
     ];
 }
 
-// 為了向後相容，提供一個 getter
-export const mapConfigs = new Proxy({}, {
-    get(target, prop) {
-        if (typeof window !== 'undefined' && window.L) {
-            return getMapConfigs()[prop];
-        }
-        // 如果 Leaflet 還沒載入，返回基本配置
-        const basicConfigs = [
-            { name: "台北市中心", center: [25.0330, 121.5654], zoom: MAX_MAP_ZOOM },
-            { name: "台中市區", center: [24.1477, 120.6736], zoom: MAX_MAP_ZOOM },
-            { name: "高雄市區", center: [22.6273, 120.3014], zoom: MAX_MAP_ZOOM }
-        ];
-        return basicConfigs[prop];
-    }
-});
+// 导出由函数生成的配置数组
+export const mapConfigs = getMapConfigs();
 
 export const foodDatabase = {
     'restaurant-icon': [
