@@ -65,9 +65,9 @@ function clearLocalScores() {
 // === 後端分數提交 ===
 
 /**
- * 提交分數到後端
+ * 提交分數到後端（使用 scoreData 物件）
  */
-async function submitScoreToBackend(scoreData) {
+async function submitScoreDataToBackend(scoreData) {
     try {
         console.log('正在提交分數到後端...', scoreData);
 
@@ -148,7 +148,6 @@ import { loadMapDataFromBackend, checkBackendHealth } from './mapService.js';
 import { gameValidationService, reportGameStart, reportDotCollected, reportPowerPelletCollected, reportGhostEaten, reportLifeLost, reportGameEnd } from './gameValidationService.js';
 import { decideNextGhostMoves, manageAutoPilot, getNeighbors, positionsAreEqual, bfsDistance} from './ai.js';
 import { logToDevConsole } from './devConsole.js';
-import { isLoggedIn, authenticatedFetch } from './auth.js';
 
 // FPS 計算相關變數
 let fpsFrameTimes = [];
@@ -1585,7 +1584,8 @@ function nextLevel() {
 
     // 使用當前地圖配置重新初始化遊戲元素
     const config = mapConfigs[gameState.currentMapIndex];
-    initGameElements(gameState.pois, config.center, config.bounds);
+    const bounds = config.getBounds ? config.getBounds() : gameState.map.getBounds();
+    initGameElements(gameState.pois, config.center, bounds);
     deactivatePowerMode();
     updateUI();
     if(gameState.pacman) updatePacmanIconRotation();
@@ -1633,7 +1633,7 @@ export async function endGame(victory) {
     if (isLoggedIn()) {
         console.log('用戶已登入，提交分數到後端');
         try {
-            await submitScoreToBackend(scoreData);
+            await submitScoreDataToBackend(scoreData);
             console.log('分數提交成功');
         } catch (error) {
             console.log('分數提交失敗，保存到本地作為備份');

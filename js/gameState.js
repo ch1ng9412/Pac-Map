@@ -112,20 +112,54 @@ export let startScreenMapState = {
 };
 
 // 地圖設定
-export const mapConfigs = [
-    { name: "台北市中心", center: [25.0330, 121.5654], zoom: MAX_MAP_ZOOM, bounds: L.latLngBounds(
-            [25.0290, 121.5604], // 西南角 (SouthWest)
-            [25.0370, 121.5704]  // 東北角 (NorthEast)
-        )},
-    { name: "台中市區", center: [24.1477, 120.6736], zoom: MAX_MAP_ZOOM, bounds: L.latLngBounds(
-            [24.1437, 120.6686], // 西南角 (SouthWest)
-            [24.1517, 120.6786]  // 東北角 (NorthEast)
-        )},
-    { name: "高雄市區", center: [22.6273, 120.3014], zoom: MAX_MAP_ZOOM, bounds: L.latLngBounds(
-            [22.6233, 120.2964], // 西南角 (SouthWest)
-            [22.6313, 120.3064]  // 東北角 (NorthEast)
-        )}
-];
+// 地圖配置 - 使用函數來延遲 Leaflet 的使用
+export function getMapConfigs() {
+    return [
+        {
+            name: "台北市中心",
+            center: [25.0330, 121.5654],
+            zoom: MAX_MAP_ZOOM,
+            getBounds: () => L.latLngBounds(
+                [25.0290, 121.5604], // 西南角 (SouthWest)
+                [25.0370, 121.5704]  // 東北角 (NorthEast)
+            )
+        },
+        {
+            name: "台中市區",
+            center: [24.1477, 120.6736],
+            zoom: MAX_MAP_ZOOM,
+            getBounds: () => L.latLngBounds(
+                [24.1437, 120.6686], // 西南角 (SouthWest)
+                [24.1517, 120.6786]  // 東北角 (NorthEast)
+            )
+        },
+        {
+            name: "高雄市區",
+            center: [22.6273, 120.3014],
+            zoom: MAX_MAP_ZOOM,
+            getBounds: () => L.latLngBounds(
+                [22.6233, 120.2964], // 西南角 (SouthWest)
+                [22.6313, 120.3064]  // 東北角 (NorthEast)
+            )
+        }
+    ];
+}
+
+// 為了向後相容，提供一個 getter
+export const mapConfigs = new Proxy({}, {
+    get(target, prop) {
+        if (typeof window !== 'undefined' && window.L) {
+            return getMapConfigs()[prop];
+        }
+        // 如果 Leaflet 還沒載入，返回基本配置
+        const basicConfigs = [
+            { name: "台北市中心", center: [25.0330, 121.5654], zoom: MAX_MAP_ZOOM },
+            { name: "台中市區", center: [24.1477, 120.6736], zoom: MAX_MAP_ZOOM },
+            { name: "高雄市區", center: [22.6273, 120.3014], zoom: MAX_MAP_ZOOM }
+        ];
+        return basicConfigs[prop];
+    }
+});
 
 export const foodDatabase = {
     'restaurant-icon': [

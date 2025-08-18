@@ -60,7 +60,7 @@ export const config = {
     // Google OAuth 設定
     auth: {
         // 這些值應該與後端的設定一致
-        googleClientId: '225638092115-kcqhvhqj8ej8bnhqnhqnhqnhqnhqnhq.apps.googleusercontent.com' // 請替換為實際的 Client ID
+        googleClientId: '225638092115-2rjm7fr2me7k9k420v92m329sk6s3ho0.apps.googleusercontent.com'
     }
 };
 

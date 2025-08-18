@@ -7,6 +7,7 @@ import { toggleDevConsole, setupDevConsoleListeners } from './devConsole.js';
 import { initAuth } from './auth.js';
 import { initMobileControls, detectDevice, toggleControlMode, showVirtualDPad, hideVirtualDPad } from './mobileControls.js';
 import { initSettings, showSettingsModal } from './settings.js';
+import { checkBackendConnection, logConfigInfo } from './config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOM 載入完成，開始初始化...');
@@ -14,6 +15,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Setup ---
     setupSounds();
     updateLeaderboardUI();
+
+    // 檢查後端連接狀態
+    console.log('🔗 檢查後端連接狀態...');
+    checkBackendConnection().then(isConnected => {
+        if (isConnected) {
+            console.log('✅ 後端連接正常');
+        } else {
+            console.warn('⚠️ 後端連接失敗，某些功能可能無法使用');
+        }
+    }).catch(error => {
+        console.error('❌ 後端連接檢查失敗:', error);
+    });
 
     // 初始化手機控制系統
     console.log('📱 初始化手機控制系統...');
@@ -81,26 +94,50 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners ---
 
     // Start Screen Buttons
-    document.getElementById('startGameBtn').addEventListener('click', () => {
-        document.getElementById('startScreen').style.display = 'none';
-        document.getElementById('instructionsContent').style.display = 'none';
-        document.getElementById('leaderboardContent').style.display = 'none';
-        document.getElementById('mapSelectionScreen').style.display = 'flex';
-    });
+    console.log('🔘 註冊開始遊戲按鈕事件監聽器...');
+    const startGameBtn = document.getElementById('startGameBtn');
+    if (startGameBtn) {
+        startGameBtn.addEventListener('click', () => {
+            console.log('🎮 開始遊戲按鈕被點擊');
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('instructionsContent').style.display = 'none';
+            document.getElementById('leaderboardContent').style.display = 'none';
+            document.getElementById('mapSelectionScreen').style.display = 'flex';
+        });
+        console.log('✅ 開始遊戲按鈕事件監聽器已註冊');
+    } else {
+        console.error('❌ 找不到開始遊戲按鈕元素');
+    }
 
-    document.getElementById('instructionsBtn').addEventListener('click', () => {
-        const instructionsContent = document.getElementById('instructionsContent');
-        const isVisible = instructionsContent.style.display === 'block';
-        instructionsContent.style.display = isVisible ? 'none' : 'block';
-        if (!isVisible) document.getElementById('leaderboardContent').style.display = 'none';
-    });
+    console.log('🔘 註冊說明按鈕事件監聽器...');
+    const instructionsBtn = document.getElementById('instructionsBtn');
+    if (instructionsBtn) {
+        instructionsBtn.addEventListener('click', () => {
+            console.log('📖 說明按鈕被點擊');
+            const instructionsContent = document.getElementById('instructionsContent');
+            const isVisible = instructionsContent.style.display === 'block';
+            instructionsContent.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) document.getElementById('leaderboardContent').style.display = 'none';
+        });
+        console.log('✅ 說明按鈕事件監聽器已註冊');
+    } else {
+        console.error('❌ 找不到說明按鈕元素');
+    }
 
-    document.getElementById('leaderboardBtn').addEventListener('click', () => {
-        const leaderboardContent = document.getElementById('leaderboardContent');
-        const isVisible = leaderboardContent.style.display === 'block';
-        leaderboardContent.style.display = isVisible ? 'none' : 'block';
-        if (!isVisible) document.getElementById('instructionsContent').style.display = 'none';
-    });
+    console.log('🔘 註冊排行榜按鈕事件監聽器...');
+    const leaderboardBtn = document.getElementById('leaderboardBtn');
+    if (leaderboardBtn) {
+        leaderboardBtn.addEventListener('click', () => {
+            console.log('🏆 排行榜按鈕被點擊');
+            const leaderboardContent = document.getElementById('leaderboardContent');
+            const isVisible = leaderboardContent.style.display === 'block';
+            leaderboardContent.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) document.getElementById('instructionsContent').style.display = 'none';
+        });
+        console.log('✅ 排行榜按鈕事件監聽器已註冊');
+    } else {
+        console.error('❌ 找不到排行榜按鈕元素');
+    }
 
     // 控制模式切換按鈕
     document.getElementById('toggleControlBtn').addEventListener('click', () => {
