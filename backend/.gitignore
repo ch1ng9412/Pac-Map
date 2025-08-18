@@ -204,3 +204,10 @@ pyrightconfig.json
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,jupyternotebooks
+
+# Project specific
+cache/
+*.db
+*.sqlite
+*.sqlite3
+server.log

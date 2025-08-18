@@ -23,7 +23,28 @@ function getNeighborsForAdjacencyList(node, adjacencyList) {
 }
 
 export function getNeighbors(node) {
-    return getNeighborsForAdjacencyList(node, gameState.adjacencyList);
+    const nodeStr = node.toString();
+    const neighbors = getNeighborsForAdjacencyList(node, gameState.adjacencyList);
+    console.log('🔍 查找鄰居:', nodeStr, '-> 找到', neighbors.length, '個鄰居');
+    if (neighbors.length === 0) {
+        console.log('🔍 adjacencyList 總大小:', gameState.adjacencyList.size);
+        console.log('🔍 adjacencyList 是否包含此節點:', gameState.adjacencyList.has(nodeStr));
+
+        // 顯示 adjacencyList 中的前幾個鍵來檢查格式
+        const keys = Array.from(gameState.adjacencyList.keys()).slice(0, 5);
+        console.log('🔍 adjacencyList 中的鍵格式範例:', keys);
+
+        // 嘗試找到最接近的鍵
+        const tolerance = 0.000001;
+        for (const key of gameState.adjacencyList.keys()) {
+            const [lat, lng] = key.split(',').map(Number);
+            if (Math.abs(lat - node[0]) < tolerance && Math.abs(lng - node[1]) < tolerance) {
+                console.log('🎯 找到接近的鍵:', key);
+                return gameState.adjacencyList.get(key) || [];
+            }
+        }
+    }
+    return neighbors;
 }
 
 export function aStarSearch(startNode, goalNode, validPositions, adjacencyList, ghostPositions = [], isCleverMode = false) {
