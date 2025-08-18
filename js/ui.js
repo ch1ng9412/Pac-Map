@@ -201,9 +201,13 @@ function addPoiMarkerToMinimap(poi, isQuestTarget) {
 }
 
 export async function updateLeaderboardUI() {
+    console.log('🏆 開始更新排行榜 UI...');
+
     // 檢查是否有地圖選擇器，如果沒有則使用預設的概覽模式
     const mapSelect = document.getElementById('leaderboardMapSelect');
     const selectedMap = mapSelect ? mapSelect.value : 'all';
+
+    console.log(`📋 選擇的地圖: ${selectedMap}`);
 
     await updateLeaderboardByMapSelection(selectedMap);
 }
@@ -216,9 +220,11 @@ async function updateLeaderboardByMapSelection(selectedMap) {
     try {
         // 獲取當前用戶資訊
         const currentUser = getCurrentUser();
+        console.log(`👤 當前用戶: ${currentUser ? currentUser.name : '未登入'}`);
 
         // 獲取本地分數
         const localScores = getLocalScores();
+        console.log(`📊 本地分數: ${localScores.length} 筆記錄`);
 
         list.innerHTML = '';
 
@@ -230,11 +236,13 @@ async function updateLeaderboardByMapSelection(selectedMap) {
         ];
 
         if (selectedMap === 'all') {
+            console.log('🌍 顯示所有地圖概覽');
             // 顯示所有地圖的概覽（前5名）
             for (const mapConfig of mapConfigs) {
                 await displayMapLeaderboard(mapConfig, list, currentUser, localScores, 5);
             }
         } else {
+            console.log(`🗺️ 顯示特定地圖: ${selectedMap}`);
             // 顯示特定地圖的完整排行榜
             const mapIndex = parseInt(selectedMap);
             const mapConfig = mapConfigs.find(config => config.index === mapIndex);
@@ -246,9 +254,12 @@ async function updateLeaderboardByMapSelection(selectedMap) {
 
         // 如果沒有任何記錄，顯示提示
         if (list.children.length === 0) {
+            console.log('❌ 沒有任何記錄可顯示');
             const noDataLi = document.createElement('li');
             noDataLi.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">暫無排行榜記錄</div>';
             list.appendChild(noDataLi);
+        } else {
+            console.log(`✅ 顯示了 ${list.children.length} 個排行榜項目`);
         }
 
 
@@ -261,28 +272,28 @@ async function updateLeaderboardByMapSelection(selectedMap) {
         list.innerHTML = '';
 
         if (localScores.length > 0) {
-            const localHeader = document.createElement('li');
-            localHeader.innerHTML = '<h4 style="color: #ff9500; margin: 10px 0;">📱 本地記錄</h4>';
-            list.appendChild(localHeader);
+            // 按地圖分組顯示本地記錄
+            const mapConfigs = [
+                { index: 0, name: '台北市中心', emoji: '🏙️', color: '#ff6b6b' },
+                { index: 1, name: '台中市區', emoji: '🌆', color: '#4ecdc4' },
+                { index: 2, name: '高雄市區', emoji: '🌃', color: '#45b7d1' }
+            ];
 
-            localScores.slice(0, 10).forEach((entry, index) => {
-                const li = document.createElement('li');
-                const mapNames = ["台北市中心", "台中市區", "高雄市區"];
-                const mapName = mapNames[entry.map_index] || "未知地圖";
+            mapConfigs.forEach(mapConfig => {
+                const mapLocalScores = localScores.filter(score => score.map_index === mapConfig.index);
+                if (mapLocalScores.length > 0) {
+                    // 顯示地圖標題
+                    const mapHeader = document.createElement('li');
+                    mapHeader.innerHTML = `
+                        <h4 style="color: ${mapConfig.color}; margin: 20px 0 10px 0; border-bottom: 2px solid ${mapConfig.color}; padding-bottom: 5px;">
+                            ${mapConfig.emoji} ${mapConfig.name} - 離線記錄
+                        </h4>
+                    `;
+                    list.appendChild(mapHeader);
 
-                li.innerHTML = `
-                    <div class="leaderboard-entry local-entry">
-                        <span class="rank">#${index + 1}</span>
-                        <div class="player-info">
-                            <span class="player-name">您</span>
-                        </div>
-                        <div class="score-info">
-                            <span class="score">${entry.score} 分</span>
-                            <span class="map-name">${mapName}</span>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(li);
+                    // 使用新的本地記錄顯示邏輯
+                    displayLocalScoresForMap(mapLocalScores, list, mapConfig.color);
+                }
             });
         } else if (leaderboard.length > 0) {
             // 回退到舊的本地排行榜
@@ -410,32 +421,13 @@ async function displayMapLeaderboard(mapConfig, list, currentUser, localScores, 
         // 顯示該地圖的本地記錄（如果用戶未登入且有該地圖的本地記錄，且不是完整檢視模式）
         if (!currentUser && !isFullView) {
             const mapLocalScores = localScores.filter(score => score.map_index === mapConfig.index);
+            console.log(`📱 ${mapConfig.name} 本地記錄: ${mapLocalScores.length} 筆`);
             if (mapLocalScores.length > 0) {
-                const localHeader = document.createElement('li');
-                localHeader.innerHTML = `
-                    <h5 style="color: #ff9500; margin: 10px 0 5px 20px; font-size: 14px;">
-                        📱 您的本地記錄
-                    </h5>
-                `;
-                list.appendChild(localHeader);
-
-                mapLocalScores.slice(0, 3).forEach((entry, index) => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div class="leaderboard-entry local-entry" style="border-left: 3px solid #ff9500; margin-left: 20px;">
-                            <span class="rank">#${index + 1}</span>
-                            <div class="player-info">
-                                <span class="player-name">您 (本地)</span>
-                            </div>
-                            <div class="score-info">
-                                <span class="score">${entry.score} 分</span>
-                                <span class="level">等級 ${entry.level || 1}</span>
-                            </div>
-                        </div>
-                    `;
-                    list.appendChild(li);
-                });
+                console.log(`✅ 顯示 ${mapConfig.name} 的本地記錄`);
+                displayLocalScoresForMap(mapLocalScores, list, mapConfig.color);
             }
+        } else {
+            console.log(`⏭️ 跳過本地記錄顯示 - 用戶已登入: ${!!currentUser}, 完整檢視: ${isFullView}`);
         }
 
     } catch (error) {
@@ -449,6 +441,121 @@ async function displayMapLeaderboard(mapConfig, list, currentUser, localScores, 
             </div>
         `;
         list.appendChild(errorLi);
+    }
+}
+
+/**
+ * 顯示特定地圖的本地記錄（方案 B：最高記錄在上，其他按時間排序）
+ */
+function displayLocalScoresForMap(mapLocalScores, list, mapColor) {
+    if (mapLocalScores.length === 0) return;
+
+    // 找出最高分記錄
+    const bestScore = Math.max(...mapLocalScores.map(s => s.score));
+    const bestRecord = mapLocalScores.find(s => s.score === bestScore);
+
+    // 其他記錄按時間排序（最新的在前）
+    const otherRecords = mapLocalScores
+        .filter(s => s.id !== bestRecord.id) // 排除最高分記錄
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // 顯示標題
+    const localHeader = document.createElement('li');
+    localHeader.innerHTML = `
+        <h5 style="color: #ff9500; margin: 10px 0 5px 20px; font-size: 14px;">
+            📱 您的本地記錄 (${mapLocalScores.length} 筆)
+        </h5>
+    `;
+    list.appendChild(localHeader);
+
+    // 顯示最高分記錄（特別標示）
+    const bestLi = document.createElement('li');
+    bestLi.innerHTML = `
+        <div class="leaderboard-entry local-entry" style="border-left: 3px solid #ffd700; margin-left: 20px; background: rgba(255, 215, 0, 0.1);">
+            <span class="rank">👑</span>
+            <div class="player-info">
+                <span class="player-name">您 (最高分)</span>
+            </div>
+            <div class="score-info">
+                <span class="score">${bestRecord.score} 分</span>
+                <span class="level">等級 ${bestRecord.level || 1}</span>
+            </div>
+            <div class="time-info" style="font-size: 12px; color: #888; margin-top: 2px;">
+                ${formatRelativeTime(bestRecord.created_at)}
+            </div>
+        </div>
+    `;
+    list.appendChild(bestLi);
+
+    // 顯示其他記錄（最多 5 筆）
+    if (otherRecords.length > 0) {
+        const otherHeader = document.createElement('li');
+        otherHeader.innerHTML = `
+            <h6 style="color: #ccc; margin: 8px 0 3px 25px; font-size: 12px; font-weight: normal;">
+                最近記錄：
+            </h6>
+        `;
+        list.appendChild(otherHeader);
+
+        otherRecords.slice(0, 5).forEach((entry, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="leaderboard-entry local-entry" style="border-left: 3px solid ${mapColor}; margin-left: 25px; opacity: 0.8;">
+                    <span class="rank">#${index + 2}</span>
+                    <div class="player-info">
+                        <span class="player-name">您</span>
+                    </div>
+                    <div class="score-info">
+                        <span class="score">${entry.score} 分</span>
+                        <span class="level">等級 ${entry.level || 1}</span>
+                    </div>
+                    <div class="time-info" style="font-size: 12px; color: #888; margin-top: 2px;">
+                        ${formatRelativeTime(entry.created_at)}
+                    </div>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+
+        // 如果還有更多記錄，顯示提示
+        if (otherRecords.length > 5) {
+            const moreLi = document.createElement('li');
+            moreLi.innerHTML = `
+                <div style="text-align: center; margin: 5px 0; color: #666; font-size: 12px; margin-left: 25px;">
+                    還有 ${otherRecords.length - 5} 筆記錄...
+                </div>
+            `;
+            list.appendChild(moreLi);
+        }
+    }
+}
+
+/**
+ * 格式化相對時間
+ */
+function formatRelativeTime(dateString) {
+    try {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffMins < 1) return '剛剛';
+        if (diffMins < 60) return `${diffMins} 分鐘前`;
+        if (diffHours < 24) return `${diffHours} 小時前`;
+        if (diffDays < 7) return `${diffDays} 天前`;
+
+        // 超過一週顯示具體日期
+        return date.toLocaleDateString('zh-TW', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (error) {
+        return '未知時間';
     }
 }
 

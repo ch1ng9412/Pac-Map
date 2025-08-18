@@ -979,6 +979,28 @@
         font-size: 1.1rem;
       }
 
+      .user-actions {
+        display: flex;
+        gap: 5px;
+        margin-top: 2px;
+        flex-wrap: wrap;
+      }
+
+      .sync-btn {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .sync-btn:hover {
+        background-color: #218838;
+      }
+
       .logout-btn {
         background-color: #dc3545;
         color: white;
@@ -1828,7 +1850,12 @@
             </div>
             <div class="user-details">
               <span id="userName">用戶名稱</span>
-              <button class="logout-btn" id="logoutBtn">登出</button>
+              <div class="user-actions">
+                <button class="sync-btn" id="syncBtn" style="display: none">
+                  🔄 同步本地記錄
+                </button>
+                <button class="logout-btn" id="logoutBtn">登出</button>
+              </div>
             </div>
           </div>
         </div>

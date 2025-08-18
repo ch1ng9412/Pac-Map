@@ -39,12 +39,24 @@ async function handleGoogleLogin(response) {
         const data = await loginResponse.json();
         console.log('✅ 登入成功:', data);
 
+        // 在儲存新的認證資訊前，先備份本地分數
+        const localScoresBackup = getLocalScores();
+        console.log(`🛡️ 登入前備份本地分數: ${localScoresBackup.length} 筆記錄`);
+
         // 儲存用戶資訊和 token
         currentUser = data.user;
         accessToken = data.access_token;
 
         // 儲存到 localStorage
         saveAuthToStorage();
+
+        // 確保本地分數沒有丟失
+        const localScoresAfter = getLocalScores();
+        if (localScoresBackup.length > 0 && localScoresAfter.length === 0) {
+            console.log('⚠️ 檢測到本地分數丟失，正在恢復...');
+            localStorage.setItem('pac_map_local_scores', JSON.stringify(localScoresBackup));
+            console.log('✅ 本地分數已恢復');
+        }
 
         // 更新 UI
         updateAuthUI();
@@ -54,8 +66,18 @@ async function handleGoogleLogin(response) {
         // 檢查並提示本地分數遷移
         setTimeout(() => {
             updateAuthUI();
-            checkAndOfferLocalScoreMigration();
-        }, 100);
+
+            // 確保本地分數存在後再檢查遷移
+            const localScores = getLocalScores();
+            console.log(`🔍 登入後檢查本地分數: ${localScores.length} 筆記錄`);
+
+            if (localScores.length > 0) {
+                console.log('📊 發現本地分數，準備顯示遷移提示');
+                checkAndOfferLocalScoreMigration();
+            } else {
+                console.log('📊 沒有本地分數需要遷移');
+            }
+        }, 500); // 增加延遲時間，確保頁面穩定
 
         // 防止任何可能的頁面重新載入
         return false;
@@ -87,6 +109,10 @@ window.pacMapAuth = {
 export function initAuth() {
     console.log('🔐 初始化認證系統...');
 
+    // 檢查頁面載入時的本地分數狀態
+    const localScores = getLocalScores();
+    console.log(`🔍 頁面載入時本地分數: ${localScores.length} 筆記錄`);
+
     // 檢查是否有儲存的登入狀態
     loadStoredAuth();
 
@@ -96,11 +122,28 @@ export function initAuth() {
         logoutBtn.addEventListener('click', logout);
     }
 
+    // 設定同步按鈕事件
+    const syncBtn = document.getElementById('syncBtn');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', () => {
+            console.log('🔄 手動觸發本地分數同步');
+            checkAndOfferLocalScoreMigration();
+        });
+    }
+
     // 更新 UI
     updateAuthUI();
 
     // 等待 Google Sign-In 載入完成並程式化初始化
     waitForGoogleSignIn();
+
+    // 如果用戶已登入且有本地分數，延遲檢查遷移
+    if (currentUser && localScores.length > 0) {
+        console.log('🔄 用戶已登入且有本地分數，檢查是否需要遷移');
+        setTimeout(() => {
+            checkAndOfferLocalScoreMigration();
+        }, 1000);
+    }
 }
 
 /**
@@ -203,6 +246,7 @@ function updateAuthUI() {
     const userInfo = document.getElementById('userInfo');
     const userAvatar = document.getElementById('userAvatar');
     const userName = document.getElementById('userName');
+    const syncBtn = document.getElementById('syncBtn');
 
     if (!loginPrompt || !userInfo) {
         console.warn('⚠️ 找不到認證 UI 元素');
@@ -213,20 +257,37 @@ function updateAuthUI() {
         // 已登入狀態
         loginPrompt.style.display = 'none';
         userInfo.style.display = 'flex';
-        
+
         if (userAvatar && currentUser.picture) {
             userAvatar.src = currentUser.picture;
         }
-        
+
         if (userName) {
             userName.textContent = currentUser.name;
         }
-        
+
+        // 檢查是否需要顯示同步按鈕
+        if (syncBtn) {
+            const localScores = getLocalScores();
+            if (localScores.length > 0) {
+                syncBtn.style.display = 'inline-block';
+                console.log(`🔄 顯示同步按鈕，有 ${localScores.length} 筆本地記錄`);
+            } else {
+                syncBtn.style.display = 'none';
+                console.log('🔄 隱藏同步按鈕，沒有本地記錄');
+            }
+        }
+
         console.log('👤 用戶已登入，顯示用戶資訊:', currentUser.name);
     } else {
         // 未登入狀態
         loginPrompt.style.display = 'block';
         userInfo.style.display = 'none';
+
+        // 隱藏同步按鈕
+        if (syncBtn) {
+            syncBtn.style.display = 'none';
+        }
 
         console.log('👤 用戶未登入，顯示登入提示');
     }
@@ -576,14 +637,7 @@ async function startMigration(promptDiv) {
     for (let i = 0; i < localScores.length; i++) {
         const score = localScores[i];
         try {
-            await submitScoreToBackend({
-                score: score.score,
-                level: score.level || 1,
-                map_index: score.map_index || 0,
-                survival_time: score.survival_time || 0,
-                dots_collected: score.dots_collected || 0,
-                ghosts_eaten: score.ghosts_eaten || 0
-            });
+            await submitScoreToBackend(score);
             successCount++;
         } catch (error) {
             console.error('遷移分數失敗:', error);
@@ -602,13 +656,25 @@ async function startMigration(promptDiv) {
         <h3>✅ 同步完成</h3>
         <p>成功同步：${successCount} 個記錄</p>
         ${failCount > 0 ? `<p style="color: #ff6b6b;">失敗：${failCount} 個記錄</p>` : ''}
-        <p style="color: #90EE90; font-size: 14px;">
-            ✅ 本地記錄已保留作為備份<br>
-            您可以在設定中手動清除本地記錄
-        </p>
-        <button class="pacman-pixel-button" onclick="finishMigration(false)">
-            確定
-        </button>
+
+        <div style="margin: 20px 0; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+            <h4 style="margin: 0 0 10px 0; color: #ffff00;">本地記錄處理</h4>
+            <p style="margin: 5px 0; font-size: 14px;">您希望如何處理本地記錄？</p>
+
+            <div style="margin: 15px 0;">
+                <button class="pacman-pixel-button" onclick="finishMigration(false)" style="background: #28a745; margin: 5px;">
+                    📱 保留本地記錄
+                </button>
+                <button class="pacman-pixel-button" onclick="finishMigration(true)" style="background: #dc3545; margin: 5px;">
+                    🗑️ 清除本地記錄
+                </button>
+            </div>
+
+            <div style="font-size: 12px; color: #ccc; margin-top: 10px;">
+                <p>• 保留：本地記錄作為備份，可離線查看</p>
+                <p>• 清除：只保留雲端記錄，節省空間</p>
+            </div>
+        </div>
     `;
 
     window.finishMigration = (shouldClearLocal) => finishMigration(promptDiv, shouldClearLocal);
@@ -637,16 +703,20 @@ function deleteMigration(promptDiv) {
  * 完成遷移
  */
 function finishMigration(promptDiv, shouldClearLocal) {
+    console.log(`🏁 完成遷移，清除本地記錄: ${shouldClearLocal}`);
+
     if (shouldClearLocal) {
         // 只有在確認同步成功後才清除本地記錄
         try {
             localStorage.removeItem('pac_map_local_scores');
+            console.log('🗑️ 本地記錄已清除');
             showAuthMessage('分數同步完成，本地記錄已清除', 'success');
         } catch (error) {
             console.error('清除本地記錄失敗:', error);
             showAuthMessage('分數同步完成，但本地記錄清除失敗', 'warning');
         }
     } else {
+        console.log('📱 本地記錄已保留');
         showAuthMessage('分數同步完成，本地記錄已保留', 'success');
     }
 
@@ -659,8 +729,13 @@ function finishMigration(promptDiv, shouldClearLocal) {
         console.error('移除遷移提示框失敗:', error);
     }
 
+    // 立即更新認證 UI（隱藏同步按鈕）
+    console.log('🔄 更新認證 UI...');
+    updateAuthUI();
+
     // 更新排行榜顯示
     setTimeout(() => {
+        console.log('🏆 更新排行榜...');
         if (typeof updateLeaderboardUI === 'function') {
             updateLeaderboardUI();
         }
@@ -671,17 +746,33 @@ function finishMigration(promptDiv, shouldClearLocal) {
  * 提交分數到後端（用於遷移）
  */
 async function submitScoreToBackend(scoreData) {
+    // 確保分數資料格式正確
+    const formattedData = {
+        score: scoreData.score || 0,
+        level: scoreData.level || 1,
+        map_index: scoreData.map_index || 0,
+        survival_time: scoreData.survival_time || 0,
+        dots_collected: scoreData.dots_collected || 0,
+        ghosts_eaten: scoreData.ghosts_eaten || 0
+    };
+
+    console.log('📤 提交分數到後端:', formattedData);
+
     const response = await authenticatedFetch(buildApiUrl('/game/score'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(scoreData)
+        body: JSON.stringify(formattedData)
     });
 
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ 分數提交失敗:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('✅ 分數提交成功:', result);
+    return result;
 }

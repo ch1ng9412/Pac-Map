@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>同步功能和本地記錄測試</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #1a1a1a;
+        color: white;
+      }
+      .test-section {
+        background: #2a2a2a;
+        border: 2px solid #444;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+      .test-section h2 {
+        color: #ffff00;
+        margin-top: 0;
+      }
+      .button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+        font-size: 14px;
+      }
+      .button:hover {
+        background: #0056b3;
+      }
+      .button.success {
+        background: #28a745;
+      }
+      .button.danger {
+        background: #dc3545;
+      }
+      .button.warning {
+        background: #ffc107;
+        color: black;
+      }
+      .result {
+        background: #333;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 15px;
+        margin: 10px 0;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .status {
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      .status.success {
+        background: rgba(40, 167, 69, 0.2);
+        border: 1px solid #28a745;
+      }
+      .status.error {
+        background: rgba(220, 53, 69, 0.2);
+        border: 1px solid #dc3545;
+      }
+      .status.info {
+        background: rgba(23, 162, 184, 0.2);
+        border: 1px solid #17a2b8;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      @media (max-width: 768px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧪 同步功能和本地記錄測試</h1>
+
+    <div class="grid">
+      <!-- 本地記錄管理 -->
+      <div class="test-section">
+        <h2>📱 本地記錄管理</h2>
+        <div>
+          <button class="button success" onclick="createTestLocalScores()">
+            創建測試記錄
+          </button>
+          <button class="button" onclick="showLocalScores()">
+            查看本地記錄
+          </button>
+          <button class="button danger" onclick="clearLocalScores()">
+            清除本地記錄
+          </button>
+        </div>
+        <div id="localScoresResult" class="result"></div>
+      </div>
+
+      <!-- 認證狀態管理 -->
+      <div class="test-section">
+        <h2>🔐 認證狀態管理</h2>
+        <div>
+          <button class="button" onclick="checkAuthStatus()">
+            檢查認證狀態
+          </button>
+          <button class="button warning" onclick="simulateLogin()">
+            模擬登入
+          </button>
+          <button class="button" onclick="simulateLogout()">模擬登出</button>
+        </div>
+        <div id="authResult" class="result"></div>
+      </div>
+    </div>
+
+    <!-- 同步功能測試 -->
+    <div class="test-section">
+      <h2>🔄 同步功能測試</h2>
+      <div>
+        <button class="button" onclick="testSyncButtonVisibility()">
+          測試同步按鈕顯示
+        </button>
+        <button class="button" onclick="triggerManualSync()">
+          觸發手動同步
+        </button>
+        <button class="button" onclick="testMigrationDialog()">
+          測試遷移對話框
+        </button>
+      </div>
+      <div id="syncResult" class="result"></div>
+    </div>
+
+    <!-- 排行榜顯示測試 -->
+    <div class="test-section">
+      <h2>🏆 排行榜顯示測試</h2>
+      <div>
+        <button class="button" onclick="testLeaderboardUpdate()">
+          更新排行榜
+        </button>
+        <button class="button" onclick="testLocalRecordsDisplay()">
+          測試本地記錄顯示
+        </button>
+        <button class="button" onclick="simulateOfflineMode()">
+          模擬離線模式
+        </button>
+      </div>
+      <div id="leaderboardResult" class="result"></div>
+    </div>
+
+    <!-- 控制台日誌 -->
+    <div class="test-section">
+      <h2>📋 控制台日誌</h2>
+      <div>
+        <button class="button" onclick="clearConsoleLog()">清除日誌</button>
+        <button class="button" onclick="exportConsoleLog()">匯出日誌</button>
+      </div>
+      <div id="consoleLog" class="result"></div>
+    </div>
+
+    <!-- 載入必要的腳本 -->
+    <script src="js/config.js"></script>
+    <script type="module">
+      // 等待頁面載入完成
+      document.addEventListener("DOMContentLoaded", async function () {
+        try {
+          // 載入必要的模組
+          const gameModule = await import("./js/game.js");
+          const authModule = await import("./js/auth.js");
+          const uiModule = await import("./js/ui.js");
+
+          // 暴露函數到全域範圍
+          window.getLocalScores = gameModule.getLocalScores;
+          window.saveLocalScore = gameModule.saveLocalScore;
+          window.clearLocalScores = gameModule.clearLocalScores;
+          window.getCurrentUser = authModule.getCurrentUser;
+          window.isLoggedIn = authModule.isLoggedIn;
+          window.updateAuthUI = authModule.updateAuthUI;
+          window.checkAndOfferLocalScoreMigration =
+            authModule.checkAndOfferLocalScoreMigration;
+          window.updateLeaderboardUI = uiModule.updateLeaderboardUI;
+
+          console.log("✅ 所有模組已載入");
+
+          // 初始化測試頁面
+          initTestPage();
+        } catch (error) {
+          console.error("❌ 模組載入失敗:", error);
+          document.getElementById(
+            "authResult"
+          ).textContent = `❌ 模組載入失敗: ${error.message}`;
+        }
+      });
+
+      // 攔截 console.log 來顯示日誌
+      const originalConsoleLog = console.log;
+      const originalConsoleError = console.error;
+      const originalConsoleWarn = console.warn;
+
+      let consoleMessages = [];
+
+      function addConsoleMessage(type, args) {
+        const timestamp = new Date().toLocaleTimeString();
+        const message = args
+          .map((arg) =>
+            typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
+          )
+          .join(" ");
+
+        consoleMessages.push(
+          `[${timestamp}] ${type.toUpperCase()}: ${message}`
+        );
+
+        // 限制日誌數量
+        if (consoleMessages.length > 100) {
+          consoleMessages = consoleMessages.slice(-100);
+        }
+
+        updateConsoleDisplay();
+      }
+
+      console.log = function (...args) {
+        originalConsoleLog.apply(console, args);
+        addConsoleMessage("log", args);
+      };
+
+      console.error = function (...args) {
+        originalConsoleError.apply(console, args);
+        addConsoleMessage("error", args);
+      };
+
+      console.warn = function (...args) {
+        originalConsoleWarn.apply(console, args);
+        addConsoleMessage("warn", args);
+      };
+
+      function updateConsoleDisplay() {
+        const consoleDiv = document.getElementById("consoleLog");
+        if (consoleDiv) {
+          consoleDiv.textContent = consoleMessages.slice(-20).join("\n");
+          consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+      }
+
+      window.clearConsoleLog = function () {
+        consoleMessages = [];
+        updateConsoleDisplay();
+      };
+
+      window.exportConsoleLog = function () {
+        const blob = new Blob([consoleMessages.join("\n")], {
+          type: "text/plain",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `console-log-${new Date().toISOString().slice(0, 19)}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      // 初始化測試頁面
+      function initTestPage() {
+        console.log("🧪 測試頁面初始化");
+
+        // 檢查函數是否正確載入
+        const functions = [
+          "getLocalScores",
+          "saveLocalScore",
+          "clearLocalScores",
+          "getCurrentUser",
+          "isLoggedIn",
+          "updateAuthUI",
+          "checkAndOfferLocalScoreMigration",
+          "updateLeaderboardUI",
+        ];
+
+        const missingFunctions = functions.filter(
+          (fn) => typeof window[fn] !== "function"
+        );
+
+        if (missingFunctions.length > 0) {
+          console.error("❌ 缺少函數:", missingFunctions);
+          document.getElementById(
+            "authResult"
+          ).textContent = `❌ 缺少函數: ${missingFunctions.join(", ")}`;
+        } else {
+          console.log("✅ 所有函數已正確載入");
+
+          // 初始化顯示
+          setTimeout(() => {
+            checkAuthStatus();
+            showLocalScores();
+          }, 100);
+        }
+      }
+
+      window.initTestPage = initTestPage;
+    </script>
+
+    <script>
+      // 測試函數
+      function createTestLocalScores() {
+        const testScores = [
+          {
+            id: Date.now() + 1,
+            score: 2850,
+            level: 3,
+            map_index: 0,
+            survival_time: 245,
+            dots_collected: 67,
+            ghosts_eaten: 4,
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: Date.now() + 2,
+            score: 1920,
+            level: 2,
+            map_index: 1,
+            survival_time: 180,
+            dots_collected: 45,
+            ghosts_eaten: 2,
+            created_at: new Date(Date.now() - 3600000).toISOString(),
+          },
+          {
+            id: Date.now() + 3,
+            score: 3200,
+            level: 4,
+            map_index: 0,
+            survival_time: 320,
+            dots_collected: 89,
+            ghosts_eaten: 6,
+            created_at: new Date(Date.now() - 7200000).toISOString(),
+          },
+        ];
+
+        // 獲取現有記錄並添加新記錄
+        const existingScores = getLocalScores();
+        const allScores = [...existingScores, ...testScores];
+
+        localStorage.setItem("pac_map_local_scores", JSON.stringify(allScores));
+
+        document.getElementById(
+          "localScoresResult"
+        ).textContent = `✅ 已創建 ${testScores.length} 個測試記錄\n總記錄數: ${allScores.length}`;
+      }
+
+      function showLocalScores() {
+        const scores = getLocalScores();
+        const result = document.getElementById("localScoresResult");
+
+        if (scores.length === 0) {
+          result.textContent = "❌ 沒有本地記錄";
+        } else {
+          result.textContent =
+            `📊 本地記錄 (${scores.length} 筆):\n\n` +
+            scores
+              .map(
+                (score, index) =>
+                  `${index + 1}. 分數: ${score.score}, 地圖: ${
+                    score.map_index
+                  }, 時間: ${score.created_at || "未知"}`
+              )
+              .join("\n");
+        }
+      }
+
+      function clearLocalScores() {
+        if (confirm("確定要清除所有本地記錄嗎？")) {
+          localStorage.removeItem("pac_map_local_scores");
+          document.getElementById("localScoresResult").textContent =
+            "🗑️ 本地記錄已清除";
+        }
+      }
+
+      function checkAuthStatus() {
+        const user = getCurrentUser();
+        const loggedIn = isLoggedIn();
+
+        document.getElementById("authResult").textContent =
+          `認證狀態: ${loggedIn ? "已登入" : "未登入"}\n` +
+          `用戶資訊: ${user ? JSON.stringify(user, null, 2) : "無"}`;
+      }
+
+      function simulateLogin() {
+        // 模擬登入狀態
+        const mockUser = {
+          id: "test-user-123",
+          name: "測試用戶",
+          email: "test@example.com",
+          picture: "https://via.placeholder.com/40",
+        };
+
+        localStorage.setItem("pac_map_user", JSON.stringify(mockUser));
+        localStorage.setItem("pac_map_token", "mock-token-" + Date.now());
+
+        document.getElementById("authResult").textContent = "✅ 已模擬登入狀態";
+
+        // 更新認證 UI
+        updateAuthUI();
+      }
+
+      function simulateLogout() {
+        localStorage.removeItem("pac_map_user");
+        localStorage.removeItem("pac_map_token");
+
+        document.getElementById("authResult").textContent = "✅ 已模擬登出狀態";
+
+        // 更新認證 UI
+        updateAuthUI();
+      }
+
+      function testSyncButtonVisibility() {
+        const syncBtn = document.getElementById("syncBtn");
+        const localScores = getLocalScores();
+        const user = getCurrentUser();
+
+        let result = `同步按鈕測試:\n`;
+        result += `- 本地記錄: ${localScores.length} 筆\n`;
+        result += `- 用戶狀態: ${user ? "已登入" : "未登入"}\n`;
+        result += `- 按鈕存在: ${syncBtn ? "是" : "否"}\n`;
+
+        if (syncBtn) {
+          result += `- 按鈕顯示: ${
+            syncBtn.style.display !== "none" ? "顯示" : "隱藏"
+          }\n`;
+          result += `- 預期顯示: ${
+            user && localScores.length > 0 ? "應該顯示" : "應該隱藏"
+          }`;
+        }
+
+        document.getElementById("syncResult").textContent = result;
+      }
+
+      function triggerManualSync() {
+        const user = getCurrentUser();
+        const localScores = getLocalScores();
+
+        if (!user) {
+          document.getElementById("syncResult").textContent =
+            "❌ 需要先登入才能同步";
+          return;
+        }
+
+        if (localScores.length === 0) {
+          document.getElementById("syncResult").textContent =
+            "❌ 沒有本地記錄需要同步";
+          return;
+        }
+
+        document.getElementById("syncResult").textContent =
+          "🔄 觸發手動同步...";
+
+        try {
+          checkAndOfferLocalScoreMigration();
+          document.getElementById("syncResult").textContent =
+            "✅ 同步對話框已觸發";
+        } catch (error) {
+          document.getElementById(
+            "syncResult"
+          ).textContent = `❌ 同步觸發失敗: ${error.message}`;
+        }
+      }
+
+      function testMigrationDialog() {
+        // 確保有測試條件
+        const user = getCurrentUser();
+        const localScores = getLocalScores();
+
+        let result = `遷移對話框測試:\n`;
+        result += `- 用戶狀態: ${user ? "已登入" : "未登入"}\n`;
+        result += `- 本地記錄: ${localScores.length} 筆\n`;
+
+        if (!user) {
+          result += `❌ 需要先模擬登入`;
+        } else if (localScores.length === 0) {
+          result += `❌ 需要先創建測試記錄`;
+        } else {
+          result += `✅ 條件滿足，可以測試遷移`;
+          try {
+            checkAndOfferLocalScoreMigration();
+            result += `\n🔄 遷移對話框已觸發`;
+          } catch (error) {
+            result += `\n❌ 觸發失敗: ${error.message}`;
+          }
+        }
+
+        document.getElementById("syncResult").textContent = result;
+      }
+
+      function testLeaderboardUpdate() {
+        document.getElementById("leaderboardResult").textContent =
+          "🔄 更新排行榜...";
+
+        try {
+          updateLeaderboardUI();
+          document.getElementById("leaderboardResult").textContent =
+            "✅ 排行榜更新已觸發，請查看控制台日誌";
+        } catch (error) {
+          document.getElementById(
+            "leaderboardResult"
+          ).textContent = `❌ 排行榜更新失敗: ${error.message}`;
+        }
+      }
+
+      function testLocalRecordsDisplay() {
+        const user = getCurrentUser();
+        const localScores = getLocalScores();
+
+        let result = `本地記錄顯示測試:\n`;
+        result += `- 用戶狀態: ${user ? "已登入" : "未登入"}\n`;
+        result += `- 本地記錄: ${localScores.length} 筆\n`;
+        result += `- 預期行為: ${
+          !user && localScores.length > 0
+            ? "應該顯示本地記錄"
+            : "不應該顯示本地記錄"
+        }\n`;
+
+        // 觸發排行榜更新來測試顯示
+        try {
+          updateLeaderboardUI();
+          result += `✅ 排行榜更新已觸發，請查看主頁面排行榜區域`;
+        } catch (error) {
+          result += `❌ 測試失敗: ${error.message}`;
+        }
+
+        document.getElementById("leaderboardResult").textContent = result;
+      }
+
+      function simulateOfflineMode() {
+        // 這個函數可以用來測試離線模式下的排行榜顯示
+        document.getElementById("leaderboardResult").textContent =
+          "💡 離線模式測試:\n" +
+          "1. 關閉後端伺服器\n" +
+          "2. 點擊「更新排行榜」\n" +
+          "3. 應該顯示本地記錄作為備用";
+      }
+
+      // 頁面載入時的初始化
+      window.addEventListener("load", function () {
+        console.log("🧪 測試頁面已載入");
+        // 等待模組載入完成後再初始化
+        setTimeout(() => {
+          if (typeof window.checkAuthStatus === "function") {
+            checkAuthStatus();
+          }
+          if (typeof window.showLocalScores === "function") {
+            showLocalScores();
+          }
+        }, 1000);
+      });
+    </script>
+  </body>
+</html>

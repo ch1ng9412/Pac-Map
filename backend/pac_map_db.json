@@ -7,7 +7,7 @@
       "name": "侯竣奇",
       "picture": "https://lh3.googleusercontent.com/a/ACg8ocIyWhEiZp19Tsrw9N4JBY3fWJLoQXcN8UPE6okYD-WlTTrypUH3dQ=s96-c",
       "created_at": "2025-08-16 21:41:34.966224",
-      "last_login": "2025-08-19 03:16:28.665223",
+      "last_login": "2025-08-19 04:38:36.774146",
       "is_active": true
     },
     {
@@ -272,8 +272,316 @@
       "dots_collected": 4,
       "ghosts_eaten": 0,
       "created_at": "2025-08-18 21:00:19.854407"
+    },
+    {
+      "id": 22,
+      "user_id": 2,
+      "score": 6800,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 44,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 04:42:07.272600"
+    },
+    {
+      "id": 23,
+      "user_id": 2,
+      "score": 6230,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 28,
+      "dots_collected": 22,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-19 04:42:07.385356"
+    },
+    {
+      "id": 24,
+      "user_id": 2,
+      "score": 2100,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 77,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 04:42:07.499532"
+    },
+    {
+      "id": 25,
+      "user_id": 2,
+      "score": 950,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 27,
+      "dots_collected": 16,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 04:42:07.617693"
+    },
+    {
+      "id": 26,
+      "user_id": 2,
+      "score": 6800,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 44,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 04:42:09.563317"
+    },
+    {
+      "id": 27,
+      "user_id": 2,
+      "score": 6230,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 28,
+      "dots_collected": 22,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-19 04:42:09.778440"
+    },
+    {
+      "id": 28,
+      "user_id": 2,
+      "score": 6800,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 44,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 04:42:13.698261"
+    },
+    {
+      "id": 29,
+      "user_id": 2,
+      "score": 6230,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 28,
+      "dots_collected": 22,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-19 04:42:13.769745"
+    },
+    {
+      "id": 30,
+      "user_id": 2,
+      "score": 2100,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 77,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 04:42:13.913136"
+    },
+    {
+      "id": 31,
+      "user_id": 2,
+      "score": 950,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 27,
+      "dots_collected": 16,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 04:42:14.040736"
+    },
+    {
+      "id": 32,
+      "user_id": 2,
+      "score": 6800,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 44,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 04:52:43.060933"
+    },
+    {
+      "id": 33,
+      "user_id": 2,
+      "score": 6230,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 28,
+      "dots_collected": 22,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-19 04:52:43.136952"
+    },
+    {
+      "id": 34,
+      "user_id": 2,
+      "score": 2100,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 77,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 04:52:43.384454"
+    },
+    {
+      "id": 35,
+      "user_id": 2,
+      "score": 6800,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 44,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 04:52:47.753892"
+    },
+    {
+      "id": 36,
+      "user_id": 2,
+      "score": 6230,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 28,
+      "dots_collected": 22,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-19 04:52:47.809890"
+    },
+    {
+      "id": 37,
+      "user_id": 2,
+      "score": 2100,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 77,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 04:52:47.909466"
+    },
+    {
+      "id": 38,
+      "user_id": 2,
+      "score": 950,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 27,
+      "dots_collected": 16,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 04:52:48.024907"
+    },
+    {
+      "id": 39,
+      "user_id": 2,
+      "score": 470,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 17,
+      "dots_collected": 15,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 04:52:48.130034"
+    },
+    {
+      "id": 40,
+      "user_id": 2,
+      "score": 6800,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 44,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 04:52:50.282593"
+    },
+    {
+      "id": 41,
+      "user_id": 2,
+      "score": 6230,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 28,
+      "dots_collected": 22,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-19 04:52:50.391505"
+    },
+    {
+      "id": 42,
+      "user_id": 2,
+      "score": 2100,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 77,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 04:52:50.534002"
+    },
+    {
+      "id": 43,
+      "user_id": 2,
+      "score": 6800,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 44,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 05:50:41.876718"
+    },
+    {
+      "id": 44,
+      "user_id": 2,
+      "score": 6230,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 28,
+      "dots_collected": 22,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-19 05:50:41.996697"
+    },
+    {
+      "id": 45,
+      "user_id": 2,
+      "score": 2100,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 53,
+      "dots_collected": 77,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 05:50:42.104994"
+    },
+    {
+      "id": 46,
+      "user_id": 2,
+      "score": 950,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 27,
+      "dots_collected": 16,
+      "ghosts_eaten": 2,
+      "created_at": "2025-08-19 05:50:42.365233"
+    },
+    {
+      "id": 47,
+      "user_id": 2,
+      "score": 470,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 17,
+      "dots_collected": 15,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 05:50:42.476628"
+    },
+    {
+      "id": 48,
+      "user_id": 2,
+      "score": 200,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 12,
+      "dots_collected": 4,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 05:50:43.088947"
+    },
+    {
+      "id": 49,
+      "user_id": 2,
+      "score": 130,
+      "level": 1,
+      "map_index": 0,
+      "survival_time": 9,
+      "dots_collected": 2,
+      "ghosts_eaten": 0,
+      "created_at": "2025-08-19 05:50:43.145764"
     }
   ],
   "next_user_id": 6,
-  "next_score_id": 22
+  "next_score_id": 50
 }
