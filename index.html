@@ -1869,10 +1869,48 @@
             >
               ✕
             </button>
-            <h3>排行榜</h3>
-            <ol id="leaderboardList">
-              <li>暫無記錄</li>
-            </ol>
+            <h3>🏆 地區排行榜</h3>
+
+            <!-- 地圖選擇器 -->
+            <div class="leaderboard-map-selector" style="margin: 10px 0 20px 0">
+              <label
+                style="
+                  color: #888;
+                  font-size: 14px;
+                  display: block;
+                  margin-bottom: 8px;
+                "
+                >選擇地區：</label
+              >
+              <select
+                id="leaderboardMapSelect"
+                onchange="window.updateLeaderboardByMap()"
+                style="
+                  background: #333;
+                  color: white;
+                  border: 2px solid #555;
+                  border-radius: 5px;
+                  padding: 8px 12px;
+                  font-size: 14px;
+                  width: 100%;
+                  cursor: pointer;
+                "
+              >
+                <option value="all">🌍 所有地區概覽</option>
+                <option value="0">🏙️ 台北市中心</option>
+                <option value="1">🌆 台中市區</option>
+                <option value="2">🌃 高雄市區</option>
+              </select>
+            </div>
+
+            <div id="leaderboardContent">
+              <ol
+                id="leaderboardList"
+                style="max-height: 400px; overflow-y: auto"
+              >
+                <li>載入中...</li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>

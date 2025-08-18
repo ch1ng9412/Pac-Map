@@ -201,98 +201,57 @@ function addPoiMarkerToMinimap(poi, isQuestTarget) {
 }
 
 export async function updateLeaderboardUI() {
+    // 檢查是否有地圖選擇器，如果沒有則使用預設的概覽模式
+    const mapSelect = document.getElementById('leaderboardMapSelect');
+    const selectedMap = mapSelect ? mapSelect.value : 'all';
+
+    await updateLeaderboardByMapSelection(selectedMap);
+}
+
+// 根據地圖選擇更新排行榜
+async function updateLeaderboardByMapSelection(selectedMap) {
     const list = document.getElementById('leaderboardList');
     list.innerHTML = '<li>載入中...</li>';
 
     try {
-        // 從後端 API 獲取排行榜數據（顯示所有玩家）
-        const response = await fetch(buildApiUrl('/game/leaderboard'));
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const globalScores = data.success ? data.data : [];
+        // 獲取當前用戶資訊
+        const currentUser = getCurrentUser();
 
         // 獲取本地分數
         const localScores = getLocalScores();
 
-        // 獲取當前用戶資訊
-        const currentUser = getCurrentUser();
-
         list.innerHTML = '';
 
-        // 顯示全球排行榜
-        if (globalScores.length > 0) {
-            const globalHeader = document.createElement('li');
-            globalHeader.innerHTML = '<h4 style="color: #ffff00; margin: 10px 0;">🌍 全球排行榜</h4>';
-            list.appendChild(globalHeader);
+        // 地圖配置
+        const mapConfigs = [
+            { index: 0, name: '台北市中心', emoji: '🏙️', color: '#ff6b6b' },
+            { index: 1, name: '台中市區', emoji: '🌆', color: '#4ecdc4' },
+            { index: 2, name: '高雄市區', emoji: '🌃', color: '#45b7d1' }
+        ];
 
-            globalScores.forEach((entry, index) => {
-                const li = document.createElement('li');
+        if (selectedMap === 'all') {
+            // 顯示所有地圖的概覽（前5名）
+            for (const mapConfig of mapConfigs) {
+                await displayMapLeaderboard(mapConfig, list, currentUser, localScores, 5);
+            }
+        } else {
+            // 顯示特定地圖的完整排行榜
+            const mapIndex = parseInt(selectedMap);
+            const mapConfig = mapConfigs.find(config => config.index === mapIndex);
 
-                // 檢查是否為當前用戶的分數
-                const isCurrentUser = currentUser && entry.user_name === currentUser.name;
-                const entryClass = isCurrentUser ? 'leaderboard-entry current-user' : 'leaderboard-entry';
-
-                li.innerHTML = `
-                    <div class="${entryClass}">
-                        <span class="rank">#${entry.rank}</span>
-                        <div class="player-info">
-                            ${entry.user_picture ? `<img src="${entry.user_picture}" alt="頭像" class="player-avatar">` : ''}
-                            <span class="player-name">${entry.user_name}${isCurrentUser ? ' (您)' : ''}</span>
-                        </div>
-                        <div class="score-info">
-                            <span class="score">${entry.score} 分</span>
-                            <span class="map-name">${entry.map_name}</span>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(li);
-            });
+            if (mapConfig) {
+                await displayMapLeaderboard(mapConfig, list, currentUser, localScores, 100, true);
+            }
         }
 
-        // 顯示本地記錄（如果用戶未登入且有本地記錄）
-        if (localScores.length > 0 && !currentUser) {
-            const localHeader = document.createElement('li');
-            localHeader.innerHTML = '<h4 style="color: #ff9500; margin: 15px 0 10px 0;">📱 您的本地記錄</h4>';
-            list.appendChild(localHeader);
-
-            localScores.slice(0, 5).forEach((entry, index) => {
-                const li = document.createElement('li');
-                const mapNames = ["台北市中心", "台中市區", "高雄市區"];
-                const mapName = mapNames[entry.map_index] || "未知地圖";
-
-                li.innerHTML = `
-                    <div class="leaderboard-entry local-entry">
-                        <span class="rank">#${index + 1}</span>
-                        <div class="player-info">
-                            <span class="player-name">您</span>
-                        </div>
-                        <div class="score-info">
-                            <span class="score">${entry.score} 分</span>
-                            <span class="map-name">${mapName}</span>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(li);
-            });
-
-            // 添加登入提示
-            const loginHint = document.createElement('li');
-            loginHint.innerHTML = `
-                <div style="text-align: center; margin: 10px 0; padding: 10px; background: rgba(255, 149, 0, 0.1); border-radius: 5px;">
-                    <small style="color: #ff9500;">💡 登入即可將本地記錄同步到全球排行榜</small>
-                </div>
-            `;
-            list.appendChild(loginHint);
+        // 如果沒有任何記錄，顯示提示
+        if (list.children.length === 0) {
+            const noDataLi = document.createElement('li');
+            noDataLi.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">暫無排行榜記錄</div>';
+            list.appendChild(noDataLi);
         }
 
-        // 如果沒有任何記錄
-        if (globalScores.length === 0 && localScores.length === 0) {
-            list.innerHTML = '<li>暫無記錄</li>';
-        }
+
 
     } catch (error) {
         console.error('載入排行榜失敗:', error);
@@ -381,4 +340,124 @@ export function showLoadingScreen(message) {
 export function hideLoadingScreen() {
     const loadingScreen = document.getElementById('loadingScreen');
     if (loadingScreen) loadingScreen.style.display = 'none';
+}
+
+/**
+ * 顯示特定地圖的排行榜
+ */
+async function displayMapLeaderboard(mapConfig, list, currentUser, localScores, limit = 5, isFullView = false) {
+    try {
+        // 從後端 API 獲取特定地圖的排行榜數據
+        const response = await fetch(buildApiUrl(`/game/leaderboard?map_index=${mapConfig.index}&limit=${limit}`));
+
+        if (!response.ok) {
+            console.warn(`獲取 ${mapConfig.name} 排行榜失敗: ${response.status}`);
+            return;
+        }
+
+        const data = await response.json();
+        const mapScores = data.success ? data.data : [];
+
+        // 創建地圖標題
+        const mapHeader = document.createElement('li');
+        const titleText = isFullView ?
+            `${mapConfig.emoji} ${mapConfig.name} - 完整排行榜` :
+            `${mapConfig.emoji} ${mapConfig.name}`;
+
+        mapHeader.innerHTML = `
+            <h4 style="color: ${mapConfig.color}; margin: 20px 0 10px 0; border-bottom: 2px solid ${mapConfig.color}; padding-bottom: 5px;">
+                ${titleText}
+                ${isFullView ? `<span style="font-size: 12px; color: #888; font-weight: normal;"> (共 ${mapScores.length} 位玩家)</span>` : ''}
+            </h4>
+        `;
+        list.appendChild(mapHeader);
+
+        // 顯示該地圖的排行榜
+        if (mapScores.length > 0) {
+            mapScores.forEach((entry, index) => {
+                const li = document.createElement('li');
+
+                // 檢查是否為當前用戶的分數
+                const isCurrentUser = currentUser && entry.user_name === currentUser.name;
+                const entryClass = isCurrentUser ? 'leaderboard-entry current-user' : 'leaderboard-entry';
+
+                li.innerHTML = `
+                    <div class="${entryClass}" style="border-left: 3px solid ${mapConfig.color};">
+                        <span class="rank">#${entry.rank}</span>
+                        <div class="player-info">
+                            ${entry.user_picture ? `<img src="${entry.user_picture}" alt="頭像" class="player-avatar">` : ''}
+                            <span class="player-name">${entry.user_name}${isCurrentUser ? ' (您)' : ''}</span>
+                        </div>
+                        <div class="score-info">
+                            <span class="score">${entry.score} 分</span>
+                            <span class="level">等級 ${entry.level}</span>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        } else {
+            // 如果該地圖沒有記錄，顯示提示
+            const noDataLi = document.createElement('li');
+            noDataLi.innerHTML = `
+                <div style="text-align: center; color: #666; padding: 10px; font-style: italic;">
+                    暫無 ${mapConfig.name} 的記錄
+                </div>
+            `;
+            list.appendChild(noDataLi);
+        }
+
+        // 顯示該地圖的本地記錄（如果用戶未登入且有該地圖的本地記錄，且不是完整檢視模式）
+        if (!currentUser && !isFullView) {
+            const mapLocalScores = localScores.filter(score => score.map_index === mapConfig.index);
+            if (mapLocalScores.length > 0) {
+                const localHeader = document.createElement('li');
+                localHeader.innerHTML = `
+                    <h5 style="color: #ff9500; margin: 10px 0 5px 20px; font-size: 14px;">
+                        📱 您的本地記錄
+                    </h5>
+                `;
+                list.appendChild(localHeader);
+
+                mapLocalScores.slice(0, 3).forEach((entry, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="leaderboard-entry local-entry" style="border-left: 3px solid #ff9500; margin-left: 20px;">
+                            <span class="rank">#${index + 1}</span>
+                            <div class="player-info">
+                                <span class="player-name">您 (本地)</span>
+                            </div>
+                            <div class="score-info">
+                                <span class="score">${entry.score} 分</span>
+                                <span class="level">等級 ${entry.level || 1}</span>
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(li);
+                });
+            }
+        }
+
+    } catch (error) {
+        console.error(`載入 ${mapConfig.name} 排行榜失敗:`, error);
+
+        // 顯示錯誤提示
+        const errorLi = document.createElement('li');
+        errorLi.innerHTML = `
+            <div style="color: #ff6b6b; text-align: center; padding: 10px;">
+                ${mapConfig.emoji} ${mapConfig.name} 排行榜載入失敗
+            </div>
+        `;
+        list.appendChild(errorLi);
+    }
+}
+
+// 暴露到全域範圍供 HTML 使用
+if (typeof window !== 'undefined') {
+    window.updateLeaderboardByMap = async function() {
+        const mapSelect = document.getElementById('leaderboardMapSelect');
+        if (mapSelect) {
+            await updateLeaderboardByMapSelection(mapSelect.value);
+        }
+    };
 }
