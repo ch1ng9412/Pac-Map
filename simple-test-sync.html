@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>簡單同步測試</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #1a1a1a;
+        color: white;
+      }
+      .section {
+        background: #2a2a2a;
+        border: 2px solid #444;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+      .section h2 {
+        color: #ffff00;
+        margin-top: 0;
+      }
+      .button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+        font-size: 14px;
+      }
+      .button:hover {
+        background: #0056b3;
+      }
+      .button.success {
+        background: #28a745;
+      }
+      .button.danger {
+        background: #dc3545;
+      }
+      .result {
+        background: #333;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 15px;
+        margin: 10px 0;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧪 簡單同步測試</h1>
+
+    <!-- 本地記錄管理 -->
+    <div class="section">
+      <h2>📱 本地記錄管理</h2>
+      <div>
+        <button class="button success" onclick="createTestLocalScores()">
+          創建測試記錄
+        </button>
+        <button class="button" onclick="showLocalScores()">查看本地記錄</button>
+        <button class="button danger" onclick="clearLocalScores()">
+          清除本地記錄
+        </button>
+      </div>
+      <div id="localResult" class="result"></div>
+    </div>
+
+    <!-- 認證狀態管理 -->
+    <div class="section">
+      <h2>🔐 認證狀態管理</h2>
+      <div>
+        <button class="button" onclick="checkAuthStatus()">檢查認證狀態</button>
+        <button class="button" onclick="simulateLogin()">模擬登入</button>
+        <button class="button" onclick="simulateLogout()">模擬登出</button>
+      </div>
+      <div id="authResult" class="result"></div>
+    </div>
+
+    <!-- 同步按鈕測試 -->
+    <div class="section">
+      <h2>🔄 同步按鈕測試</h2>
+      <div>
+        <button class="button" onclick="testSyncButton()">
+          檢查同步按鈕狀態
+        </button>
+        <button class="button" onclick="updateAuthUI()">更新認證 UI</button>
+      </div>
+      <div id="syncResult" class="result"></div>
+
+      <!-- 模擬主頁面的同步按鈕 -->
+      <div
+        style="
+          margin-top: 20px;
+          padding: 10px;
+          border: 1px solid #555;
+          border-radius: 4px;
+        "
+      >
+        <h4>模擬主頁面用戶區域：</h4>
+        <div id="userInfo" style="display: none">
+          <span id="userName">測試用戶</span>
+          <div style="margin-top: 5px">
+            <button
+              id="syncBtn"
+              onclick="triggerSync()"
+              style="
+                display: none;
+                background: #28a745;
+                color: white;
+                border: none;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                cursor: pointer;
+              "
+            >
+              🔄 同步本地記錄
+            </button>
+            <button
+              onclick="simulateLogout()"
+              style="
+                background: #dc3545;
+                color: white;
+                border: none;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                cursor: pointer;
+              "
+            >
+              登出
+            </button>
+          </div>
+        </div>
+        <div id="loginPrompt" style="display: block">
+          <button
+            style="
+              background: #007bff;
+              color: white;
+              border: none;
+              padding: 8px 12px;
+              border-radius: 4px;
+            "
+          >
+            Google 登入
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 本地記錄管理函數
+      function getLocalScores() {
+        try {
+          const scores = localStorage.getItem("pac_map_local_scores");
+          return scores ? JSON.parse(scores) : [];
+        } catch (error) {
+          console.error("讀取本地分數失敗:", error);
+          return [];
+        }
+      }
+
+      function createTestLocalScores() {
+        const testScores = [
+          {
+            id: Date.now() + 1,
+            score: 2850,
+            level: 3,
+            map_index: 0,
+            survival_time: 245,
+            dots_collected: 67,
+            ghosts_eaten: 4,
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: Date.now() + 2,
+            score: 1920,
+            level: 2,
+            map_index: 1,
+            survival_time: 180,
+            dots_collected: 45,
+            ghosts_eaten: 2,
+            created_at: new Date(Date.now() - 3600000).toISOString(),
+          },
+          {
+            id: Date.now() + 3,
+            score: 3200,
+            level: 4,
+            map_index: 0,
+            survival_time: 320,
+            dots_collected: 89,
+            ghosts_eaten: 6,
+            created_at: new Date(Date.now() - 7200000).toISOString(),
+          },
+        ];
+
+        const existingScores = getLocalScores();
+        const allScores = [...existingScores, ...testScores];
+
+        localStorage.setItem("pac_map_local_scores", JSON.stringify(allScores));
+
+        document.getElementById(
+          "localResult"
+        ).textContent = `✅ 已創建 ${testScores.length} 個測試記錄\n總記錄數: ${allScores.length}`;
+
+        // 更新同步按鈕狀態
+        updateAuthUI();
+      }
+
+      function showLocalScores() {
+        const scores = getLocalScores();
+        const result = document.getElementById("localResult");
+
+        if (scores.length === 0) {
+          result.textContent = "❌ 沒有本地記錄";
+        } else {
+          result.textContent =
+            `📊 本地記錄 (${scores.length} 筆):\n\n` +
+            scores
+              .map(
+                (score, index) =>
+                  `${index + 1}. 分數: ${score.score}, 地圖: ${
+                    score.map_index
+                  }, 時間: ${score.created_at || "未知"}`
+              )
+              .join("\n");
+        }
+      }
+
+      function clearLocalScores() {
+        if (confirm("確定要清除所有本地記錄嗎？")) {
+          localStorage.removeItem("pac_map_local_scores");
+          document.getElementById("localResult").textContent =
+            "🗑️ 本地記錄已清除";
+
+          // 更新同步按鈕狀態
+          updateAuthUI();
+        }
+      }
+
+      // 認證狀態管理函數
+      function getCurrentUser() {
+        try {
+          const user = localStorage.getItem("pac_map_user");
+          return user ? JSON.parse(user) : null;
+        } catch (error) {
+          console.error("讀取用戶資訊失敗:", error);
+          return null;
+        }
+      }
+
+      function isLoggedIn() {
+        return !!(getCurrentUser() && localStorage.getItem("pac_map_token"));
+      }
+
+      function checkAuthStatus() {
+        const user = getCurrentUser();
+        const loggedIn = isLoggedIn();
+
+        document.getElementById("authResult").textContent =
+          `認證狀態: ${loggedIn ? "已登入" : "未登入"}\n` +
+          `用戶資訊: ${user ? JSON.stringify(user, null, 2) : "無"}`;
+      }
+
+      function simulateLogin() {
+        const mockUser = {
+          id: "test-user-123",
+          name: "測試用戶",
+          email: "test@example.com",
+          picture: "https://via.placeholder.com/40",
+        };
+
+        localStorage.setItem("pac_map_user", JSON.stringify(mockUser));
+        localStorage.setItem("pac_map_token", "mock-token-" + Date.now());
+
+        document.getElementById("authResult").textContent = "✅ 已模擬登入狀態";
+
+        updateAuthUI();
+      }
+
+      function simulateLogout() {
+        localStorage.removeItem("pac_map_user");
+        localStorage.removeItem("pac_map_token");
+
+        document.getElementById("authResult").textContent = "✅ 已模擬登出狀態";
+
+        updateAuthUI();
+      }
+
+      // 同步按鈕測試函數
+      function updateAuthUI() {
+        const loginPrompt = document.getElementById("loginPrompt");
+        const userInfo = document.getElementById("userInfo");
+        const userName = document.getElementById("userName");
+        const syncBtn = document.getElementById("syncBtn");
+
+        const currentUser = getCurrentUser();
+        const localScores = getLocalScores();
+
+        if (currentUser) {
+          // 已登入狀態
+          loginPrompt.style.display = "none";
+          userInfo.style.display = "block";
+          userName.textContent = currentUser.name;
+
+          // 檢查是否需要顯示同步按鈕
+          if (localScores.length > 0) {
+            syncBtn.style.display = "inline-block";
+          } else {
+            syncBtn.style.display = "none";
+          }
+        } else {
+          // 未登入狀態
+          loginPrompt.style.display = "block";
+          userInfo.style.display = "none";
+          syncBtn.style.display = "none";
+        }
+
+        // 更新測試結果
+        testSyncButton();
+      }
+
+      function testSyncButton() {
+        const syncBtn = document.getElementById("syncBtn");
+        const localScores = getLocalScores();
+        const user = getCurrentUser();
+
+        let result = `同步按鈕測試結果:\n`;
+        result += `- 本地記錄: ${localScores.length} 筆\n`;
+        result += `- 用戶狀態: ${user ? "已登入" : "未登入"}\n`;
+        result += `- 按鈕顯示: ${
+          syncBtn.style.display !== "none" ? "顯示" : "隱藏"
+        }\n`;
+        result += `- 預期顯示: ${
+          user && localScores.length > 0 ? "應該顯示" : "應該隱藏"
+        }\n`;
+
+        const isCorrect =
+          (user && localScores.length > 0) ===
+          (syncBtn.style.display !== "none");
+        result += `- 測試結果: ${isCorrect ? "✅ 正確" : "❌ 錯誤"}`;
+
+        document.getElementById("syncResult").textContent = result;
+      }
+
+      function triggerSync() {
+        const user = getCurrentUser();
+        const localScores = getLocalScores();
+
+        if (!user) {
+          alert("❌ 需要先登入才能同步");
+          return;
+        }
+
+        if (localScores.length === 0) {
+          alert("❌ 沒有本地記錄需要同步");
+          return;
+        }
+
+        // 模擬同步過程
+        if (confirm(`🔄 確定要同步 ${localScores.length} 筆本地記錄嗎？`)) {
+          alert(
+            "✅ 同步完成！（這是模擬）\n\n在真實環境中，這會觸發遷移對話框。"
+          );
+
+          // 模擬同步完成後的行為
+          if (confirm("是否要清除本地記錄？")) {
+            localStorage.removeItem("pac_map_local_scores");
+            updateAuthUI();
+            showLocalScores();
+          }
+        }
+      }
+
+      // 頁面載入時初始化
+      window.addEventListener("load", function () {
+        console.log("🧪 簡單測試頁面已載入");
+        checkAuthStatus();
+        showLocalScores();
+        updateAuthUI();
+      });
+    </script>
+  </body>
+</html>
