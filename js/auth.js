@@ -16,46 +16,7 @@ let accessToken = null;
 async function handleGoogleLogin(response) {
     console.log('🔑 收到 Google 登入回應', response);
 
-    // 強制防止頁面重新載入
-    const preventReload = (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-        }
-        return false;
-    };
-
-    // 防止頁面重新載入或重導向
-    try {
-        if (window.event) {
-            preventReload(window.event);
-        }
-    } catch (e) {
-        // 忽略錯誤
-    }
-
-    // 額外防止頁面重新載入
-    if (typeof event !== 'undefined' && event) {
-        try {
-            preventReload(event);
-        } catch (e) {
-            // 忽略錯誤
-        }
-    }
-
-    // 添加全域事件監聽器來防止重新載入
-    const preventUnload = (e) => {
-        e.preventDefault();
-        return false;
-    };
-
-    window.addEventListener('beforeunload', preventUnload, { once: true });
-
-    // 在處理完成後移除監聽器
-    setTimeout(() => {
-        window.removeEventListener('beforeunload', preventUnload);
-    }, 5000);
+    // 簡化的事件處理，避免過度干預瀏覽器行為
 
     try {
         showAuthMessage('正在登入...', 'info');
@@ -422,7 +383,7 @@ export async function authenticatedFetch(url, options = {}) {
     if (!accessToken) {
         throw new Error('用戶未登入');
     }
-    
+
     const authOptions = {
         ...options,
         headers: {
@@ -430,15 +391,36 @@ export async function authenticatedFetch(url, options = {}) {
             'Authorization': `Bearer ${accessToken}`
         }
     };
-    
+
     const response = await fetch(url, authOptions);
-    
-    // 如果 token 過期，自動登出
+
+    // 如果 token 過期，處理更加智能
     if (response.status === 401) {
-        logout();
-        throw new Error('登入已過期，請重新登入');
+        console.warn('🔑 Token 已過期，嘗試靜默處理...');
+
+        // 檢查是否在遊戲中
+        const isInGame = typeof gameState !== 'undefined' &&
+                        gameState.pacman &&
+                        !gameState.isGameOver;
+
+        if (isInGame) {
+            // 如果在遊戲中，不要立即登出，而是標記需要重新登入
+            console.warn('⚠️ 遊戲進行中，延遲登出處理');
+            showAuthMessage('登入已過期，遊戲結束後請重新登入', 'warning');
+
+            // 設置一個標記，遊戲結束後提示重新登入
+            if (typeof window !== 'undefined') {
+                window.needRelogin = true;
+            }
+
+            throw new Error('登入已過期，但遊戲繼續進行');
+        } else {
+            // 不在遊戲中，可以安全登出
+            logout();
+            throw new Error('登入已過期，請重新登入');
+        }
     }
-    
+
     return response;
 }
 
@@ -484,16 +466,30 @@ function showMigrationPrompt(localScores) {
         <div class="migration-content">
             <h3>🔄 發現本地遊戲記錄</h3>
             <p>我們發現您有 <strong>${localScores.length}</strong> 個本地分數記錄</p>
-            <p>是否要同步到雲端？這樣您就可以在全球排行榜中看到這些分數。</p>
+            <p>您可以選擇將這些分數同步到雲端排行榜：</p>
+            <div class="migration-options">
+                <div class="option-item">
+                    <strong>同步到雲端</strong><br>
+                    <small>將本地分數上傳到全球排行榜，同步完成後保留本地備份</small>
+                </div>
+                <div class="option-item">
+                    <strong>稍後再說</strong><br>
+                    <small>保留本地記錄，下次登入時再次詢問</small>
+                </div>
+                <div class="option-item">
+                    <strong>刪除本地記錄</strong><br>
+                    <small>清除本地記錄，只使用雲端分數</small>
+                </div>
+            </div>
             <div class="migration-buttons">
                 <button class="pacman-pixel-button" onclick="startMigration()">
-                    同步到雲端
+                    🔄 同步到雲端
                 </button>
                 <button class="pacman-pixel-button" onclick="skipMigration()" style="background-color: #666;">
-                    稍後再說
+                    ⏰ 稍後再說
                 </button>
                 <button class="pacman-pixel-button" onclick="deleteMigration()" style="background-color: #dc3545;">
-                    刪除本地記錄
+                    🗑️ 刪除本地記錄
                 </button>
             </div>
         </div>
@@ -520,9 +516,29 @@ function showMigrationPrompt(localScores) {
         border-radius: 10px;
         padding: 30px;
         text-align: center;
-        max-width: 500px;
+        max-width: 600px;
         color: white;
     `;
+
+    // 添加選項說明樣式
+    const options = promptDiv.querySelector('.migration-options');
+    if (options) {
+        options.style.cssText = `
+            margin: 20px 0;
+            text-align: left;
+        `;
+
+        const optionItems = promptDiv.querySelectorAll('.option-item');
+        optionItems.forEach(item => {
+            item.style.cssText = `
+                margin: 15px 0;
+                padding: 10px;
+                border: 1px solid #333;
+                border-radius: 5px;
+                background: #111;
+            `;
+        });
+    }
 
     const buttons = promptDiv.querySelector('.migration-buttons');
     buttons.style.cssText = `
@@ -586,7 +602,11 @@ async function startMigration(promptDiv) {
         <h3>✅ 同步完成</h3>
         <p>成功同步：${successCount} 個記錄</p>
         ${failCount > 0 ? `<p style="color: #ff6b6b;">失敗：${failCount} 個記錄</p>` : ''}
-        <button class="pacman-pixel-button" onclick="finishMigration(${successCount > 0})">
+        <p style="color: #90EE90; font-size: 14px;">
+            ✅ 本地記錄已保留作為備份<br>
+            您可以在設定中手動清除本地記錄
+        </p>
+        <button class="pacman-pixel-button" onclick="finishMigration(false)">
             確定
         </button>
     `;
@@ -618,18 +638,33 @@ function deleteMigration(promptDiv) {
  */
 function finishMigration(promptDiv, shouldClearLocal) {
     if (shouldClearLocal) {
-        localStorage.removeItem('pac_map_local_scores');
-        showAuthMessage('分數同步完成，本地記錄已清除', 'success');
+        // 只有在確認同步成功後才清除本地記錄
+        try {
+            localStorage.removeItem('pac_map_local_scores');
+            showAuthMessage('分數同步完成，本地記錄已清除', 'success');
+        } catch (error) {
+            console.error('清除本地記錄失敗:', error);
+            showAuthMessage('分數同步完成，但本地記錄清除失敗', 'warning');
+        }
     } else {
-        showAuthMessage('分數同步完成', 'success');
+        showAuthMessage('分數同步完成，本地記錄已保留', 'success');
     }
 
-    document.body.removeChild(promptDiv);
+    // 安全地移除提示框
+    try {
+        if (promptDiv && promptDiv.parentNode) {
+            document.body.removeChild(promptDiv);
+        }
+    } catch (error) {
+        console.error('移除遷移提示框失敗:', error);
+    }
 
     // 更新排行榜顯示
-    if (typeof updateLeaderboardUI === 'function') {
-        updateLeaderboardUI();
-    }
+    setTimeout(() => {
+        if (typeof updateLeaderboardUI === 'function') {
+            updateLeaderboardUI();
+        }
+    }, 500);
 }
 
 /**

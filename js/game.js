@@ -1834,6 +1834,14 @@ export async function endGame(victory) {
 
     // 播放結算 BGM
     playSettlementBGM();
+
+    // 檢查是否需要重新登入
+    if (typeof window !== 'undefined' && window.needRelogin) {
+        setTimeout(() => {
+            showScoreSubmissionMessage('遊戲結束，請重新登入以同步分數', 'warning');
+            window.needRelogin = false;
+        }, 2000);
+    }
 }
 
 /**

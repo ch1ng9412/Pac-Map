@@ -22,7 +22,7 @@ class Settings:
     # JWT 設定
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 小時，避免遊戲中途過期
 
     # 資料庫設定 (暫時使用檔案，之後可以改為真實資料庫)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./pac_map.db")

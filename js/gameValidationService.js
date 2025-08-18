@@ -211,6 +211,13 @@ class GameValidationService {
             return result;
         } catch (error) {
             console.error('發送事件到後端失敗:', error);
+
+            // 如果是登入過期錯誤，不要阻止遊戲繼續
+            if (error.message.includes('登入已過期')) {
+                console.warn('⚠️ 登入過期，但允許遊戲繼續進行');
+                return { is_valid: true, warnings: ['登入已過期，事件未驗證'] };
+            }
+
             return { is_valid: false, errors: [error.message] };
         }
     }
