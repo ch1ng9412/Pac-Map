@@ -115,19 +115,27 @@ class SimpleFileDB:
         return user_scores[:limit]
 
     def get_leaderboard(self, limit: int = 10, map_index: Optional[int] = None) -> List[dict]:
-        """取得排行榜"""
+        """取得排行榜（每個用戶只顯示最高分數）"""
         scores = self.data["scores"]
 
         # 如果指定地圖，則過濾
         if map_index is not None:
             scores = [s for s in scores if s["map_index"] == map_index]
 
-        # 按分數排序
-        scores.sort(key=lambda x: x["score"], reverse=True)
+        # 按用戶分組，每個用戶只保留最高分數
+        user_best_scores: dict[int, dict] = {}
+        for score_data in scores:
+            user_id = score_data["user_id"]
+            if user_id not in user_best_scores or score_data["score"] > user_best_scores[user_id]["score"]:
+                user_best_scores[user_id] = score_data
+
+        # 將最高分數轉換為列表並按分數排序
+        best_scores = list(user_best_scores.values())
+        best_scores.sort(key=lambda x: x["score"], reverse=True)
 
         # 取前 N 筆並加上用戶資訊
         leaderboard = []
-        for i, score_data in enumerate(scores[:limit]):
+        for i, score_data in enumerate(best_scores[:limit]):
             user = self.get_user_by_id(score_data["user_id"])
             if user:
                 leaderboard.append(
@@ -137,12 +145,17 @@ class SimpleFileDB:
                         "user_picture": user.picture,
                         "score": score_data["score"],
                         "level": score_data["level"],
-                        "map_index": score_data["map_index"],
+                        "map_name": self._get_map_name(score_data["map_index"]),
                         "created_at": score_data["created_at"],
                     }
                 )
 
         return leaderboard
+
+    def _get_map_name(self, map_index: int) -> str:
+        """根據地圖索引獲取地圖名稱"""
+        map_names = ["台北市中心", "台中市區", "高雄市區"]
+        return map_names[map_index] if map_index < len(map_names) else "未知地圖"
 
 
 # 建立全域資料庫實例

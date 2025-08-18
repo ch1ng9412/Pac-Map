@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>分數上傳測試</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #000;
+        color: #fff;
+      }
+      .test-section {
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .result {
+        background: #222;
+        border-left: 4px solid #007bff;
+        padding: 10px;
+        margin: 10px 0;
+        font-family: monospace;
+        white-space: pre-wrap;
+      }
+      .success {
+        border-left-color: #28a745;
+      }
+      .error {
+        border-left-color: #dc3545;
+      }
+      .warning {
+        border-left-color: #ffc107;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎮 Pac-Map 分數上傳測試</h1>
+
+    <div class="test-section">
+      <h2>1. 後端連線測試</h2>
+      <button onclick="testBackendConnection()">測試後端連線</button>
+      <div id="backend-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>2. 登入狀態檢查</h2>
+      <button onclick="checkLoginStatus()">檢查登入狀態</button>
+      <div id="login-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>3. 分數提交測試（需要登入）</h2>
+      <button onclick="testScoreSubmission()">測試分數提交</button>
+      <div id="score-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>4. 排行榜測試</h2>
+      <button onclick="testLeaderboard()">測試排行榜</button>
+      <div id="leaderboard-result" class="result"></div>
+    </div>
+
+    <script type="module">
+      import { isLoggedIn, authenticatedFetch, initAuth } from "./js/auth.js";
+      import { buildApiUrl } from "./js/config.js";
+
+      // 初始化認證系統
+      await initAuth();
+
+      // 暴露函數到全域範圍
+      window.isLoggedIn = isLoggedIn;
+      window.authenticatedFetch = authenticatedFetch;
+      window.buildApiUrl = buildApiUrl;
+
+      // 測試後端連線
+      window.testBackendConnection = async function () {
+        const resultDiv = document.getElementById("backend-result");
+        resultDiv.textContent = "正在測試後端連線...";
+
+        try {
+          const response = await fetch("http://localhost:8000/");
+          const data = await response.json();
+          resultDiv.textContent = `✅ 後端連線成功！\n${JSON.stringify(
+            data,
+            null,
+            2
+          )}`;
+          resultDiv.className = "result success";
+        } catch (error) {
+          resultDiv.textContent = `❌ 後端連線失敗：${error.message}`;
+          resultDiv.className = "result error";
+        }
+      };
+
+      // 檢查登入狀態
+      window.checkLoginStatus = function () {
+        const resultDiv = document.getElementById("login-result");
+        const loggedIn = isLoggedIn();
+
+        if (loggedIn) {
+          // 嘗試獲取用戶資訊
+          const currentUser = window.pacMapAuth?.getCurrentUser();
+          const accessToken = window.pacMapAuth?.getAccessToken();
+
+          let userInfo = "✅ 用戶已登入\n";
+          if (currentUser) {
+            userInfo += `用戶：${currentUser.name} (${currentUser.email})\n`;
+          }
+          if (accessToken) {
+            userInfo += `令牌：${accessToken.substring(0, 20)}...\n`;
+          }
+
+          resultDiv.textContent = userInfo;
+          resultDiv.className = "result success";
+        } else {
+          // 檢查本地存儲
+          const storedToken = localStorage.getItem("pac_map_token");
+          const storedUser = localStorage.getItem("pac_map_user");
+
+          let debugInfo = "⚠️ 用戶未登入\n";
+          debugInfo += `本地令牌：${storedToken ? "存在" : "不存在"}\n`;
+          debugInfo += `本地用戶：${storedUser ? "存在" : "不存在"}\n`;
+          debugInfo += "請先在主頁面登入 Google 帳戶，或重新整理此頁面";
+
+          resultDiv.textContent = debugInfo;
+          resultDiv.className = "result warning";
+        }
+      };
+
+      // 測試分數提交
+      window.testScoreSubmission = async function () {
+        const resultDiv = document.getElementById("score-result");
+        resultDiv.textContent = "正在測試分數提交...";
+
+        if (!isLoggedIn()) {
+          resultDiv.textContent = "❌ 請先登入才能測試分數提交";
+          resultDiv.className = "result error";
+          return;
+        }
+
+        try {
+          const testScore = {
+            score: 1500,
+            level: 2,
+            map_index: 1,
+            survival_time: 420,
+            dots_collected: 75,
+            ghosts_eaten: 3,
+          };
+
+          const response = await authenticatedFetch(
+            buildApiUrl("/game/score"),
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(testScore),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const result = await response.json();
+          resultDiv.textContent = `✅ 分數提交成功！\n測試分數：${JSON.stringify(
+            testScore,
+            null,
+            2
+          )}\n回應：${JSON.stringify(result, null, 2)}`;
+          resultDiv.className = "result success";
+        } catch (error) {
+          resultDiv.textContent = `❌ 分數提交失敗：${error.message}`;
+          resultDiv.className = "result error";
+        }
+      };
+
+      // 測試排行榜
+      window.testLeaderboard = async function () {
+        const resultDiv = document.getElementById("leaderboard-result");
+        resultDiv.textContent = "正在測試排行榜...";
+
+        try {
+          const response = await fetch(
+            buildApiUrl("/game/leaderboard?limit=5")
+          );
+          const data = await response.json();
+
+          resultDiv.textContent = `✅ 排行榜測試成功！\n${JSON.stringify(
+            data,
+            null,
+            2
+          )}`;
+          resultDiv.className = "result success";
+        } catch (error) {
+          resultDiv.textContent = `❌ 排行榜測試失敗：${error.message}`;
+          resultDiv.className = "result error";
+        }
+      };
+    </script>
+  </body>
+</html>

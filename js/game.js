@@ -1712,8 +1712,7 @@ export async function endGame(victory) {
         }
     }
 
-    // 提交分數到後端（如果已登入）
-    submitScoreToBackend(finalScore, victory);
+    // 分數提交已在上面處理，這裡不需要重複提交
     document.getElementById('finalScore').textContent = finalScore;
     document.getElementById('gameOverTitle').textContent = victory ? '🎉 過關成功!' : ' 遊戲結束';
     document.getElementById('newHighScore').style.display = isNewRecord(finalScore) ? 'block' : 'none';

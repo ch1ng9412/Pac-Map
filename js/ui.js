@@ -1,5 +1,6 @@
 import { gameState, leaderboard } from './gameState.js';
 import { buildApiUrl } from './config.js';
+import { getCurrentUser } from './auth.js';
 
 // 輔助函數：獲取本地分數記錄
 function getLocalScores() {
@@ -131,8 +132,8 @@ export async function updateLeaderboardUI() {
     list.innerHTML = '<li>載入中...</li>';
 
     try {
-        // 從後端 API 獲取排行榜數據
-        const response = await fetch(buildApiUrl('/game/leaderboard?limit=10'));
+        // 從後端 API 獲取排行榜數據（顯示所有玩家）
+        const response = await fetch(buildApiUrl('/game/leaderboard'));
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -144,6 +145,9 @@ export async function updateLeaderboardUI() {
         // 獲取本地分數
         const localScores = getLocalScores();
 
+        // 獲取當前用戶資訊
+        const currentUser = getCurrentUser();
+
         list.innerHTML = '';
 
         // 顯示全球排行榜
@@ -154,12 +158,17 @@ export async function updateLeaderboardUI() {
 
             globalScores.forEach((entry, index) => {
                 const li = document.createElement('li');
+
+                // 檢查是否為當前用戶的分數
+                const isCurrentUser = currentUser && entry.user_name === currentUser.name;
+                const entryClass = isCurrentUser ? 'leaderboard-entry current-user' : 'leaderboard-entry';
+
                 li.innerHTML = `
-                    <div class="leaderboard-entry">
+                    <div class="${entryClass}">
                         <span class="rank">#${entry.rank}</span>
                         <div class="player-info">
                             ${entry.user_picture ? `<img src="${entry.user_picture}" alt="頭像" class="player-avatar">` : ''}
-                            <span class="player-name">${entry.user_name}</span>
+                            <span class="player-name">${entry.user_name}${isCurrentUser ? ' (您)' : ''}</span>
                         </div>
                         <div class="score-info">
                             <span class="score">${entry.score} 分</span>
@@ -172,7 +181,7 @@ export async function updateLeaderboardUI() {
         }
 
         // 顯示本地記錄（如果用戶未登入且有本地記錄）
-        if (localScores.length > 0 && !isUserLoggedIn()) {
+        if (localScores.length > 0 && !currentUser) {
             const localHeader = document.createElement('li');
             localHeader.innerHTML = '<h4 style="color: #ff9500; margin: 15px 0 10px 0;">📱 您的本地記錄</h4>';
             list.appendChild(localHeader);

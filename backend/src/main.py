@@ -140,18 +140,15 @@ async def submit_score(request: SubmitScoreRequest, current_user: User = Depends
 
 
 @app.get("/game/leaderboard", response_model=LeaderboardResponse)
-async def get_leaderboard(limit: int = 10, map_index: Optional[int] = None):
+async def get_leaderboard(limit: Optional[int] = None, map_index: Optional[int] = None):
     """取得排行榜"""
     try:
-        leaderboard_data = db.get_leaderboard(limit=limit, map_index=map_index)
-
-        # 地圖名稱對應
-        map_names = ["台北市中心", "台中市區", "高雄市區"]
+        # 如果沒有指定 limit，則顯示所有玩家
+        actual_limit = limit if limit is not None else 1000  # 設定一個合理的上限
+        leaderboard_data = db.get_leaderboard(limit=actual_limit, map_index=map_index)
 
         leaderboard_entries = []
         for entry in leaderboard_data:
-            map_name = map_names[entry["map_index"]] if entry["map_index"] < len(map_names) else "未知地圖"
-
             # 處理 created_at 欄位 - 如果是字串則轉換為 datetime
             created_at = entry["created_at"]
             if isinstance(created_at, str):
@@ -166,7 +163,7 @@ async def get_leaderboard(limit: int = 10, map_index: Optional[int] = None):
                     user_picture=entry["user_picture"],
                     score=entry["score"],
                     level=entry["level"],
-                    map_name=map_name,
+                    map_name=entry["map_name"],  # 直接使用資料庫返回的 map_name
                     created_at=created_at,
                 )
             )

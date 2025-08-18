@@ -7,7 +7,7 @@
       "name": "侯竣奇",
       "picture": "https://lh3.googleusercontent.com/a/ACg8ocIyWhEiZp19Tsrw9N4JBY3fWJLoQXcN8UPE6okYD-WlTTrypUH3dQ=s96-c",
       "created_at": "2025-08-16 21:41:34.966224",
-      "last_login": "2025-08-17 20:02:55.005123",
+      "last_login": "2025-08-18 19:49:44.527699",
       "is_active": true
     },
     {
@@ -21,7 +21,74 @@
       "is_active": true
     }
   ],
-  "scores": [],
+  "scores": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "score": 1500,
+      "level": 2,
+      "map_index": 1,
+      "survival_time": 420,
+      "dots_collected": 75,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-18 19:32:54.250194"
+    },
+    {
+      "id": 2,
+      "user_id": 2,
+      "score": 1500,
+      "level": 2,
+      "map_index": 1,
+      "survival_time": 420,
+      "dots_collected": 75,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-18 19:33:49.982587"
+    },
+    {
+      "id": 3,
+      "user_id": 2,
+      "score": 1500,
+      "level": 2,
+      "map_index": 1,
+      "survival_time": 420,
+      "dots_collected": 75,
+      "ghosts_eaten": 3,
+      "created_at": "2025-08-18 19:34:01.029096"
+    },
+    {
+      "id": 4,
+      "user_id": 2,
+      "score": 2000,
+      "level": 3,
+      "map_index": 0,
+      "survival_time": 600,
+      "dots_collected": 100,
+      "ghosts_eaten": 5,
+      "created_at": "2025-08-18 19:38:50.520110"
+    },
+    {
+      "id": 5,
+      "user_id": 2,
+      "score": 800,
+      "level": 1,
+      "map_index": 2,
+      "survival_time": 200,
+      "dots_collected": 40,
+      "ghosts_eaten": 1,
+      "created_at": "2025-08-18 19:39:21.647768"
+    },
+    {
+      "id": 6,
+      "user_id": 3,
+      "score": 1800,
+      "level": 2,
+      "map_index": 1,
+      "survival_time": 500,
+      "dots_collected": 90,
+      "ghosts_eaten": 4,
+      "created_at": "2025-08-18 19:45:14.933264"
+    }
+  ],
   "next_user_id": 4,
-  "next_score_id": 1
+  "next_score_id": 7
 }
