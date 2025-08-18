@@ -312,13 +312,21 @@
         background-color: #d1e428;
       }
       .landmark-icon {
-          background: linear-gradient(45deg, #ffd700, #ff8c00); /* 金色到橙色的渐变 */
-          border-color: #fff;
-          /* 让它更大一点 */
-          width: 32px;
-          height: 32px;
+          background: linear-gradient(45deg, #ffd700, #ff8c00); /* 金色渐变 */
+          /* ... */
+          transition: background 0.5s ease; /* 添加一个平滑的过渡效果 */
       }
 
+      /* --- *** 新增：已完成的特殊地標樣式 *** --- */
+      .landmark-icon.completed {
+          background: #4682b4; /* 钢蓝色，表示已“冷却”或“解锁” */
+          /* 也可以改变边框颜色 */
+          border-color: #7fffd4; /* 海蓝色 */
+      }
+
+      .landmark-icon.completed .poi-letter {
+          color: #ffd700; /* 字母可以变成金色 */
+      }
       .landmark-icon .poi-letter {
           font-size: 20px;
           line-height: 30px; /* 微调以垂直居中 */

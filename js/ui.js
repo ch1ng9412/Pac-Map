@@ -97,34 +97,58 @@ export function updateUI() {
         // 1. 永远先清空旧的地标
         mm.currentQuestPoiLayer.clearLayers();
 
-        // 2. 检查是否有任务
-        if (aq && aq.type === 'visit_poi') {
-            const targetPoiType = aq.poiType;
-            
-            // 3. 遍历主游戏世界的所有地标
-            gameState.pois.forEach(poi => {
-                // 如果地标类型与任务目标匹配...
-                if (poi.type === targetPoiType) {
-
-                    // --- *** 关键新增检查：该地标是否已经被访问过？ *** ---
-                    // aq.visitedPoiIds 是一个 Set，.has() 方法效率很高
-                    if (!aq.visitedPoiIds.has(poi.id)) {
-                        // 只有“未被访问”的任务目标，才会被显示在小地图上
-                        
-                        const minimapPoiIcon = L.divIcon({
-                            className: `minimap-poi-icon ${poi.type} quest-target`,
-                            iconSize: [10, 10],
-                            iconAnchor: [5, 5]
-                        });
-
-                        const minimapMarker = L.marker(poi.marker.getLatLng(), { icon: minimapPoiIcon });
-
-                        mm.currentQuestPoiLayer.addLayer(minimapMarker);
+        // 2. 检查是否有激活的任务
+        if (aq) {
+            // --- *** 任务类型 A: 访问某一“类型”的地标 *** ---
+            if (aq.type === 'visit_poi') {
+                const targetPoiType = aq.poiType;
+                
+                gameState.pois.forEach(poi => {
+                    // 条件: 类型匹配 且 未被访问
+                    if (poi.type === targetPoiType && !aq.visitedPoiIds.has(poi.id)) {
+                        // (创建并添加 Marker 的逻辑)
+                        addPoiMarkerToMinimap(poi, true); // 使用辅助函数
                     }
-                }
-            });
+                });
+            } 
+            // --- *** 新增：任务类型 B: 访问“特定”的地标 (例如台北 101) *** ---
+            else if (aq.type === 'visit_specific_poi') {
+                const targetPoiId = aq.poiId;
+
+                // 遍历所有地标，找到那个特定的目标
+                gameState.pois.forEach(poi => {
+                    // 条件: ID 匹配 且 未被访问
+                    if (poi.id === targetPoiId && !aq.visitedPoiIds.has(poi.id)) {
+                        // (创建并添加 Marker 的逻辑)
+                        addPoiMarkerToMinimap(poi, true); // 使用同一个辅助函数
+                    }
+                });
+            }
         }
     }
+}
+
+function addPoiMarkerToMinimap(poi, isQuestTarget) {
+    const mm = gameState.minimap;
+    if (!mm.currentQuestPoiLayer) return;
+
+    let iconClassName = `minimap-poi-icon ${poi.type}`;
+    if (isQuestTarget) {
+        iconClassName += ' quest-target';
+    }
+    if (poi.type === 'landmark-icon') {
+        iconClassName += ' special';
+    }
+
+    const minimapPoiIcon = L.divIcon({
+        className: iconClassName,
+        iconSize: [10, 10],
+        iconAnchor: [5, 5]
+    });
+
+    const minimapMarker = L.marker(poi.marker.getLatLng(), { icon: minimapPoiIcon });
+
+    mm.currentQuestPoiLayer.addLayer(minimapMarker);
 }
 
 export async function updateLeaderboardUI() {

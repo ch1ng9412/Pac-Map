@@ -86,7 +86,8 @@ export let gameState = {
         activeQuest: null,        // 当前激活的任务物件
         availableQuests: [],      // 一个任务池，存放所有可能的任务
         completedQuests: 0,        // 已完成任务的数量
-        completionMessage: ""
+        completionMessage: "",
+        completedSpecialPoiIds: new Set()
     },
     pois: [],
     foodItems: [],
@@ -137,14 +138,20 @@ function getMapConfigs() {
                 [25.0370, 121.5704]  // 东北角
             ),
             dotGeneration: { mode: 'fixed', value: 600 },
-            // 将 specialPois 放在这里！
             specialPois: [
                 {
                     id: 'special-taipei-101',
                     type: 'landmark-icon',
                     name: '台北 101',
                     letter: '★',
-                    coords: [25.03334456320205, 121.56488038364033]
+                    coords: [25.0333, 121.5648]
+                },
+                {
+                    id: 'special-park',
+                    type: 'landmark-icon',
+                    name: '象山公園',
+                    letter: '★',
+                    coords: [25.0305, 121.5702]
                 }
             ]
         },

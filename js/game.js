@@ -470,8 +470,8 @@ function initGameElements(poiElements, center, bounds) {
         console.log(`失敗`);
     }
 
+    updateSpecialPoiAppearance();
     generateFoodItems();
-    initializeQuests();
     generateNewQuest();
 
     gameState.ghostSpawnPoints = [];
@@ -608,36 +608,37 @@ function generateFoodItems() {
     console.log(`在地图上生成了 ${gameState.foodItems.length} 个美食。`);
 }
 
-function initializeQuests() {
+function generateNewQuest() {
     const qs = gameState.questSystem;
-    qs.availableQuests = [];
-    qs.completedQuests = 0;
-
+    
+    // --- *** 关键修正：在生成前，先动态构建可用的任务列表 *** ---
+    const availableQuests = []; // 创建一个临时的可用任务列表
     const existingPoiTypes = new Set(gameState.pois.map(p => p.type));
-    const existingPoiIds = new Set(gameState.pois.map(p => p.id)); // <-- 获取所有地标的ID
+    const existingPoiIds = new Set(gameState.pois.map(p => p.id));
 
-    // --- *** 新增：检查 101 是否存在，并为其创建专属任务 *** ---
-    if (existingPoiIds.has('special-taipei-101')) {
-        qs.availableQuests.push({
+    // a. 检查并添加特殊地标任务
+    if (existingPoiIds.has('special-taipei-101') && !qs.completedSpecialPoiIds.has('special-taipei-101')) {
+        availableQuests.push({
             type: 'visit_specific_poi', // 使用一个新的任务类型
-            poiId: 'special-taipei-101', // 任务目标是这个特定的ID
+            poiId: 'special-park', // 任务目标是这个特定的ID
             targetCount: 1,
-            description: '任务：抵达地标【台北 101】',
+            description: '任務：抵達【象山公園】',
             reward: 5000
         });
     }
-
-    if (existingPoiTypes.has('store-icon')) {
-        qs.availableQuests.push({
-            type: 'visit_poi',
-            poiType: 'store-icon',
-            targetCount: 5,
-            description: '任務：抵達 5 家不同的便利商店',
+    if (existingPoiIds.has('special-park') && !qs.completedSpecialPoiIds.has('special-park')) {
+        availableQuests.push({
+            type: 'visit_specific_poi', // 使用一个新的任务类型
+            poiId: 'special-park', // 任务目标是这个特定的ID
+            targetCount: 1,
+            description: '任務：抵達【象山公園】',
             reward: 5000
         });
     }
+    
+    // b. 添加可重复的普通任务
     if (existingPoiTypes.has('cafe-icon')) {
-        qs.availableQuests.push({
+        availableQuests.push({
             type: 'visit_poi',
             poiType: 'cafe-icon',
             targetCount: 3,
@@ -645,31 +646,38 @@ function initializeQuests() {
             reward: 3000
         });
     }
-    // 你可以在这里为其他地标类型添加更多任务
-}
+    if (existingPoiTypes.has('hotel-icon')) {
+        availableQuests.push({
+            type: 'visit_poi',
+            poiType: 'hotel-icon',
+            targetCount: 2,
+            description: '任務：抵達 2 家旅館',
+            reward: 2000
+        });
+    }
+    // ... 添加其他可重复任务 ...
+    // --- ****************************************************** ---
 
-function generateNewQuest() {
-    const qs = gameState.questSystem;
-    if (qs.availableQuests.length === 0) {
+    if (availableQuests.length === 0) {
         qs.activeQuest = null;
-        console.log("沒有更多可用任務了。");
+        console.log("没有更多可用任务了。");
         updateUI();
         return;
     }
 
-    // 从任务池中随机选择一个任务
-    const questIndex = Math.floor(Math.random() * qs.availableQuests.length);
-    const newQuestTemplate = qs.availableQuests[questIndex];
+    // 从刚刚动态构建的、最新的 availableQuests 列表中随机选择
+    const questIndex = Math.floor(Math.random() * availableQuests.length);
+    const newQuestTemplate = availableQuests[questIndex];
 
-    // 创建一个“激活”的任务实例
+    // 创建激活的任务实例 (这部分逻辑不变)
     qs.activeQuest = {
-        ...newQuestTemplate, // 复制任务模板的所有属性
-        progress: 0,         // 初始化进度
-        visitedPoiIds: new Set() // 用来记录访问过的地标ID，防止重复计算
+        ...newQuestTemplate,
+        progress: 0,
+        visitedPoiIds: new Set()
     };
 
     console.log(`新任务生成: ${qs.activeQuest.description}`);
-    updateUI(); // 更新UI以显示新任务
+    updateUI();
 }
 
 function initMinimap() {
@@ -1328,37 +1336,47 @@ function checkCollisions() {
     });
 
     const aq = gameState.questSystem.activeQuest;
-    if (aq && aq.type === 'visit_poi') {
+    if (aq) {
+        // --- a. 处理“访问特定地标”的任务 ---
+        if (aq.type === 'visit_specific_poi') {
+            // 1. 高效地找到那个唯一的目标地标
+            const targetPoi = gameState.pois.find(p => p.id === aq.poiId);
 
-        // 1. 首先，获取小精靈当前所在的最近路网节点
-        const pacmanCurrentNode = findNearestRoadPositionGeneric(pacmanPos.lat, pacmanPos.lng, gameState.validPositions);
-
-        gameState.pois.forEach(poi => {
-            if (poi.type === aq.poiType && !aq.visitedPoiIds.has(poi.id)) {
-                
-                // 2. 获取这个地标 Marker 所在的最近路网节点
-                const poiMarkerPos = poi.marker.getLatLng();
+            // 2. 如果找到了目标，并且它还没被访问过
+            if (targetPoi && !aq.visitedPoiIds.has(targetPoi.id)) {
+                // 3. 获取目标地标所在的最近路网节点
+                const poiMarkerPos = targetPoi.marker.getLatLng();
                 const poiNode = findNearestRoadPositionGeneric(poiMarkerPos.lat, poiMarkerPos.lng, gameState.validPositions);
-
-                // 3. **进行判定**
-                //    判定条件：玩家所在的节点，就是地标所在的节点
-                if (positionsAreEqual(pacmanCurrentNode, poiNode)) {
-                    // 玩家抵达了一个任务目标！
-                    handleQuestProgress(poi);
+                
+                // 4. 计算玩家与该节点的物理距离
+                const distanceToNode = pacmanPos.distanceTo(L.latLng(poiNode[0], poiNode[1]));
+                
+                // 5. 如果距离足够近，就算抵达
+                if (distanceToNode < 5) {
+                    handleQuestProgress(targetPoi);
                 }
             }
-            else if (aq.type === 'visit_specific_poi') {
-                gameState.pois.forEach(poi => {
-                    // 只检查 ID 是否匹配，且未被访问
-                    if (poi.id === aq.poiId && !aq.visitedPoiIds.has(poi.id)) {
-                        const poiPos = poi.marker.getLatLng();
-                        if (pacmanPos.distanceTo(poiPos) < 15) { // 可以给特殊地标一个更大的抵达范围
-                            handleQuestProgress(poi);
-                        }
+        } 
+        // --- b. 处理“访问某类型地标”的任务 ---
+        else if (aq.type === 'visit_poi') {
+            // 遍历所有地标，检查哪些是潜在目标
+            gameState.pois.forEach(poi => {
+                // 1. 条件：类型匹配 且 尚未在本任务中访问过
+                if (poi.type === aq.poiType && !aq.visitedPoiIds.has(poi.id)) {
+                    // 2. 获取该地标所在的最近路网节点
+                    const poiMarkerPos = poi.marker.getLatLng();
+                    const poiNode = findNearestRoadPositionGeneric(poiMarkerPos.lat, poiMarkerPos.lng, gameState.validPositions);
+                    
+                    // 3. 计算玩家与该节点的物理距离
+                    const distanceToNode = pacmanPos.distanceTo(L.latLng(poiNode[0], poiNode[1]));
+
+                    // 4. 如果距离足够近，就算抵达
+                    if (distanceToNode < 5) {
+                        handleQuestProgress(poi);
                     }
-                });
-            }
-        });
+                }
+            });
+        }
     }
     for (let i = gameState.foodItems.length - 1; i >= 0; i--) {
         const food = gameState.foodItems[i];
@@ -1556,6 +1574,14 @@ function completeQuest() {
     const qs = gameState.questSystem;
     qs.completionMessage = `任務完成！+${aq.reward} 分`;
 
+    if (aq.type === 'visit_specific_poi') {
+        gameState.questSystem.completedSpecialPoiIds.add(aq.poiId);
+        console.log(`特殊地标 ${aq.poiId} 已被永久标记为已完成。`);
+
+        // 触发视觉更新，让地标图标改变外观
+        updateSpecialPoiAppearance();
+    }
+
     // 3. 更新已完成任务计数
     qs.completedQuests++;
     
@@ -1576,6 +1602,31 @@ function completeQuest() {
         // c. 再次更新 UI，显示新任务
         //    (generateNewQuest 内部已经调用了 updateUI，所以这里可能不需要再调用)
     }, 4000); // 消息显示 4 秒
+}
+
+function updateSpecialPoiAppearance() {
+    const completedIds = gameState.questSystem.completedSpecialPoiIds;
+
+    gameState.pois.forEach(poi => {
+        // 只处理特殊地标
+        if (poi.type === 'landmark-icon') {
+            const markerElement = poi.marker.getElement();
+            if (!markerElement) return;
+            
+            // 找到内部的图标 div
+            const iconDiv = markerElement.querySelector('.poi-icon');
+            if (!iconDiv) return;
+
+            // 如果这个地标的ID在已完成列表中
+            if (completedIds.has(poi.id)) {
+                // 就给它一个“已完成”的 class
+                iconDiv.classList.add('completed');
+            } else {
+                // 否则确保它没有这个 class
+                iconDiv.classList.remove('completed');
+            }
+        }
+    });
 }
 
 function loseLife() {
