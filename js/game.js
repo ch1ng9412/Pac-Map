@@ -1011,14 +1011,17 @@ function gameLoop(timestamp) {
     });
 
     // --- 步骤 4: UI 更新 (所有状态计算完毕后，最后执行) ---
-    
-    // a. 更新主 UI
-    updateUI(); // 假设 FPS 显示在这里面
-    
-    // b. 更新小地图
+
+    // a. 更新 FPS 顯示
+    updateFPS(timestamp);
+
+    // b. 更新主 UI
+    updateUI();
+
+    // c. 更新小地图
     updateMinimap();
-    
-    // c. 更新毒圈视觉
+
+    // d. 更新毒圈视觉
     updatePoisonCircleSVG();
 
     // d. 更新小地图倒计时

@@ -5,7 +5,7 @@
 
 // 預設設定
 const DEFAULT_SETTINGS = {
-    showFPS: false,
+    showFPS: true,
     gameVolume: 0.7,
     soundEnabled: true
 };
