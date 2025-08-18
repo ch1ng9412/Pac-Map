@@ -47,7 +47,8 @@ export let gameState = {
     totalDots: 0,
     ghostsEaten: 0,
     powerPelletsEaten: 0,
-    canMove: false, 
+    canMove: false,
+    isCheatModeActive: false, // 標記是否使用過作弊指令
     roadNetwork: [], 
     validPositions: [], 
     roadLayers: [], 

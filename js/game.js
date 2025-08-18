@@ -1772,6 +1772,13 @@ export async function endGame(victory) {
         ghosts_eaten: gameState.ghostsEaten || 0
     };
 
+    // 檢查是否使用過作弊模式
+    if (gameState.isCheatModeActive) {
+        console.log('🚫 檢測到作弊模式，分數不會被提交到排行榜');
+        showScoreSubmissionMessage('使用作弊模式，分數不計入排行榜', 'warning');
+        return; // 直接返回，不提交分數
+    }
+
     // 根據登入狀態處理分數
     if (isLoggedIn()) {
         console.log('用戶已登入，提交分數到後端');

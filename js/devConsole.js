@@ -4,6 +4,9 @@ import { updateUI } from './ui.js';
 import { findNearestRoadPositionGeneric } from './map.js';
 import { positionsAreEqual } from './ai.js';
 
+// 作弊模式狀態
+let isCheatModeUnlocked = false;
+
 const devConsole = document.getElementById('devConsole');
 const devConsoleInput = document.getElementById('devConsoleInput');
 const devConsoleOutput = document.getElementById('devConsoleOutput');
@@ -32,14 +35,69 @@ export function logToDevConsole(message, type = 'info') {
     else if (type === 'input') p.style.color = '#88f'; 
     else p.style.color = '#ccc'; 
     devConsoleOutput.appendChild(p);
-    devConsoleOutput.scrollTop = devConsoleOutput.scrollHeight; 
+    devConsoleOutput.scrollTop = devConsoleOutput.scrollHeight;
+}
+
+function showAllCommands() {
+    logToDevConsole("🔓 作弊模式指令列表:", 'info');
+    logToDevConsole("", 'info');
+    logToDevConsole("遊戲控制:", 'info');
+    logToDevConsole("  nl - 直接獲勝", 'info');
+    logToDevConsole("  speed [倍數] - 調整小精靈速度 (預設1x/2x切換)", 'info');
+    logToDevConsole("  godmode - 切換無敵模式", 'info');
+    logToDevConsole("  noobmode - 移除所有鬼怪", 'info');
+    logToDevConsole("", 'info');
+    logToDevConsole("自動化:", 'info');
+    logToDevConsole("  auto - 切換基本自動吃點", 'info');
+    logToDevConsole("  clever - 切換聰明自動吃點 (避開鬼怪)", 'info');
+    logToDevConsole("", 'info');
+    logToDevConsole("遊戲資源:", 'info');
+    logToDevConsole("  score [分數] - 增加分數 (預設+10000)", 'info');
+    logToDevConsole("  filldots - 重新填滿所有豆子", 'info');
+    logToDevConsole("", 'info');
+    logToDevConsole("調試工具:", 'info');
+    logToDevConsole("  ghosts - 觀察每個鬼怪的XY座標", 'info');
+    logToDevConsole("  default - 重設所有指令效果", 'info');
+    logToDevConsole("  help - 顯示此幫助訊息", 'info');
+    logToDevConsole("", 'info');
+    logToDevConsole("⚠️  注意：使用任何作弊指令後，分數將不會計入排行榜！", 'warn');
 }
 
 function processDevCommand(command) {
-    logToDevConsole(`${command}`, 'input'); 
+    logToDevConsole(`${command}`, 'input');
     const args = command.trim().split(' ');
     const cmd = args[0].toLowerCase();
     const param1 = args[1] ? args[1].toLowerCase() : null;
+
+    // 檢查是否為 unlock 指令
+    if (cmd === 'unlock') {
+        isCheatModeUnlocked = true;
+        gameState.isCheatModeActive = true; // 標記作弊模式已啟用
+        logToDevConsole("🔓 作弊模式已解鎖！", 'success');
+        logToDevConsole("⚠️  警告：使用作弊指令後分數將不會計入排行榜！", 'warn');
+        logToDevConsole("輸入 'help' 查看可用指令。", 'info');
+        return;
+    }
+
+    // 檢查是否為 help 指令（help 指令不需要解鎖）
+    if (cmd === 'help') {
+        if (!isCheatModeUnlocked) {
+            logToDevConsole("可用指令:", 'info');
+            logToDevConsole("  unlock - 解鎖作弊模式", 'info');
+            logToDevConsole("  help - 顯示此幫助訊息", 'info');
+            logToDevConsole("", 'info');
+            logToDevConsole("⚠️  請先輸入 'unlock' 解鎖作弊模式才能使用其他指令", 'warn');
+        } else {
+            showAllCommands();
+        }
+        return;
+    }
+
+    // 檢查作弊模式是否已解鎖
+    if (!isCheatModeUnlocked) {
+        logToDevConsole("❌ 作弊模式未解鎖！請先輸入 'unlock' 解鎖作弊模式。", 'error');
+        return;
+    }
 
     switch(cmd) {
         case 'nl':
@@ -127,7 +185,13 @@ function processDevCommand(command) {
             gameState.cleverMode = false;
             gameState.autoPilotPath = [];
             gameState.autoPilotTarget = null;
+
+            // 重設作弊模式狀態
+            isCheatModeUnlocked = false;
+            gameState.isCheatModeActive = false;
+
             logToDevConsole("速度、無敵、自動模式已重設。", "success");
+            logToDevConsole("🔒 作弊模式已重新鎖定，分數將正常計入排行榜。", "success");
 
             if (gameState.ghosts.length === 0 && NUMBER_OF_GHOSTS > 0 && !gameState.isGameOver && !gameState.isLosingLife) {
                 logToDevConsole("嘗試恢復鬼怪...", "info");
@@ -171,20 +235,7 @@ function processDevCommand(command) {
                 logToDevConsole("No ghosts are currently in the game.", 'warn');
             }
             break;
-        case 'help':
-            logToDevConsole("可用指令:", 'info');
-            logToDevConsole("  nl - 直接獲勝", 'info');
-            logToDevConsole("  speed [倍數] - 調整小精靈速度 (預設1x/2x切換)", 'info');
-            logToDevConsole("  godmode - 切換無敵模式", 'info');
-            logToDevConsole("  score [分數] - 增加分數 (預設+10000)", 'info');
-            logToDevConsole("  noobmode - 移除所有鬼怪", 'info');
-            logToDevConsole("  auto - 切換基本自動吃點", 'info');
-            logToDevConsole("  clever - 切換聰明自動吃點 (避開鬼怪)", 'info');
-            logToDevConsole("  filldots - 重新填滿所有豆子", 'info');
-            logToDevConsole("  default - 重設所有指令效果", 'info');
-            logToDevConsole("  ghosts - 觀察每個鬼怪的XY座標", 'info');
-            logToDevConsole("  help - 顯示此幫助訊息", 'info');
-            break;
+
         default:
             logToDevConsole(`未知指令: ${cmd}`, 'error');
             break;

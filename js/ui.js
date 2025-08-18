@@ -2,6 +2,52 @@ import { gameState, leaderboard } from './gameState.js';
 import { buildApiUrl } from './config.js';
 import { getCurrentUser } from './auth.js';
 
+// 作弊模式指示器
+function updateCheatModeIndicator() {
+    let cheatIndicator = document.getElementById('cheatModeIndicator');
+
+    if (gameState.isCheatModeActive) {
+        if (!cheatIndicator) {
+            // 創建作弊模式指示器
+            cheatIndicator = document.createElement('div');
+            cheatIndicator.id = 'cheatModeIndicator';
+            cheatIndicator.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background-color: rgba(255, 0, 0, 0.8);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 5px;
+                font-weight: bold;
+                font-size: 14px;
+                z-index: 2000;
+                border: 2px solid #ff0000;
+                animation: cheatBlink 2s infinite;
+            `;
+            cheatIndicator.textContent = '🚫 作弊模式 - 分數不計入排行榜';
+
+            // 添加閃爍動畫
+            if (!document.getElementById('cheatModeStyle')) {
+                const style = document.createElement('style');
+                style.id = 'cheatModeStyle';
+                style.textContent = `
+                    @keyframes cheatBlink {
+                        0%, 50% { opacity: 1; }
+                        51%, 100% { opacity: 0.6; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            document.body.appendChild(cheatIndicator);
+        }
+    } else if (cheatIndicator) {
+        // 移除作弊模式指示器
+        cheatIndicator.remove();
+    }
+}
+
 // 輔助函數：獲取本地分數記錄
 function getLocalScores() {
     try {
@@ -21,16 +67,19 @@ function isUserLoggedIn() {
     return !!(user && token);
 }
 
-export function updateUI() { 
-    document.getElementById('score').textContent = gameState.score; 
-    document.getElementById('level').textContent = gameState.level; 
-    const remainingItems = gameState.dots.length + gameState.powerPellets.length; 
-    document.getElementById('dotsLeft').textContent = remainingItems; 
-    document.getElementById('highScore').textContent = leaderboard.length > 0 ? Math.max(0, ...leaderboard.filter(s => typeof s === 'number').concat(0)) : 0; 
-    const minutes = Math.floor(gameState.gameTime / 60), seconds = gameState.gameTime % 60; 
-    document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`; 
+export function updateUI() {
+    document.getElementById('score').textContent = gameState.score;
+    document.getElementById('level').textContent = gameState.level;
+    const remainingItems = gameState.dots.length + gameState.powerPellets.length;
+    document.getElementById('dotsLeft').textContent = remainingItems;
+    document.getElementById('highScore').textContent = leaderboard.length > 0 ? Math.max(0, ...leaderboard.filter(s => typeof s === 'number').concat(0)) : 0;
+    const minutes = Math.floor(gameState.gameTime / 60), seconds = gameState.gameTime % 60;
+    document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     const hs = gameState.healthSystem;
     document.getElementById('lives').textContent = hs.lives;
+
+    // 顯示作弊模式提示
+    updateCheatModeIndicator();
 
     const healthBar = document.getElementById('healthBar');
     if (healthBar) {
