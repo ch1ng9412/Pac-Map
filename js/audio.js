@@ -4,6 +4,12 @@ let dotSoundTimeout;
 let dotSoundIsCoolingDown = false;
 let audioContextStarted = false;
 
+// BGM 音頻元素
+let homepageBGM = null;
+let gameBGM = null;
+let settlementBGM = null;
+let currentBGM = null;
+
 // 啟動 AudioContext（需要用戶互動）
 async function startAudioContext() {
     if (typeof Tone !== 'undefined' && !audioContextStarted) {
@@ -34,7 +40,7 @@ export function setupSounds() {
             envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.1 },
             volume: -25
         }).toDestination();
-        
+
         powerPelletSynth = new Tone.Synth({
             oscillator: { type: "sawtooth" },
             envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 },
@@ -58,6 +64,48 @@ export function setupSounds() {
         soundsReady = true;
     } else {
         console.warn("Tone.js 未載入，音效將不可用。");
+    }
+
+    // 初始化 BGM 音頻元素
+    setupBGM();
+}
+
+// 初始化 BGM 音頻元素
+function setupBGM() {
+    try {
+        // 獲取設定的 BGM 音量
+        const bgmVolume = window.gameSettings?.getSetting('bgmVolume') || 0.7;
+
+        // 首頁 BGM
+        homepageBGM = new Audio('audio/Homepage_bgm.wav');
+        homepageBGM.loop = true;
+        homepageBGM.volume = bgmVolume;
+        homepageBGM.preload = 'auto';
+
+        // 遊戲 BGM (原本的)
+        gameBGM = document.getElementById('bgm');
+        if (gameBGM) {
+            gameBGM.volume = bgmVolume;
+        }
+
+        // 結算頁 BGM
+        settlementBGM = new Audio('audio/Settlement_bgm.wav');
+        settlementBGM.loop = true;
+        settlementBGM.volume = bgmVolume;
+        settlementBGM.preload = 'auto';
+
+        // 添加錯誤處理
+        homepageBGM.addEventListener('error', (e) => {
+            console.error('首頁 BGM 載入失敗:', e);
+        });
+
+        settlementBGM.addEventListener('error', (e) => {
+            console.error('結算 BGM 載入失敗:', e);
+        });
+
+        console.log('🎵 BGM 音頻元素已初始化');
+    } catch (error) {
+        console.error('BGM 初始化失敗:', error);
     }
 }
 
@@ -98,5 +146,98 @@ export function playDeathSound() {
     if (!soundsReady || !Tone.now || !deathSynth) return;
     const now = Tone.now();
     deathSynth.triggerAttackRelease(["C3", "Eb3", "Gb3"], "1n", now);
-    deathSynth.triggerAttackRelease(["C2", "Eb2", "Gb2"], "1n", now + 0.1); 
+    deathSynth.triggerAttackRelease(["C2", "Eb2", "Gb2"], "1n", now + 0.1);
+}
+
+// BGM 控制函數
+export function playHomepageBGM() {
+    stopAllBGM();
+    if (homepageBGM) {
+        currentBGM = homepageBGM;
+        homepageBGM.play().catch(error => {
+            console.warn("首頁 BGM 自動播放被瀏覽器阻止:", error);
+        });
+        console.log('🎵 播放首頁 BGM');
+    }
+}
+
+export function playGameBGM() {
+    stopAllBGM();
+    if (gameBGM) {
+        currentBGM = gameBGM;
+        gameBGM.play().catch(error => {
+            console.warn("遊戲 BGM 自動播放被瀏覽器阻止:", error);
+        });
+        console.log('🎵 播放遊戲 BGM');
+    }
+}
+
+export function playSettlementBGM() {
+    stopAllBGM();
+    if (settlementBGM) {
+        currentBGM = settlementBGM;
+        settlementBGM.play().catch(error => {
+            console.warn("結算 BGM 自動播放被瀏覽器阻止:", error);
+        });
+        console.log('🎵 播放結算 BGM');
+    }
+}
+
+export function stopAllBGM() {
+    if (homepageBGM) {
+        homepageBGM.pause();
+        homepageBGM.currentTime = 0;
+    }
+    if (gameBGM) {
+        gameBGM.pause();
+        gameBGM.currentTime = 0;
+    }
+    if (settlementBGM) {
+        settlementBGM.pause();
+        settlementBGM.currentTime = 0;
+    }
+    currentBGM = null;
+    console.log('🔇 停止所有 BGM');
+}
+
+export function pauseCurrentBGM() {
+    if (currentBGM) {
+        currentBGM.pause();
+        console.log('⏸️ 暫停當前 BGM');
+    }
+}
+
+export function resumeCurrentBGM() {
+    if (currentBGM) {
+        currentBGM.play().catch(error => {
+            console.warn("恢復 BGM 播放失敗:", error);
+        });
+        console.log('▶️ 恢復當前 BGM');
+    }
+}
+
+export function setCurrentBGMVolume(volume) {
+    if (currentBGM) {
+        currentBGM.volume = volume;
+    }
+}
+
+// 設定所有 BGM 的基礎音量
+export function setBGMVolume(volume) {
+    if (homepageBGM) homepageBGM.volume = volume;
+    if (gameBGM) gameBGM.volume = volume;
+    if (settlementBGM) settlementBGM.volume = volume;
+
+    // 如果有當前播放的 BGM，也更新它的音量
+    if (currentBGM) {
+        currentBGM.volume = volume;
+    }
+
+    console.log('🎵 所有 BGM 音量設定為:', Math.round(volume * 100) + '%');
+}
+
+// 暴露到全域範圍供設定系統使用
+if (typeof window !== 'undefined') {
+    window.setCurrentBGMVolume = setCurrentBGMVolume;
+    window.setBGMVolume = setBGMVolume;
 }

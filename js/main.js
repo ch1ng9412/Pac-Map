@@ -1,5 +1,5 @@
 import { gameState, gameLoopRequestId } from './gameState.js';
-import { setupSounds, soundsReady } from './audio.js';
+import { setupSounds, soundsReady, playHomepageBGM } from './audio.js';
 import { updateLeaderboardUI } from './ui.js';
 import { initGame, pauseGame, resumeGame, tryStartMovementInDirection, restartGame, backToMenu, useBackpackItem} from './game.js';
 import { initStartScreenBackground } from './backgroundAnimation.js';
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 100);
 
-    // 添加用戶互動來啟動音頻上下文
+    // 添加用戶互動來啟動音頻上下文和首頁 BGM
     document.addEventListener('click', async () => {
         if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
             try {
@@ -106,6 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn('AudioContext 啟動失敗:', error);
             }
         }
+
+        // 播放首頁 BGM
+        playHomepageBGM();
     }, { once: true });
 
     // 初始化設定系統
@@ -144,6 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('❌ 背景動畫初始化失敗:', error);
     });
     setupDevConsoleListeners();
+
+    // 首頁 BGM 將在用戶第一次互動時播放
 
     // --- Event Listeners ---
 

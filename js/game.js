@@ -1,5 +1,5 @@
 import { gameState, mapConfigs, MAX_MAP_ZOOM, NUMBER_OF_GHOSTS, PACMAN_BASE_SPEED, GHOST_MOVE_SPEED_METERS_PER_SECOND, MAX_DELTA_TIME, leaderboard, gameLoopRequestId, ghostDecisionInterval, lastFrameTime, setGameLoopRequestId, setGhostDecisionInterval, setLastFrameTime, foodDatabase } from './gameState.js';
-import { soundsReady, setupSounds, playStartSound, playDotSound, playPowerPelletSound, playEatGhostSound, playDeathSound } from './audio.js';
+import { soundsReady, setupSounds, playStartSound, playDotSound, playPowerPelletSound, playEatGhostSound, playDeathSound, playGameBGM, stopAllBGM, pauseCurrentBGM, resumeCurrentBGM, setCurrentBGMVolume, playSettlementBGM, playHomepageBGM } from './audio.js';
 import { updateUI, updateLeaderboardUI, updatePacmanIconRotation, showLoadingScreen, hideLoadingScreen } from './ui.js';
 import { stopBackgroundAnimation, initStartScreenBackground } from './backgroundAnimation.js';
 import { isLoggedIn, authenticatedFetch } from './auth.js';
@@ -981,14 +981,8 @@ async function startGame() {
     }
     playStartSound();
 
-    if (bgmAudio && bgmAudio.paused) {
-        // 使用 .play() 方法。它会返回一个 Promise。
-        // 我们用 .catch() 来处理浏览器可能因为自动播放策略而阻止播放的错误。
-        bgmAudio.play().catch(error => {
-            console.warn("BGM 自动播放被浏览器阻止:", error);
-            // 提示玩家手动开启声音
-        });
-    }
+    // 播放遊戲 BGM
+    playGameBGM();
 
     gameState.gameStartTime = performance.now();
 
@@ -1744,7 +1738,7 @@ function nextLevel() {
 export async function endGame(victory) {
     gameState.isGameOver = true;
     gameState.canMove = false;
-    stopBGM();
+    stopAllBGM();
     if (gameLoopRequestId) cancelAnimationFrame(gameLoopRequestId);
     setGameLoopRequestId(null);
     if(gameState.gameTimer) clearInterval(gameState.gameTimer);
@@ -1830,6 +1824,9 @@ export async function endGame(victory) {
     document.getElementById('gameOverTitle').textContent = victory ? '🎉 過關成功!' : ' 遊戲結束';
     document.getElementById('newHighScore').style.display = isNewRecord(finalScore) ? 'block' : 'none';
     document.getElementById('gameOverScreen').style.display = 'flex';
+
+    // 播放結算 BGM
+    playSettlementBGM();
 }
 
 /**
@@ -2166,19 +2163,14 @@ function checkPlayerInPoison(timestamp) { // <-- 接收当前的时间戳
     }
 }
 
-function stopBGM() {
-    if (bgmAudio) {
-        bgmAudio.pause();
-        bgmAudio.currentTime = 0; // 将播放进度重置到 0
-    }
-}
+
 
 export function pauseGame() {
     if (gameState.isGameOver || gameState.isLosingLife) return;
 
-    if (bgmAudio) {
-        bgmAudio.volume = 0.2;
-    }
+    // 降低當前 BGM 音量（降到設定音量的一半）
+    const bgmVolume = window.gameSettings?.getSetting('bgmVolume') || 0.7;
+    setCurrentBGMVolume(bgmVolume * 0.5);
 
     // 記錄暫停時間，用於恢復時調整毒圈倒數
     gameState.pauseStartTime = performance.now();
@@ -2195,9 +2187,9 @@ if (typeof window !== 'undefined') {
 }
 
 export function resumeGame() {
-    if (bgmAudio) {
-        bgmAudio.volume = 0.4;
-    }
+    // 恢復當前 BGM 音量到設定值
+    const bgmVolume = window.gameSettings?.getSetting('bgmVolume') || 0.7;
+    setCurrentBGMVolume(bgmVolume);
 
     // 計算暫停時間並調整毒圈倒數
     if (gameState.pauseStartTime) {
@@ -2252,13 +2244,13 @@ export function backToMenu() {
         window.mobileControls.showTouchIndicator();
     }
 
-    stopBGM();
+    stopAllBGM();
     if (gameLoopRequestId) cancelAnimationFrame(gameLoopRequestId);
     setGameLoopRequestId(null);
-    if(gameState.gameTimer) clearInterval(gameState.gameTimer); 
-    if (ghostDecisionInterval) clearInterval(ghostDecisionInterval); 
-    setGhostDecisionInterval(null); 
-    if(gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer); 
+    if(gameState.gameTimer) clearInterval(gameState.gameTimer);
+    if (ghostDecisionInterval) clearInterval(ghostDecisionInterval);
+    setGhostDecisionInterval(null);
+    if(gameState.powerModeTimer) clearTimeout(gameState.powerModeTimer);
     if(gameState.poisonCircle.damageInterval) clearInterval(gameState.poisonCircle.damageInterval);
     
     gameState.pacmanMovement.isMoving = false;
@@ -2273,6 +2265,9 @@ export function backToMenu() {
     initStartScreenBackground().catch(error => {
         console.error('背景動畫重新初始化失敗:', error);
     });
+
+    // 播放首頁 BGM
+    playHomepageBGM();
 }
 
 /**
