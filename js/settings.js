@@ -7,7 +7,8 @@
 const DEFAULT_SETTINGS = {
     showFPS: true,
     gameVolume: 0.7,
-    soundEnabled: true
+    soundEnabled: true,
+    showVirtualKeyboard: false
 };
 
 // 當前設定
@@ -66,9 +67,12 @@ export function setSetting(key, value) {
 function applySettings() {
     // 應用 FPS 顯示設定
     applyFPSDisplay();
-    
+
     // 應用音量設定
     applyVolumeSettings();
+
+    // 應用虛擬鍵盤設定
+    applyVirtualKeyboardSettings();
 }
 
 /**
@@ -99,6 +103,29 @@ function applyVolumeSettings() {
 }
 
 /**
+ * 同步控制模式與設定狀態
+ */
+function syncControlModeWithSettings() {
+    if (typeof window.mobileControls?.getCurrentControlMode === 'function') {
+        const currentMode = window.mobileControls.getCurrentControlMode();
+        const isMobileMode = currentMode.controlMode === 'mobile';
+
+        // 更新設定以匹配當前控制模式
+        currentSettings.showVirtualKeyboard = isMobileMode;
+        saveSettings();
+    }
+}
+
+/**
+ * 應用虛擬鍵盤設定
+ */
+function applyVirtualKeyboardSettings() {
+    // 虛擬鍵盤的顯示/隱藏只在遊戲中生效
+    // 這裡只需要確保設定已保存，實際的顯示邏輯在遊戲開始時處理
+    console.log('🎮 虛擬鍵盤設定已更新:', currentSettings.showVirtualKeyboard ? '顯示' : '隱藏');
+}
+
+/**
  * 顯示設定介面
  */
 export function showSettingsModal() {
@@ -110,7 +137,7 @@ export function showSettingsModal() {
         settingsModal = document.getElementById('settingsModal');
     }
 
-    // 更新設定介面的值
+    // 更新設定介面的值（不改變設定，只更新 UI）
     updateSettingsUI();
 
     // 顯示設定介面
@@ -172,6 +199,16 @@ function createSettingsModal() {
                         </label>
                         <div class="setting-description">在遊戲畫面顯示每秒幀數</div>
                     </div>
+
+                    <!-- 虛擬鍵盤設定 -->
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            <input type="checkbox" id="showVirtualKeyboardCheckbox" onchange="window.gameSettings.toggleVirtualKeyboard()">
+                            <span class="checkmark"></span>
+                            顯示虛擬鍵盤
+                        </label>
+                        <div class="setting-description">在遊戲中顯示觸控方向鍵</div>
+                    </div>
                     
                     <!-- 音效開關 -->
                     <div class="setting-item">
@@ -219,6 +256,18 @@ function updateSettingsUI() {
     if (showFPSCheckbox) {
         showFPSCheckbox.checked = currentSettings.showFPS;
     }
+
+    // 更新虛擬鍵盤顯示勾選框（根據當前控制模式）
+    const showVirtualKeyboardCheckbox = document.getElementById('showVirtualKeyboardCheckbox');
+    if (showVirtualKeyboardCheckbox) {
+        // 根據當前控制模式來設定勾選狀態
+        if (typeof window.mobileControls?.getCurrentControlMode === 'function') {
+            const currentMode = window.mobileControls.getCurrentControlMode();
+            showVirtualKeyboardCheckbox.checked = currentMode.controlMode === 'mobile';
+        } else {
+            showVirtualKeyboardCheckbox.checked = currentSettings.showVirtualKeyboard;
+        }
+    }
     
     // 更新音效開關勾選框
     const soundEnabledCheckbox = document.getElementById('soundEnabledCheckbox');
@@ -242,6 +291,44 @@ function updateSettingsUI() {
 export function toggleFPS() {
     setSetting('showFPS', !currentSettings.showFPS);
     console.log('🔄 FPS 顯示:', currentSettings.showFPS ? '開啟' : '關閉');
+}
+
+/**
+ * 切換虛擬鍵盤顯示
+ */
+export function toggleVirtualKeyboard() {
+    const newValue = !currentSettings.showVirtualKeyboard;
+    setSetting('showVirtualKeyboard', newValue);
+
+    // 同步更新控制模式
+    if (typeof window.mobileControls?.getCurrentControlMode === 'function') {
+        const currentMode = window.mobileControls.getCurrentControlMode();
+        const needsToggle = (newValue && currentMode.controlMode !== 'mobile') ||
+                           (!newValue && currentMode.controlMode !== 'desktop');
+
+        if (needsToggle && typeof window.mobileControls?.toggleControlMode === 'function') {
+            window.mobileControls.toggleControlMode();
+
+            // 更新主頁面的按鈕文字
+            setTimeout(() => {
+                const updatedMode = window.mobileControls.getCurrentControlMode();
+                if (updatedMode) {
+                    const buttonText = updatedMode.controlMode === 'mobile' ? '⌨️ 切換到桌面模式' : '📱 切換到手機模式';
+                    const toggleBtn = document.getElementById('toggleControlBtn');
+                    if (toggleBtn) {
+                        toggleBtn.textContent = buttonText;
+                    }
+
+                    // 更新觸控指示器
+                    if (typeof window.mobileControls?.updateControlModeIndicator === 'function') {
+                        window.mobileControls.updateControlModeIndicator();
+                    }
+                }
+            }, 100);
+        }
+    }
+
+    console.log('🔄 虛擬鍵盤顯示:', newValue ? '開啟' : '關閉');
 }
 
 /**
@@ -294,6 +381,7 @@ export function initSettings() {
             showSettingsModal,
             hideSettingsModal,
             toggleFPS,
+            toggleVirtualKeyboard,
             toggleSound,
             setVolume,
             resetSettings,

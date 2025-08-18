@@ -28,6 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('❌ 後端連接檢查失敗:', error);
     });
 
+    // 初始化設定系統
+    console.log('⚙️ 初始化設定系統...');
+    initSettings();
+
     // 初始化手機控制系統
     console.log('📱 初始化手機控制系統...');
     const deviceInfo = initMobileControls();
@@ -36,12 +40,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // 在主畫面顯示觸控指示器
     showTouchIndicator();
 
-    // 設定控制模式按鈕的初始文字
+    // 設定控制模式按鈕的初始文字並同步設定
     setTimeout(() => {
         const currentMode = window.mobileControls?.getCurrentControlMode();
         if (currentMode) {
             const buttonText = currentMode.controlMode === 'mobile' ? '⌨️ 切換到桌面模式' : '📱 切換到手機模式';
             document.getElementById('toggleControlBtn').textContent = buttonText;
+
+            // 同步設定中的虛擬鍵盤選項
+            if (typeof window.gameSettings?.setSetting === 'function') {
+                const showVirtualKeyboard = currentMode.controlMode === 'mobile';
+                window.gameSettings.setSetting('showVirtualKeyboard', showVirtualKeyboard);
+            }
         }
     }, 100);
 
@@ -156,6 +166,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 更新觸控指示器
             updateControlModeIndicator();
+
+            // 同步更新設定中的虛擬鍵盤選項
+            if (typeof window.gameSettings?.setSetting === 'function') {
+                const showVirtualKeyboard = currentMode.controlMode === 'mobile';
+                window.gameSettings.setSetting('showVirtualKeyboard', showVirtualKeyboard);
+            }
         }
     });
 

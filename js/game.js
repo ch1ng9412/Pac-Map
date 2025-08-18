@@ -886,12 +886,25 @@ async function startGame() {
         backpackContainer.style.display = 'flex'; // 因为它是 flex 布局，所以用 'flex'
     }
 
-    // 顯示手機虛擬方向鍵並隱藏觸控指示器
-    if (typeof window.mobileControls?.showVirtualDPad === 'function') {
+    // 根據設定決定是否顯示虛擬方向鍵
+    if (typeof window.gameSettings?.getSetting === 'function') {
+        const showVirtualKeyboard = window.gameSettings.getSetting('showVirtualKeyboard');
+        if (showVirtualKeyboard && typeof window.mobileControls?.showVirtualDPad === 'function') {
+            window.mobileControls.showVirtualDPad();
+        }
+    } else if (typeof window.mobileControls?.showVirtualDPad === 'function') {
+        // 如果沒有設定系統，使用預設邏輯
         window.mobileControls.showVirtualDPad();
     }
+
+    // 隱藏觸控指示器
     if (typeof window.mobileControls?.hideTouchIndicator === 'function') {
         window.mobileControls.hideTouchIndicator();
+    }
+
+    // 顯示遊戲暫停按鈕
+    if (typeof window.mobileControls?.showGamePauseButton === 'function') {
+        window.mobileControls.showGamePauseButton();
     }
 
     if (gameState.minimap.map) {
@@ -1675,9 +1688,12 @@ export async function endGame(victory) {
     // 更新本地排行榜（向後兼容）
     updateLeaderboard(gameState.score);
 
-    // 隱藏手機虛擬方向鍵
+    // 隱藏手機虛擬方向鍵和暫停按鈕
     if (typeof window.mobileControls?.hideVirtualDPad === 'function') {
         window.mobileControls.hideVirtualDPad();
+    }
+    if (typeof window.mobileControls?.hideGamePauseButton === 'function') {
+        window.mobileControls.hideGamePauseButton();
     }
     // 報告遊戲結束事件並結束驗證會話
     if (isLoggedIn()) {
@@ -2061,6 +2077,11 @@ export function pauseGame() {
     document.getElementById('pauseScreen').style.display = 'flex';
 }
 
+// 暴露 pauseGame 到全域範圍
+if (typeof window !== 'undefined') {
+    window.pauseGame = pauseGame;
+}
+
 export function resumeGame() {
     if (bgmAudio) {
         bgmAudio.volume = 0.4;
@@ -2106,9 +2127,12 @@ export function backToMenu() {
     document.getElementById('leaderboardContent').style.display = 'none';
     document.getElementById('startScreen').style.display = 'flex';
 
-    // 隱藏手機虛擬方向鍵
+    // 隱藏手機虛擬方向鍵和暫停按鈕
     if (typeof window.mobileControls?.hideVirtualDPad === 'function') {
         window.mobileControls.hideVirtualDPad();
+    }
+    if (typeof window.mobileControls?.hideGamePauseButton === 'function') {
+        window.mobileControls.hideGamePauseButton();
     }
 
     // 回到主選單時顯示觸控指示器

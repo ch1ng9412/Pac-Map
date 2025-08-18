@@ -449,7 +449,7 @@
       #minimap-container {
         position: fixed; /* 改為 fixed，相對於視窗定位 */
         bottom: 20px;
-        right: 20px;
+        left: 20px; /* 改為左下角 */
         width: 200px; /* 小地图宽度 */
         height: 200px; /* 小地图高度 */
         z-index: 1000; /* 确保它在游戏 UI 之上 */
@@ -1132,13 +1132,46 @@
         position: fixed;
         top: 10px;
         right: 10px;
-        background: rgba(0, 255, 255, 0.8);
+        background: rgba(0, 255, 255, 0.9);
         color: #000;
         padding: 5px 10px;
         border-radius: 5px;
         font-size: 12px;
-        z-index: 10000;
+        z-index: 15000;
         display: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(0, 255, 255, 1);
+      }
+
+      /* 遊戲暫停按鈕 */
+      .game-pause-button {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 0, 0.9);
+        border: 2px solid #ffff00;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        z-index: 5000;
+        display: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .game-pause-button:hover {
+        background: rgba(255, 255, 0, 1);
+        transform: translateX(-50%) scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      }
+
+      .game-pause-button:active {
+        transform: translateX(-50%) scale(0.95);
       }
 
       /* 手機專用 UI 調整 */
@@ -1792,6 +1825,11 @@
 
       <!-- 觸控狀態指示器 -->
       <div class="touch-indicator" id="touchIndicator">觸控模式</div>
+
+      <!-- 遊戲暫停按鈕 -->
+      <button class="game-pause-button" id="gamePauseButton" title="暫停遊戲">
+        ⏸️
+      </button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>

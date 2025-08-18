@@ -69,9 +69,9 @@ export function detectDevice() {
  */
 export function initMobileControls() {
     console.log('📱 初始化手機控制系統...');
-    
+
     const deviceInfo = detectDevice();
-    
+
     if (deviceInfo.needsMobileControls) {
         console.log('✅ 檢測到手機設備，啟用觸控控制');
         enableMobileControls();
@@ -79,11 +79,14 @@ export function initMobileControls() {
         console.log('💻 檢測到桌面設備，使用鍵盤控制');
         disableMobileControls();
     }
-    
+
+    // 設置遊戲暫停按鈕事件
+    setupGamePauseButton();
+
     // 監聽螢幕方向變化
     window.addEventListener('orientationchange', handleOrientationChange);
     window.addEventListener('resize', handleResize);
-    
+
     return deviceInfo;
 }
 
@@ -545,6 +548,59 @@ export function updateControlModeIndicator() {
     }
 }
 
+/**
+ * 顯示遊戲暫停按鈕
+ */
+export function showGamePauseButton() {
+    const pauseBtn = document.getElementById('gamePauseButton');
+    if (pauseBtn) {
+        pauseBtn.style.display = 'block';
+    }
+}
+
+/**
+ * 隱藏遊戲暫停按鈕
+ */
+export function hideGamePauseButton() {
+    const pauseBtn = document.getElementById('gamePauseButton');
+    if (pauseBtn) {
+        pauseBtn.style.display = 'none';
+    }
+}
+
+/**
+ * 設置遊戲暫停按鈕
+ */
+function setupGamePauseButton() {
+    const pauseBtn = document.getElementById('gamePauseButton');
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', () => {
+            // 調用遊戲的暫停函數
+            if (typeof window.pauseGame === 'function') {
+                window.pauseGame();
+            } else if (typeof gameState !== 'undefined' && !gameState.isPaused) {
+                // 如果沒有全域的 pauseGame 函數，嘗試觸發空白鍵事件
+                const spaceEvent = new KeyboardEvent('keydown', { key: ' ', code: 'Space' });
+                document.dispatchEvent(spaceEvent);
+            }
+        });
+
+        pauseBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            // 調用遊戲的暫停函數
+            if (typeof window.pauseGame === 'function') {
+                window.pauseGame();
+            } else if (typeof gameState !== 'undefined' && !gameState.isPaused) {
+                // 如果沒有全域的 pauseGame 函數，嘗試觸發空白鍵事件
+                const spaceEvent = new KeyboardEvent('keydown', { key: ' ', code: 'Space' });
+                document.dispatchEvent(spaceEvent);
+            }
+        }, { passive: false });
+
+        console.log('✅ 遊戲暫停按鈕已設置');
+    }
+}
+
 
 
 /**
@@ -578,6 +634,8 @@ if (typeof window !== 'undefined') {
         showTouchIndicator,
         hideTouchIndicator,
         updateControlModeIndicator,
+        showGamePauseButton,
+        hideGamePauseButton,
         checkVibrationSupport,
         vibrate
     };
