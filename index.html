@@ -377,22 +377,70 @@
         font-weight: bold;
       }
 
+      .leaderboard {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 2px solid #ffff00;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 15px;
+        position: relative;
+      }
+
+      .leaderboard h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: #ffff00;
+        text-align: center;
+        border-bottom: 1px solid #ffff00;
+        padding-bottom: 10px;
+      }
+
+      .leaderboard-close-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: transparent;
+        border: none;
+        color: #ffff00;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 3px;
+        transition: background-color 0.3s;
+      }
+
+      .leaderboard-close-btn:hover {
+        background: rgba(255, 255, 0, 0.2);
+      }
+
       .leaderboard ol {
         padding-left: 0;
+        margin: 0;
+        counter-reset: none;
       } /* 確保排行榜列表不內縮 */
+
       .leaderboard li {
-        counter-increment: leaderboard;
-        padding: 8px 10px;
-        margin: 6px 0;
-        background: rgba(30, 30, 80, 0.5);
-        border-radius: 0px;
-        border-left: 4px solid #ffff00;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        background: none;
+        border: none;
+        border-radius: 0;
       }
+
       .leaderboard li:before {
-        content: counter(leaderboard) ". ";
-        font-weight: bold;
-        color: #ffff00;
-        margin-right: 10px;
+        content: none;
+      }
+
+      /* 排行榜標題樣式 */
+      .leaderboard li h4 {
+        text-align: center;
+        margin: 15px 0 10px 0;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 6px;
+        border: 1px solid currentColor;
       }
 
       .game-ui {
@@ -929,8 +977,17 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 8px 0;
-        border-bottom: 1px solid rgba(255, 255, 0, 0.2);
+        padding: 12px;
+        margin: 8px 0;
+        background: rgba(30, 30, 80, 0.6);
+        border-radius: 8px;
+        border-left: 4px solid #ffff00;
+        transition: background-color 0.3s ease;
+        border-bottom: none;
+      }
+
+      .leaderboard-entry:hover {
+        background: rgba(30, 30, 80, 0.8);
       }
 
       .leaderboard-entry:last-child {
@@ -940,50 +997,75 @@
       .rank {
         font-weight: bold;
         color: #ffff00;
-        min-width: 40px;
+        min-width: 50px;
+        font-size: 1.2rem;
+        text-shadow: 0 0 5px rgba(255, 255, 0, 0.5);
       }
 
       .player-info {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 12px;
         flex: 1;
-        margin: 0 10px;
+        margin: 0 15px;
       }
 
       .player-avatar {
-        width: 24px;
-        height: 24px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
-        border: 1px solid #ffff00;
+        border: 2px solid #ffff00;
+        box-shadow: 0 0 8px rgba(255, 255, 0, 0.3);
       }
 
       .player-name {
-        color: #fff;
-        font-weight: normal;
+        color: #ffffff;
+        font-weight: 500;
+        font-size: 1rem;
       }
 
       .score-info {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
+        gap: 4px;
+        min-width: 100px;
         text-align: right;
       }
 
       .score {
         color: #ffff00;
         font-weight: bold;
+        font-size: 1.2rem;
+        text-shadow: 0 0 5px rgba(255, 255, 0, 0.5);
       }
 
       .map-name {
-        color: #ccc;
-        font-size: 0.8rem;
+        color: #aaaaaa;
+        font-size: 0.85rem;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 2px 6px;
+        border-radius: 4px;
       }
 
       /* 本地記錄樣式 */
       .local-entry {
-        background: rgba(255, 149, 0, 0.1);
-        border-left: 3px solid #ff9500;
+        background: rgba(255, 149, 0, 0.2) !important;
+        border-left: 4px solid #ff9500 !important;
+      }
+
+      .local-entry:hover {
+        background: rgba(255, 149, 0, 0.3) !important;
+      }
+
+      .local-entry .rank {
+        color: #ff9500 !important;
+        text-shadow: 0 0 5px rgba(255, 149, 0, 0.5);
+      }
+
+      .local-entry .score {
+        color: #ff9500 !important;
+        text-shadow: 0 0 5px rgba(255, 149, 0, 0.5);
       }
 
       .local-entry .rank {
@@ -1733,6 +1815,12 @@
             </ul>
           </div>
           <div class="leaderboard" id="leaderboardContent">
+            <button
+              class="leaderboard-close-btn"
+              onclick="document.getElementById('leaderboardContent').style.display='none'"
+            >
+              ✕
+            </button>
             <h3>排行榜</h3>
             <ol id="leaderboardList">
               <li>暫無記錄</li>

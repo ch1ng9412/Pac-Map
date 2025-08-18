@@ -183,7 +183,7 @@ export const foodDatabase = {
     ]
 };
 
-// 排行榜資料
+// 排行榜資料（清空所有測試數據）
 export let leaderboard = [];
 
 // 全局迴圈 ID

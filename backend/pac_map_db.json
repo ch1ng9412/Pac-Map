@@ -1,16 +1,6 @@
 {
   "users": [
     {
-      "id": 1,
-      "google_id": "test_user_123",
-      "email": "test@example.com",
-      "name": "測試用戶",
-      "picture": "https://via.placeholder.com/50",
-      "created_at": "2025-08-16 21:21:44.077200",
-      "last_login": null,
-      "is_active": true
-    },
-    {
       "id": 2,
       "google_id": "109721899117119967489",
       "email": "houjunqimail@gmail.com",
@@ -31,41 +21,7 @@
       "is_active": true
     }
   ],
-  "scores": [
-    {
-      "id": 3,
-      "user_id": 1,
-      "score": 9100,
-      "level": 4,
-      "map_index": 2,
-      "survival_time": 520,
-      "dots_collected": 91,
-      "ghosts_eaten": 7,
-      "created_at": "2025-08-16 21:21:44.080470"
-    },
-    {
-      "id": 1,
-      "user_id": 1,
-      "score": 8500,
-      "level": 3,
-      "map_index": 0,
-      "survival_time": 450,
-      "dots_collected": 85,
-      "ghosts_eaten": 5,
-      "created_at": "2025-08-16 21:21:44.078591"
-    },
-    {
-      "id": 2,
-      "user_id": 1,
-      "score": 7200,
-      "level": 2,
-      "map_index": 1,
-      "survival_time": 380,
-      "dots_collected": 72,
-      "ghosts_eaten": 3,
-      "created_at": "2025-08-16 21:21:44.079418"
-    }
-  ],
+  "scores": [],
   "next_user_id": 4,
-  "next_score_id": 4
+  "next_score_id": 1
 }

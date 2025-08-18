@@ -9,11 +9,52 @@ import { initMobileControls, detectDevice, toggleControlMode, showVirtualDPad, h
 import { initSettings, showSettingsModal } from './settings.js';
 import { checkBackendConnection, logConfigInfo } from './config.js';
 
+/**
+ * 清除測試數據
+ */
+function clearTestData() {
+    // 清除可能的測試用戶本地存儲
+    const keysToCheck = [
+        'pac_map_local_scores',
+        'pac_map_user',
+        'pac_map_token',
+        'pac_map_test_scores'
+    ];
+
+    keysToCheck.forEach(key => {
+        const data = localStorage.getItem(key);
+        if (data) {
+            try {
+                const parsed = JSON.parse(data);
+                // 檢查是否包含測試數據
+                if (typeof parsed === 'object' && (
+                    JSON.stringify(parsed).includes('測試用戶') ||
+                    JSON.stringify(parsed).includes('test@example.com') ||
+                    JSON.stringify(parsed).includes('test_user')
+                )) {
+                    localStorage.removeItem(key);
+                    console.log(`🧹 已清除測試數據: ${key}`);
+                }
+            } catch (e) {
+                // 如果不是 JSON，檢查字串內容
+                if (data.includes('測試用戶') || data.includes('test@example.com')) {
+                    localStorage.removeItem(key);
+                    console.log(`🧹 已清除測試數據: ${key}`);
+                }
+            }
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOM 載入完成，開始初始化...');
 
     // --- Initial Setup ---
     setupSounds();
+
+    // 清除可能的測試數據
+    clearTestData();
+
     updateLeaderboardUI();
 
     // 檢查後端連接狀態
@@ -145,9 +186,20 @@ document.addEventListener('DOMContentLoaded', () => {
         leaderboardBtn.addEventListener('click', () => {
             console.log('🏆 排行榜按鈕被點擊');
             const leaderboardContent = document.getElementById('leaderboardContent');
+            const instructionsContent = document.getElementById('instructionsContent');
             const isVisible = leaderboardContent.style.display === 'block';
-            leaderboardContent.style.display = isVisible ? 'none' : 'block';
-            if (!isVisible) document.getElementById('instructionsContent').style.display = 'none';
+
+            if (isVisible) {
+                // 如果排行榜已顯示，則隱藏
+                leaderboardContent.style.display = 'none';
+            } else {
+                // 如果排行榜未顯示，則顯示並隱藏說明
+                leaderboardContent.style.display = 'block';
+                instructionsContent.style.display = 'none';
+
+                // 更新排行榜數據
+                updateLeaderboardUI();
+            }
         });
         console.log('✅ 排行榜按鈕事件監聽器已註冊');
     } else {
@@ -178,6 +230,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // 設定按鈕
     document.getElementById('settingsBtn').addEventListener('click', () => {
         showSettingsModal();
+    });
+
+    // 點擊外部區域關閉排行榜
+    document.addEventListener('click', (event) => {
+        const leaderboardContent = document.getElementById('leaderboardContent');
+        const leaderboardBtn = document.getElementById('leaderboardBtn');
+
+        // 如果排行榜顯示中，且點擊的不是排行榜內容或按鈕
+        if (leaderboardContent.style.display === 'block' &&
+            !leaderboardContent.contains(event.target) &&
+            !leaderboardBtn.contains(event.target)) {
+            leaderboardContent.style.display = 'none';
+        }
     });
 
     // Map Selection Screen Buttons
