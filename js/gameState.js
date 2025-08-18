@@ -168,7 +168,6 @@ export const foodDatabase = {
         { name: '月餅', icon: '🥟', heal: 20 }
     ],
     'cafe-icon': [
-        { name: '珍珠奶茶', icon: '🧋', heal: 10 },
         { name: '濃縮咖啡', icon: '☕', heal: 15 },
         { name: '甜甜圈', icon: '🍩', heal: 10 }
     ],
@@ -180,7 +179,7 @@ export const foodDatabase = {
         { name: '冰淇淋', icon: '🍿', heal: 15 }
     ],
     'default': [
-        { name: '瓶裝水', icon: '💧', heal: 5 }
+        { name: '珍珠奶茶', icon: '🧋', heal: 20 }
     ]
 };
 
