@@ -1,0 +1,12 @@
+---
+description:
+globs:
+alwaysApply: true
+
+---
+1. 此專案主要分為兩部分：前端及 Python 後端。
+2. Python 使用 uv 來管理套件，所以請使用以下指令：
+   - uv run <指令> 來使用虛擬環境執行 Python 程式碼
+   - uv add <套件名稱> 來安裝新的 Python 套件
+   - uv sync 來同步虛擬環境
+3. 我裝了 Ruff 插件，所以在 import 套件後如果沒有立即在下方的程式碼使用到該套件，存檔時可能會導致 import 語句被 Ruff 插件直接移除，要注意這一點。
