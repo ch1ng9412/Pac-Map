@@ -234,7 +234,7 @@ export function drawVisualRoads() {
 }
 
 function connectDeadEnds(targetState) {
-    const MIN_BFS_DISTANCE_TO_CONNECT = 15;   // 新连接所需的最短路径距离
+    const MIN_BFS_DISTANCE_TO_CONNECT = 10;   // 新连接所需的最短路径距离
     const MAX_ITERATIONS = 50;                // 减少迭代次数，因为每次迭代都很昂贵
     const MAX_CANDIDATES_TO_CHECK = 50;       // 每次只检查物理距离最近的50个候选者
     const MAX_SEGMENT_LENGTH_FOR_NEW_ROADS = 40; // 新路的细分标准
@@ -288,7 +288,7 @@ function connectDeadEnds(targetState) {
                     deadEndNode, 
                     candidate.node, 
                     targetState.adjacencyList,
-                    MIN_BFS_DISTANCE_TO_CONNECT + 5
+                    MIN_BFS_DISTANCE_TO_CONNECT
                 );
 
                 if (pathDistance > MIN_BFS_DISTANCE_TO_CONNECT) {
