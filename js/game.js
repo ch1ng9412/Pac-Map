@@ -641,9 +641,9 @@ function generateNewQuest() {
         availableQuests.push({
             type: 'visit_poi',
             poiType: 'cafe-icon',
-            targetCount: 1,
-            description: '任務：抵達 1 家咖啡館',
-            reward: 3000
+            targetCount: 3,
+            description: '任務：抵達 3 家咖啡館',
+            reward: 4000
         });
     }
     if (existingPoiTypes.has('hotel-icon')) {
@@ -653,6 +653,33 @@ function generateNewQuest() {
             targetCount: 1,
             description: '任務：抵達 1 家旅館',
             reward: 2000
+        });
+    }
+    if (existingPoiTypes.has('atm-icon')) {
+        availableQuests.push({
+            type: 'visit_poi',
+            poiType: 'atm-icon',
+            targetCount: 2,
+            description: '任務：抵達 2 台ATM ',
+            reward: 3000
+        });
+    }
+    if (existingPoiTypes.has('bank-icon')) {
+        availableQuests.push({
+            type: 'visit_poi',
+            poiType: 'bank-icon',
+            targetCount: 1,
+            description: '任務：抵達 1 間銀行 ',
+            reward: 2000
+        });
+    }
+    if (existingPoiTypes.has('restaurant-icon')) {
+        availableQuests.push({
+            type: 'visit_poi',
+            poiType: 'restaurant-icon',
+            targetCount: 3,
+            description: '任務：抵達 3 間餐廳 ',
+            reward: 4000
         });
     }
     // ... 添加其他可重复任务 ...
