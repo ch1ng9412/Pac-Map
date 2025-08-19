@@ -867,7 +867,7 @@
         left: 20px; /* 放在左下角 */
         display: flex; /* 横向排列 */
         gap: 10px; /* 格子之间的间距 */
-        z-index: 1000;
+        z-index: 1500; /* 提高層級，確保在觸控事件中優先 */
         display: none;
       }
       .backpack-slot {
@@ -881,6 +881,9 @@
         align-items: center;
         position: relative;
         font-size: 28px; /* emoji 的大小 */
+        cursor: pointer; /* 顯示可點擊 */
+        transition: transform 0.1s ease, border-color 0.2s ease; /* 添加過渡效果 */
+        user-select: none; /* 防止文字選取 */
       }
       .slot-key {
         position: absolute;
@@ -892,6 +895,27 @@
       }
       .backpack-slot.filled {
         border-color: #ffff00;
+      }
+
+      /* 背包格子互動效果 */
+      .backpack-slot:hover {
+        border-color: #fff;
+        transform: scale(1.05);
+      }
+
+      .backpack-slot.filled:hover {
+        border-color: #ffff00;
+        box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
+      }
+
+      .backpack-slot:active {
+        transform: scale(0.95);
+      }
+
+      /* 空格子的視覺提示 */
+      .backpack-slot:not(.filled):hover {
+        border-color: #888;
+        cursor: not-allowed;
       }
       .dev-console {
         position: absolute;
@@ -1374,6 +1398,9 @@
         .mobile-device .backpack-slot {
           width: 45px; /* 縮小物品欄格子 */
           height: 45px; /* 縮小物品欄格子 */
+          /* 增加觸控區域 */
+          padding: 5px;
+          margin: 2px;
         }
 
         .mobile-device .backpack-slot .slot-key {
@@ -1425,6 +1452,9 @@
           .mobile-device .backpack-slot {
             width: 35px; /* 進一步縮小 */
             height: 35px;
+            /* 保持足夠的觸控區域 */
+            padding: 3px;
+            margin: 1px;
           }
 
           .mobile-device .backpack-slot .slot-key {
@@ -1596,6 +1626,9 @@
         .mobile-device .backpack-slot {
           width: 35px; /* 橫向模式更小 */
           height: 35px;
+          /* 橫向模式保持觸控友好 */
+          padding: 3px;
+          margin: 1px;
         }
 
         .mobile-device .backpack-slot .slot-key {

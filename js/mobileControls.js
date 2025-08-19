@@ -300,11 +300,13 @@ function removeTouchGestures() {
  * 處理觸控開始
  */
 function handleTouchStart(event) {
-    // 如果觸控在虛擬按鈕上，不處理手勢
-    if (event.target.closest('.mobile-dpad')) {
+    // 如果觸控在虛擬按鈕或背包上，不處理手勢
+    if (event.target.closest('.mobile-dpad') ||
+        event.target.closest('.backpack-container') ||
+        event.target.closest('.backpack-slot')) {
         return;
     }
-    
+
     const touch = event.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
@@ -318,23 +320,29 @@ function handleTouchStart(event) {
  */
 function handleTouchMove(event) {
     if (!touchStartX || !touchStartY) return;
-    
+
+    // 如果觸控在背包區域，不處理滑動手勢
+    if (event.target.closest('.backpack-container') ||
+        event.target.closest('.backpack-slot')) {
+        return;
+    }
+
     const touch = event.touches[0];
     const deltaX = touch.clientX - touchStartX;
     const deltaY = touch.clientY - touchStartY;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    
+
     // 如果移動距離超過閾值，認為是滑動手勢
     if (distance > 30) {
         isSwipeGesture = true;
-        
+
         // 計算滑動方向
         const direction = getSwipeDirection(deltaX, deltaY);
-        
+
         // 避免重複觸發相同方向
         if (direction !== lastTouchDirection) {
             lastTouchDirection = direction;
-            
+
             if (direction && !gameState.isGameOver && gameState.canMove && !gameState.isPaused) {
                 // 設定持續移動方向（與鍵盤控制一致）
                 gameState.pacmanMovement.lastIntendedDirectionKey = direction;

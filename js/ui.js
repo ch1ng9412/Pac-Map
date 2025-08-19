@@ -130,7 +130,7 @@ export function updateUI() {
         if (item) {
             itemEl.textContent = item.icon; // 显示 emoji
             slotEl.classList.add('filled');
-            slotEl.title = `${item.name}\n恢復 ${item.heal} 點生命`; // 鼠标悬停提示
+            slotEl.title = `${item.name}\n恢復 ${item.heal} 點生命\n點擊使用 (或按 ${i + 1} 鍵)`; // 鼠标悬停提示
         } else {
             itemEl.textContent = ''; // 清空内容
             slotEl.classList.remove('filled');

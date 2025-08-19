@@ -237,6 +237,74 @@ document.addEventListener('DOMContentLoaded', () => {
         showSettingsModal();
     });
 
+    // 背包格子點擊事件監聽器
+    for (let i = 0; i < 3; i++) {
+        const slotEl = document.getElementById(`slot-${i}`);
+        if (slotEl) {
+            // 統一的使用道具函數
+            const useItem = () => {
+                // 檢查遊戲狀態
+                if (gameState.isGameOver || gameState.isPaused || gameState.isLosingLife || !gameState.canMove) {
+                    return;
+                }
+
+                // 檢查格子是否有物品
+                const item = gameState.backpack.items[i];
+                if (item) {
+                    useBackpackItem(i);
+
+                    // 觸覺回饋（手機版）
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+
+                    console.log(`使用了背包第 ${i + 1} 格的 ${item.name}`);
+                } else {
+                    // 空格子的回饋
+                    if (navigator.vibrate) {
+                        navigator.vibrate([30, 30, 30]); // 短促的三次震動表示無效操作
+                    }
+                    console.log(`背包第 ${i + 1} 格是空的`);
+                }
+            };
+
+            // 滑鼠點擊事件（桌面版）
+            slotEl.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                useItem();
+            });
+
+            // 觸控事件（手機版）
+            slotEl.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`觸控開始：背包格子 ${i + 1}`);
+                // 只有有物品的格子才有按下效果
+                if (gameState.backpack.items[i]) {
+                    slotEl.style.transform = 'scale(0.95)';
+                }
+            }, { passive: false });
+
+            slotEl.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`觸控結束：背包格子 ${i + 1}`);
+                slotEl.style.transform = 'scale(1)';
+                useItem();
+            }, { passive: false });
+
+            // 防止長按選取文字和右鍵選單
+            slotEl.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+
+            slotEl.addEventListener('selectstart', (e) => {
+                e.preventDefault();
+            });
+        }
+    }
+
     // 點擊外部區域關閉排行榜
     document.addEventListener('click', (event) => {
         const leaderboardContent = document.getElementById('leaderboardContent');
