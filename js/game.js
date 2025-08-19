@@ -561,6 +561,89 @@ function initGameElements(poiElements, center, bounds) {
     console.log('✅ 遊戲初始化完成 - 道路:', gameState.roadNetwork.length, '豆子:', gameState.validPositions.length);
 }
 
+/**
+ * 動態計算小地圖的縮放級別，確保能看到毒圈範圍
+ * 目標：讓小地圖顯示的範圍略大於毒圈的初始範圍
+ */
+function calculateMinimapZoomLevel() {
+    // 毒圈初始半徑（公尺）
+    const poisonCircleRadius = 800;
+
+    // 希望小地圖顯示的範圍是毒圈半徑的 1.5 倍（留一些邊距）
+    const desiredViewRadius = poisonCircleRadius * 1.5;
+
+    // 獲取小地圖容器的尺寸
+    const minimapContainer = document.getElementById('minimap-container');
+    let containerSize = 200; // 預設桌面版尺寸
+
+    if (minimapContainer) {
+        const computedStyle = window.getComputedStyle(minimapContainer);
+        containerSize = Math.min(
+            parseInt(computedStyle.width) || 200,
+            parseInt(computedStyle.height) || 200
+        );
+    }
+
+    // 在 Leaflet 中，每個縮放級別的地面解析度（公尺/像素）計算公式：
+    // 解析度 = 156543.03392 * Math.cos(緯度 * Math.PI / 180) / Math.pow(2, 縮放級別)
+    // 我們需要反推縮放級別
+
+    // 使用台北的緯度作為參考（約 25 度）
+    const latitude = 25;
+    const latitudeRadians = latitude * Math.PI / 180;
+
+    // 計算需要的地面解析度（公尺/像素）
+    // 容器尺寸的一半應該能顯示 desiredViewRadius 的距離
+    const requiredResolution = (desiredViewRadius * 2) / containerSize;
+
+    // 反推縮放級別
+    const zoomLevel = Math.log2(156543.03392 * Math.cos(latitudeRadians) / requiredResolution);
+
+    // 限制縮放級別在合理範圍內（10-16）
+    const clampedZoomLevel = Math.max(10, Math.min(16, Math.round(zoomLevel)));
+
+    console.log(`🗺️ 小地圖縮放級別計算：容器尺寸=${containerSize}px, 目標範圍=${desiredViewRadius}m, 計算縮放級別=${zoomLevel.toFixed(2)}, 最終縮放級別=${clampedZoomLevel}`);
+
+    return clampedZoomLevel;
+}
+
+/**
+ * 根據當前毒圈半徑計算最適合的小地圖縮放級別
+ * @param {number} currentRadius - 當前毒圈半徑（公尺）
+ * @returns {number} 最適合的縮放級別
+ */
+function calculateMinimapZoomForCurrentCircle(currentRadius) {
+    // 希望小地圖顯示的範圍是毒圈半徑的 1.3 倍（隨著圈變小，邊距比例可以小一些）
+    const desiredViewRadius = currentRadius * 1.3;
+
+    // 獲取小地圖容器的尺寸
+    const minimapContainer = document.getElementById('minimap-container');
+    let containerSize = 200; // 預設桌面版尺寸
+
+    if (minimapContainer) {
+        const computedStyle = window.getComputedStyle(minimapContainer);
+        containerSize = Math.min(
+            parseInt(computedStyle.width) || 200,
+            parseInt(computedStyle.height) || 200
+        );
+    }
+
+    // 使用台北的緯度作為參考（約 25 度）
+    const latitude = 25;
+    const latitudeRadians = latitude * Math.PI / 180;
+
+    // 計算需要的地面解析度（公尺/像素）
+    const requiredResolution = (desiredViewRadius * 2) / containerSize;
+
+    // 反推縮放級別
+    const zoomLevel = Math.log2(156543.03392 * Math.cos(latitudeRadians) / requiredResolution);
+
+    // 限制縮放級別在合理範圍內（10-16）
+    const clampedZoomLevel = Math.max(10, Math.min(16, Math.round(zoomLevel * 2) / 2)); // 使用 0.5 的精度
+
+    return clampedZoomLevel;
+}
+
 function generateFoodItems() {
     gameState.foodItems = []; // 清空旧的美食
 
@@ -717,9 +800,9 @@ function initMinimap() {
 
     // 从主地图的配置中获取中心点
     const center = mapConfigs[gameState.currentMapIndex].center;
-    
-    // *** 关键：设置一个远低于主地图的缩放级别 ***
-    const MINIMAP_ZOOM_LEVEL = 14; // 这个值需要你微调，以达到最佳视野
+
+    // *** 動態計算小地圖縮放級別，確保能看到毒圈範圍 ***
+    const MINIMAP_ZOOM_LEVEL = calculateMinimapZoomLevel();
 
     mm.map = L.map('minimap', {
         center: center,
@@ -1175,8 +1258,16 @@ function updateMinimap() {
 
     const pacmanPos = gameState.pacman.getLatLng();
 
-    // 1. 同步小地图中心点和玩家位置
-    mm.map.setView(pacmanPos, undefined, { animate: false }); // undefined 表示保持当前缩放级别
+    // 1. 動態調整縮放級別以確保毒圈可見
+    const currentZoom = mm.map.getZoom();
+    const optimalZoom = calculateMinimapZoomForCurrentCircle(pc.currentRadius);
+
+    // 只有當縮放級別差異較大時才調整，避免頻繁變化
+    if (Math.abs(currentZoom - optimalZoom) > 0.5) {
+        mm.map.setView(pacmanPos, optimalZoom, { animate: false });
+    } else {
+        mm.map.setView(pacmanPos, undefined, { animate: false }); // undefined 表示保持当前缩放级别
+    }
 
     // 2. 更新小地图上玩家标记的位置
     if (mm.playerMarker) {
@@ -1193,7 +1284,7 @@ function updateMinimap() {
     if (mm.nextPoisonCircle) {
         mm.nextPoisonCircle.setLatLng(pc.center);
         mm.nextPoisonCircle.setRadius(pc.targetRadius);
-        
+
         // 根据主游戏逻辑决定是否显示
         if (pc.targetRadius < pc.currentRadius) {
             mm.map.addLayer(mm.nextPoisonCircle);
