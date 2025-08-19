@@ -617,15 +617,6 @@ function generateNewQuest() {
     const existingPoiIds = new Set(gameState.pois.map(p => p.id));
 
     // a. 检查并添加特殊地标任务
-    if (existingPoiIds.has('special-taipei-101') && !qs.completedSpecialPoiIds.has('special-taipei-101')) {
-        availableQuests.push({
-            type: 'visit_specific_poi', // 使用一个新的任务类型
-            poiId: 'special-park', // 任务目标是这个特定的ID
-            targetCount: 1,
-            description: '任務：抵達【象山公園】',
-            reward: 5000
-        });
-    }
     if (existingPoiIds.has('special-park') && !qs.completedSpecialPoiIds.has('special-park')) {
         availableQuests.push({
             type: 'visit_specific_poi', // 使用一个新的任务类型
@@ -635,7 +626,16 @@ function generateNewQuest() {
             reward: 5000
         });
     }
-    
+    if (existingPoiIds.has('special-taipei-101') && !qs.completedSpecialPoiIds.has('special-taipei-101')) {
+        availableQuests.push({
+            type: 'visit_specific_poi', // 使用一个新的任务类型
+            poiId: 'special-taipei-101', // 任务目标是这个特定的ID
+            targetCount: 1,
+            description: '任務：抵達【台北101】',
+            reward: 5000
+        });
+    }
+
     // b. 添加可重复的普通任务
     if (existingPoiTypes.has('cafe-icon')) {
         availableQuests.push({
