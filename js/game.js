@@ -1120,14 +1120,14 @@ function gameLoop(timestamp) {
     // d. 更新毒圈视觉
     updatePoisonCircleSVG();
 
-    // d. 更新小地图倒计时
-    const minimapOverlay = document.getElementById('minimap-timer-overlay');
+    // d. 更新小地图倒计时（使用外部顯示元素）
+    const minimapTimerExternal = document.getElementById('minimap-timer-external');
     const countdownEl = document.getElementById('minimap-timer-countdown');
 
-    if (minimapOverlay && countdownEl) {
+    if (minimapTimerExternal && countdownEl) {
         // 使用更新后的 pc 状态来判断
         if (!pc.isShrinking) {
-            minimapOverlay.style.display = 'flex';
+            minimapTimerExternal.style.display = 'flex';
             const timeLeftMs = pc.nextShrinkTime - timestamp;
             if (timeLeftMs > 0) {
                 const timeLeftSec = Math.ceil(timeLeftMs / 1000);
@@ -1138,7 +1138,7 @@ function gameLoop(timestamp) {
                 countdownEl.textContent = "00:00";
             }
         } else {
-            minimapOverlay.style.display = 'none';
+            minimapTimerExternal.style.display = 'none';
         }
     }
 }
@@ -2021,11 +2021,11 @@ function initPoisonCircle() {
     if(pc.damageInterval) clearInterval(pc.damageInterval);
 
     pc.nextShrinkTime = performance.now() + 30000;
-    
-    // 确保计时器在游戏刚开始时被隐藏
-    const minimapOverlay = document.getElementById('minimap-timer-overlay');
-    if (minimapOverlay) {
-        minimapOverlay.style.display = 'none'; 
+
+    // 确保外部计时器在游戏刚开始时被隐藏
+    const minimapTimerExternal = document.getElementById('minimap-timer-external');
+    if (minimapTimerExternal) {
+        minimapTimerExternal.style.display = 'none';
     }
 
 

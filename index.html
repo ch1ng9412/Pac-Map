@@ -86,7 +86,7 @@
         /* 例如，我们设定一个 16:9 的宽高比 */
         aspect-ratio: 16 / 9;
 
-        /* 
+        /*
           *  为了处理极端情况（例如一个非常窄的屏幕），
           *  我们需要确保视口本身不会超出屏幕。
           *  这可以通过 @media 查询或更复杂的 JS 来实现，
@@ -518,8 +518,8 @@
       }
       #minimap-container {
         position: fixed; /* 改為 fixed，相對於視窗定位 */
-        bottom: 20px;
-        left: 20px; /* 改為左下角 */
+        bottom: 100px; /* 調整到物品欄上方，物品欄高度約60px + 間距 */
+        left: 20px; /* 保持左下角 */
         width: 200px; /* 小地图宽度 */
         height: 200px; /* 小地图高度 */
         z-index: 1000; /* 确保它在游戏 UI 之上 */
@@ -584,39 +584,40 @@
         animation: pulse 1.5s infinite ease-in-out;
       }
 
-      .minimap-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
+
+
+      /* 外部縮圈倒數顯示樣式 */
+      .minimap-timer-external {
+        position: fixed;
+        bottom: 310px; /* 在小地圖上方 */
+        left: 20px; /* 與小地圖對齊 */
 
         display: flex;
-        flex-direction: column; /* 垂直排列 */
-        justify-content: center;
+        flex-direction: row;
         align-items: center;
+        gap: 5px;
 
-        padding: 4px 0;
-        background-color: rgba(0, 0, 0, 0.6); /* 半透明黑色背景 */
-        color: white;
+        padding: 4px 8px;
+        background-color: rgba(0, 0, 0, 0.8);
+        border: 1px solid #555;
+        border-radius: 5px;
 
         font-family: "Cubic 11", cursive;
+        color: white;
         text-shadow: 1px 1px 2px black;
-        pointer-events: none; /* 确保它不会影响地图的鼠标交互 */
 
-        z-index: 2000;
-
-        /* 默认隐藏，我们用 JS 控制显示 */
-        display: none;
+        z-index: 1000;
+        display: none; /* 默認隱藏，由 JS 控制 */
       }
 
-      #minimap-timer-label {
+      .minimap-timer-external #minimap-timer-label {
         font-size: 12px;
         color: #ccc;
       }
 
-      #minimap-timer-countdown {
-        font-size: 24px;
-        color: #ffff00; /* 倒计时用黄色突出 */
+      .minimap-timer-external #minimap-timer-countdown {
+        font-size: 16px;
+        color: #ffff00;
         font-weight: bold;
       }
 
@@ -1389,8 +1390,36 @@
             width: 70px; /* 進一步縮小 */
             height: 70px;
             bottom: calc(
-              env(safe-area-inset-bottom) + 60px
-            ); /* 調整間距，更貼近底部 */
+              env(safe-area-inset-bottom) + 80px
+            ); /* 調整間距，確保在物品欄上方 */
+          }
+
+          /* 超小螢幕的倒數顯示進一步優化 */
+          .mobile-device .minimap-overlay {
+            height: 16px; /* 極小高度 */
+            padding: 0px 1px; /* 最小內邊距 */
+          }
+
+          .mobile-device #minimap-timer-label {
+            font-size: 6px; /* 極小字體 */
+          }
+
+          .mobile-device #minimap-timer-countdown {
+            font-size: 8px; /* 極小倒數字體 */
+          }
+
+          /* 超小螢幕外部倒數顯示優化 */
+          .mobile-device .minimap-timer-external {
+            bottom: calc(env(safe-area-inset-bottom) + 160px); /* 調整位置 */
+            padding: 1px 4px; /* 極小內邊距 */
+          }
+
+          .mobile-device .minimap-timer-external #minimap-timer-label {
+            font-size: 8px;
+          }
+
+          .mobile-device .minimap-timer-external #minimap-timer-countdown {
+            font-size: 10px;
           }
 
           .mobile-device .backpack-slot {
@@ -1405,6 +1434,7 @@
           .mobile-device .backpack-slot .slot-item {
             font-size: 14px;
           }
+        }
 
           .mobile-dpad {
             width: 120px; /* 縮小虛擬方向鍵 */
@@ -1439,9 +1469,24 @@
           height: 90px;
           bottom: calc(
             env(safe-area-inset-bottom) + 70px
-          ); /* 在物品欄上方，更貼近底部 */
+          ); /* 在物品欄上方，確保不重疊 */
           left: 10px; /* 左下角位置 */
           right: auto;
+        }
+
+        /* 手機版外部倒數顯示優化 */
+        .mobile-device .minimap-timer-external {
+          bottom: calc(env(safe-area-inset-bottom) + 170px); /* 在小地圖上方 */
+          left: 10px; /* 與小地圖對齊 */
+          padding: 2px 6px; /* 縮小內邊距 */
+        }
+
+        .mobile-device .minimap-timer-external #minimap-timer-label {
+          font-size: 10px;
+        }
+
+        .mobile-device .minimap-timer-external #minimap-timer-countdown {
+          font-size: 12px;
         }
 
         /* 手機版遊戲結算畫面調整 */
@@ -1525,6 +1570,21 @@
           ); /* 在物品欄上方，更貼近底部 */
           left: 5px;
           right: auto;
+        }
+
+        /* 橫向模式外部倒數顯示優化 */
+        .mobile-device .minimap-timer-external {
+          bottom: calc(env(safe-area-inset-bottom) + 135px); /* 在小地圖上方 */
+          left: 5px; /* 與小地圖對齊 */
+          padding: 2px 4px;
+        }
+
+        .mobile-device .minimap-timer-external #minimap-timer-label {
+          font-size: 9px;
+        }
+
+        .mobile-device .minimap-timer-external #minimap-timer-countdown {
+          font-size: 11px;
         }
 
         /* 橫向模式物品欄調整 */
@@ -2000,13 +2060,14 @@
         </button>
       </div>
 
+      <!-- 縮圈倒數顯示 - 移到小地圖外面 -->
+      <div id="minimap-timer-external" class="minimap-timer-external">
+        <span id="minimap-timer-label">下次縮圈</span>
+        <span id="minimap-timer-countdown">--:--</span>
+      </div>
+
       <div id="minimap-container">
         <div id="minimap"></div>
-
-        <div id="minimap-timer-overlay" class="minimap-overlay">
-          <span id="minimap-timer-label">下次縮圈</span>
-          <span id="minimap-timer-countdown">--:--</span>
-        </div>
       </div>
 
       <div class="dev-console" id="devConsole">
