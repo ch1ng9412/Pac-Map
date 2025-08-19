@@ -824,13 +824,17 @@
       }
       .wasted-text {
         font-family: "Impact", Haettenschweiler, "Arial Narrow Bold", sans-serif;
-        font-size: 6rem;
+        font-size: clamp(3rem, 15vw, 6rem); /* 響應式字體大小：最小3rem，最大6rem，根據視窗寬度調整 */
         color: #d32f2f;
         font-weight: bold;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000,
           -1px 1px 0 #000, 1px 1px 0 #000, 3px 3px 5px rgba(0, 0, 0, 0.5);
+        /* 確保文字不會超出容器 */
+        max-width: 90vw;
+        word-break: keep-all;
+        white-space: nowrap;
       }
       .dot {
         width: 4px;
@@ -1371,6 +1375,12 @@
           display: none; /* 手機上隱藏開發者控制台 */
         }
 
+        /* 手機版 WASTED 文字調整 */
+        .wasted-text {
+          font-size: clamp(2rem, 12vw, 4rem); /* 手機版使用較小的字體範圍 */
+          letter-spacing: 0.02em; /* 縮小字母間距以節省空間 */
+        }
+
         .mobile-device #gameOverScreen,
         .mobile-device #startScreen {
           padding: 10px;
@@ -1413,6 +1423,12 @@
 
         /* 響應式縮放 - 超小螢幕 */
         @media (max-width: 480px) and (max-height: 640px) {
+          /* 超小螢幕 WASTED 文字進一步調整 */
+          .wasted-text {
+            font-size: clamp(1.5rem, 10vw, 3rem); /* 超小螢幕使用更小的字體 */
+            letter-spacing: 0.01em; /* 進一步縮小字母間距 */
+          }
+
           .mobile-device #minimap-container {
             width: 70px; /* 進一步縮小 */
             height: 70px;
