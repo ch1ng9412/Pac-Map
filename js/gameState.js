@@ -131,12 +131,12 @@ function getMapConfigs() {
         {
             name: "台北市中心",
             // 将中心点设为 101，并确保 bounds 包含它
-            center: [25.033344, 121.564880], // 台北 101
+            center: [25.0330, 121.5654],
             zoom: MAX_MAP_ZOOM,
             // 重新定义一个包含 101 的 bounds
             bounds: L.latLngBounds(
-                [25.0290, 121.5604], // 西南角
-                [25.0370, 121.5704]  // 东北角
+                [25.0290, 121.5594], // 西南角
+                [25.0370, 121.5714]  // 东北角
             ),
             dotGeneration: { mode: 'fixed', value: 600 },
             specialPois: [
