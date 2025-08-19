@@ -641,8 +641,8 @@ function generateNewQuest() {
         availableQuests.push({
             type: 'visit_poi',
             poiType: 'cafe-icon',
-            targetCount: 3,
-            description: '任務：抵達 3 家咖啡館',
+            targetCount: 1,
+            description: '任務：抵達 1 家咖啡館',
             reward: 3000
         });
     }
@@ -650,8 +650,8 @@ function generateNewQuest() {
         availableQuests.push({
             type: 'visit_poi',
             poiType: 'hotel-icon',
-            targetCount: 2,
-            description: '任務：抵達 2 家旅館',
+            targetCount: 1,
+            description: '任務：抵達 1 家旅館',
             reward: 2000
         });
     }
