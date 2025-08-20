@@ -192,21 +192,21 @@ export async function initGame() {
     const center = config.center;
 
     // 嘗試使用後端 API 載入地圖數據
-    const backendAvailable = await checkBackendHealth();
+    // const backendAvailable = await checkBackendHealth();
     let mapLoadSuccess = false;
 
-    if (backendAvailable) {
-        console.log('後端服務可用，使用預處理的地圖數據');
-        showLoadingScreen('正在從後端載入預處理地圖數據...');
-        mapLoadSuccess = await loadMapDataFromBackend(gameState.currentMapIndex, gameState);
-    }
+    // if (backendAvailable) {
+    //     console.log('後端服務可用，使用預處理的地圖數據');
+    //     showLoadingScreen('正在從後端載入預處理地圖數據...');
+    //     mapLoadSuccess = await loadMapDataFromBackend(gameState.currentMapIndex, gameState);
+    // }
 
     // 如果後端不可用或載入失敗，回退到原始方法
     if (!mapLoadSuccess) {
         console.log('回退到原始地圖載入方法');
         showLoadingScreen('正在獲取地圖資料...');
 
-        const bounds = config.getBounds ? config.getBounds() : gameState.map.getBounds();
+        const bounds = config.getBounds();
         const [roadData, poiData] = await Promise.all([
             fetchRoadData(bounds),
             fetchPOIData(bounds, {
@@ -245,7 +245,7 @@ export async function initGame() {
             console.error('無法初始化遊戲元素，因為沒有有效的道路位置。');
             return;
         }
-        const bounds = config.getBounds ? config.getBounds() : gameState.map.getBounds();
+        const bounds = config.getBounds();
         initGameElements(poiElements, center, bounds);
         startGameCountdown();
     }, 1000);
@@ -480,10 +480,6 @@ function initGameElements(poiElements, center, bounds) {
         [bounds.getNorthEast().lat, bounds.getNorthEast().lng],
         [bounds.getSouthWest().lat, bounds.getSouthWest().lng],
         [bounds.getSouthEast().lat, bounds.getSouthEast().lng],
-        [bounds.getCenter().lat + (bounds.getNorth() - bounds.getCenter().lat) * 0.5, bounds.getCenter().lng], 
-        [bounds.getCenter().lat - (bounds.getCenter().lat - bounds.getSouth()) * 0.5, bounds.getCenter().lng], 
-        [bounds.getCenter().lat, bounds.getCenter().lng - (bounds.getCenter().lng - bounds.getWest()) * 0.5], 
-        [bounds.getCenter().lat, bounds.getCenter().lng + (bounds.getEast() - bounds.getCenter().lng) * 0.5], 
     ];
 
     let uniqueSpawnPointsFound = 0;
@@ -520,10 +516,6 @@ function initGameElements(poiElements, center, bounds) {
         [bounds.getNorth() - latOffset, bounds.getEast() - lngOffset],  
         [bounds.getSouth() + latOffset, bounds.getWest() + lngOffset], 
         [bounds.getSouth() + latOffset, bounds.getEast() - lngOffset],  
-        [midLat + latOffset * 0.5, midLng - lngOffset * 0.5],
-        [midLat - latOffset * 0.5, midLng + lngOffset * 0.5],
-        [midLat + latOffset * 0.5, midLng + lngOffset * 0.5],
-        [midLat - latOffset * 0.5, midLng - lngOffset * 0.5],
     ];
     for (const coord of potentialScatterCoords) {
         const roadPos = findNearestRoadPositionGeneric(coord[0], coord[1], gameState.validPositions); 
@@ -1845,7 +1837,7 @@ function nextLevel() {
 
     // 使用當前地圖配置重新初始化遊戲元素
     const config = mapConfigs[gameState.currentMapIndex];
-    const bounds = config.getBounds ? config.getBounds() : gameState.map.getBounds();
+    const bounds = config.getBounds();
     initGameElements(gameState.pois, config.center, bounds);
     deactivatePowerMode();
     updateUI();

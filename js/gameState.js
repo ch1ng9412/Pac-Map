@@ -3,7 +3,7 @@ export const PACMAN_BASE_SPEED = 60;
 export const GHOST_MOVE_SPEED_METERS_PER_SECOND = 60;
 export const MAX_MAP_ZOOM = 18;
 export const MAX_DELTA_TIME = 100; 
-export const NUMBER_OF_GHOSTS = 7;
+export const NUMBER_OF_GHOSTS = 3;
 export const BG_PACMAN_SPEED = 40;
 export const BG_GHOST_SPEED = 30;
 export const BG_NUMBER_OF_GHOSTS = 3;
@@ -116,15 +116,15 @@ export let startScreenMapState = {
 
 function getMapConfigs() {
     // 确保 Leaflet (L) 已经加载，否则无法创建 L.latLngBounds
-    if (typeof L === 'undefined') {
-        console.error("Leaflet (L) is not loaded yet. Map configs cannot be fully initialized.");
-        // 返回一个不包含 Leaflet 对象的简化版本，以避免崩溃
-        return [
-            { name: "台北市中心", center: [25.0330, 121.5654] },
-            { name: "台中市區", center: [24.1477, 120.6736] },
-            { name: "高雄市區", center: [22.6273, 120.3014] }
-        ];
-    }
+    // if (typeof L === 'undefined') {
+    //     console.error("Leaflet (L) is not loaded yet. Map configs cannot be fully initialized.");
+    //     // 返回一个不包含 Leaflet 对象的简化版本，以避免崩溃
+    //     return [
+    //         { name: "台北市中心", center: [25.0330, 121.5654] },
+    //         { name: "台中市區", center: [24.1477, 120.6736] },
+    //         { name: "高雄市區", center: [22.6273, 120.3014] }
+    //     ];
+    // }
     
     // Leaflet 已加载，返回完整的配置
     return [
@@ -134,7 +134,7 @@ function getMapConfigs() {
             center: [25.0330, 121.5654],
             zoom: MAX_MAP_ZOOM,
             // 重新定义一个包含 101 的 bounds
-            bounds: L.latLngBounds(
+            getBounds: () => L.latLngBounds(
                 [25.0290, 121.5604], // 西南角
                 [25.0370, 121.5704]  // 东北角
             ),
@@ -161,7 +161,7 @@ function getMapConfigs() {
             center: [24.1477, 120.6736],
             zoom: MAX_MAP_ZOOM,
             // 注意：这里我们不再用 getBounds 函数，而是直接存储 bounds 对象
-            bounds: L.latLngBounds(
+            getBounds: () => L.latLngBounds(
                 [24.1437, 120.6686],
                 [24.1517, 120.6786]
             )
@@ -171,7 +171,7 @@ function getMapConfigs() {
             name: "高雄市區",
             center: [22.6273, 120.3014],
             zoom: MAX_MAP_ZOOM,
-            bounds: L.latLngBounds(
+            getBounds: () => L.latLngBounds(
                 [22.6233, 120.2964],
                 [22.6313, 120.3064]
             )

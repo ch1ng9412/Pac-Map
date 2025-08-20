@@ -3,6 +3,8 @@ import { positionsAreEqual, bfsDistance } from './ai.js';
 
 export async function fetchRoadData(bounds) {
     const south = bounds.getSouth(), west = bounds.getWest(), north = bounds.getNorth(), east = bounds.getEast();
+    console.log("debug");
+    console.log(south, west, north, east);
     const query = `[out:json][timeout:25];(way["highway"]["highway"!~"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|razed|abandoned)$"]["area"!~"yes"]["access"!~"private"]["service"!~"^(driveway|parking_aisle|alley)$"](${south},${west},${north},${east}););out body;>;out skel qt;`;
     const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
     console.log('正在從 Overpass API 獲取道路數據...', url);
