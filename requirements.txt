@@ -16,3 +16,5 @@ httpx>=0.25.0
 
 # 異步 HTTP 客戶端 (用於 Overpass API 獲取地圖資料)
 aiohttp>=3.8.0
+
+google-auth>=2.20.0
