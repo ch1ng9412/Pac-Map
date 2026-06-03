@@ -1,0 +1,18 @@
+# 核心 Web 框架與伺服器
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# 資料驗證與設定 (包含 EmailStr 所需的套件)
+pydantic[email]>=2.0.0
+
+# JWT 與身份驗證
+python-jose[cryptography]>=3.3.0
+
+# 環境變數讀取
+python-dotenv>=1.0.0
+
+# 異步 HTTP 客戶端 (用於 Google OAuth 驗證)
+httpx>=0.25.0
+
+# 異步 HTTP 客戶端 (用於 Overpass API 獲取地圖資料)
+aiohttp>=3.8.0
