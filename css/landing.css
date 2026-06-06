@@ -1,0 +1,295 @@
+:root {
+    /* 復古霓虹街機配色 */
+    --bg-gradient-start: #0a0a20;
+    --bg-gradient-end: #000000;
+    --grid-color: rgba(0, 255, 255, 0.15);
+    --wall-color: #00FFFF;
+    --wall-glow: rgba(0, 255, 255, 0.6);
+    --text-color: #ffffff;
+    --primary-color: #FFCC00;
+    --ghost-red: #FF3366;
+    --ghost-cyan: #00FFFF;
+    --ghost-pink: #FF66FF;
+    --score-green: #33FF33;
+    --panel-bg: rgba(10, 10, 30, 0.85);
+}
+
+body, html {
+    font-family: 'DotGothic16', 'Press Start 2P', sans-serif;
+    background: radial-gradient(circle at center, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    /* 青色復古網格背景 */
+    background-image: 
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px),
+        radial-gradient(circle at center, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    background-size: 50px 50px, 50px 50px, 100% 100%;
+    background-attachment: fixed;
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.nes-container, .nes-btn, .nes-badge, p, h1, h2, h3, a, span {
+    font-family: 'DotGothic16', 'Press Start 2P', sans-serif !important;
+}
+
+/* --- 動態背景特效：CSS 迷宮與追逐動畫 --- */
+.bg-fx-layer {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -1; pointer-events: none; overflow: hidden; opacity: 0.15;
+}
+
+.bg-maze-border {
+    position: absolute; top: 5%; left: 5%; width: 90%; height: 90%;
+    border: 4px solid var(--wall-color); border-radius: 20px;
+    box-shadow: 0 0 20px var(--wall-glow), inset 0 0 20px var(--wall-glow);
+}
+
+.bg-entity { position: absolute; top: 50%; animation: bg-chase 20s linear infinite; }
+
+.bg-pac {
+    width: 80px; height: 80px; background-color: var(--primary-color);
+    border-radius: 50%; box-shadow: 0 0 30px var(--primary-color);
+    animation: bg-chase 20s linear infinite, pacman-chomp 0.4s infinite alternate linear;
+}
+
+.bg-gho {
+    width: 80px; height: 80px; box-shadow: 0 0 30px currentColor;
+    border-top-left-radius: 40px; border-top-right-radius: 40px;
+}
+.bg-gho::after, .bg-gho::before {
+    content: ''; position: absolute; background: white;
+    width: 24px; height: 24px; border-radius: 50%; top: 16px;
+}
+.bg-gho::before { left: 12px; box-shadow: 6px 6px 0 #000 inset; }
+.bg-gho::after { right: 12px; box-shadow: 6px 6px 0 #000 inset; }
+
+.gho-1 { background: var(--ghost-red); color: var(--ghost-red); animation-delay: 1s; }
+.gho-2 { background: var(--ghost-cyan); color: var(--ghost-cyan); animation-delay: 2s; }
+
+@keyframes bg-chase {
+    0% { transform: translateX(-150px) scale(1); }
+    45% { transform: translateX(calc(100vw + 150px)) scale(1); }
+    50% { transform: translateX(calc(100vw + 150px)) scale(-1, 1); } /* 撞牆轉頭 */
+    95% { transform: translateX(-150px) scale(-1, 1); }
+    100% { transform: translateX(-150px) scale(1); }
+}
+@keyframes pacman-chomp { 
+    0% { clip-path: polygon(100% 74%, 50% 50%, 100% 26%, 100% 0, 0 0, 0 100%, 100% 100%); } 
+    100% { clip-path: polygon(100% 50%, 50% 50%, 100% 50%, 100% 0, 0 0, 0 100%, 100% 100%); } 
+}
+
+/* --- 網頁頭部 (Header - 社群連結) --- */
+.navbar {
+    position: fixed; top: 0; width: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-bottom: 4px solid var(--primary-color);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 20px; z-index: 1000; box-sizing: border-box;
+    backdrop-filter: blur(5px);
+}
+.nav-brand { color: var(--primary-color); font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+.nav-links { display: flex; gap: 20px; align-items: center; }
+.nav-links a { color: #fff; text-decoration: none; font-size: 1.5rem; transition: color 0.2s, transform 0.2s; }
+.nav-links a:hover { color: var(--wall-color); transform: scale(1.2); }
+
+/* --- 主容器 --- */
+.main-container {
+    max-width: 1000px; margin: 100px auto 0; padding: 20px;
+    display: flex; flex-direction: column; gap: 100px;
+}
+
+/* --- 通用圖片佔位符 --- */
+.img-placeholder {
+    background-color: #000; border: 4px dashed var(--wall-color);
+    display: flex; justify-content: center; align-items: center;
+    color: var(--wall-color); font-weight: bold; width: 100%;
+    border-radius: 8px; position: relative; text-align: center; padding: 20px; box-sizing: border-box;
+    overflow: hidden;
+}
+
+.hero-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 確保影片等比例縮放並填滿整個容器 */
+    z-index: 1;
+}
+
+/* --- 模塊 1：英雄區塊 --- */
+.hero-section { text-align: center; }
+.hero-title {
+    color: var(--primary-color);
+    text-shadow: 4px 4px 0px #8b0000, 8px 8px 0px #000;
+    font-size: 3.5rem; margin-bottom: 10px; line-height: 1.4;
+    animation: float 3s ease-in-out infinite;
+}
+.hero-banner { height: 500px; margin: 30px 0; border: 4px solid var(--wall-color); box-shadow: 0 0 20px var(--wall-glow); overflow: hidden; padding: 0;}
+.intro-box { background-color: var(--panel-bg); border: 4px solid var(--text-color); padding: 20px; }
+
+/* --- 模塊 2：無限循環滾動 SDG 11 卡片 (全螢幕寬度) --- */
+.full-width-section {
+    /* 負邊距技巧：讓模塊突破 main-container 限制，延伸至螢幕兩側 */
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    padding: 40px 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-top: 4px solid var(--primary-color);
+    border-bottom: 4px solid var(--primary-color);
+    box-sizing: border-box;
+}
+
+.marquee-wrapper {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    /* 邊緣漸層遮罩，讓卡片進出時更滑順 */
+    -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
+
+.marquee-container {
+    display: flex; 
+    width: max-content; /* 關鍵：寬度由內容自適應，不再使用百分比避免重疊 */
+    animation: marquee 35s linear infinite;
+}
+.marquee-container:hover { animation-play-state: paused; } 
+
+.marquee-content {
+    display: flex; 
+    gap: 20px; 
+    padding-right: 20px; /* 關鍵：兩組內容銜接處補上相同的間距，實現無縫接軌 */
+}
+
+.scroll-card {
+    flex: 0 0 320px;
+    background-color: var(--panel-bg); color: #fff;
+    border: 4px solid var(--primary-color);
+    display: flex; flex-direction: column; padding: 15px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.scroll-card:hover { transform: translateY(-10px); box-shadow: 0 0 15px var(--primary-color); z-index: 10; }
+.scroll-card .card-hero-img {
+    height: 140px; margin-bottom: 15px; border: 2px solid #fff; background-color: #000;
+    display: flex; justify-content: center; align-items: center; color: var(--primary-color);
+}
+.scroll-card h3 { color: #fff; font-size: 1.1rem; margin-bottom: 10px; border-bottom: 2px dashed #444; padding-bottom: 10px; }
+.scroll-card p { font-size: 0.95rem; line-height: 1.8; color: #ccc; }
+
+/* 剛好滾動 -50% 會把第一組完整滾完，無縫接續第二組 */
+@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+/* --- 模塊 3：核心生存機制 --- */
+.mechanics-section { text-align: center; }
+.mechanics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 30px; }
+.mechanic-card {
+    background-color: var(--panel-bg); border: 4px solid #fff; padding: 25px 20px;
+    transition: transform 0.2s, border-color 0.2s; position: relative;
+}
+.mechanic-card:hover { transform: translateY(-10px); border-color: var(--primary-color); box-shadow: 0 0 20px var(--primary-color); }
+.mechanic-icon-wrapper { margin-bottom: 20px; }
+.mechanic-card h3 { color: var(--primary-color); font-size: 1.3rem; margin-bottom: 15px; }
+.mechanic-card p { font-size: 0.95rem; color: #ddd; line-height: 1.8; text-align: left; }
+
+/* --- 模塊 4：SDG 11 城市紀實畫廊 --- */
+.gallery-section { 
+    text-align: center; 
+    background-color: rgba(0, 0, 0, 0.6); 
+    border: 4px solid var(--ghost-pink); 
+    padding: 30px 0; /* 移除左右 padding，讓滾動範圍更寬 */
+    overflow: hidden;
+}
+
+.gallery-title { color: var(--ghost-pink); margin-bottom: 20px; text-shadow: 2px 2px 0px #000; }
+
+/* 畫廊滾動外層遮罩 */
+.gallery-wrapper {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    margin-top: 30px;
+    padding: 20px 0;
+    /* 兩側邊緣漸層淡出效果 */
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+/* 畫廊滾動容器 */
+.gallery-container {
+    display: flex;
+    width: max-content;
+    animation: gallery-marquee 20s linear infinite; /* 20秒滾動一圈 */
+}
+.gallery-container:hover { animation-play-state: paused; } /* 滑鼠懸停時暫停 */
+
+/* 每組內容的排版 */
+.gallery-content {
+    display: flex;
+    gap: 30px;
+    padding-right: 30px; /* 確保第一組與第二組之間有等距的空隙 */
+}
+
+.photo-frame {
+    flex: 0 0 220px; /* 固定卡片寬度 */
+    border: 8px solid #fff; border-bottom: 25px solid #fff;
+    background-color: #000; padding: 5px; position: relative;
+    transform: rotate(-2deg); transition: transform 0.3s, z-index 0s;
+}
+.photo-frame:nth-child(even) { transform: rotate(3deg); }
+.photo-frame:hover { transform: scale(1.1) rotate(0deg); z-index: 10; box-shadow: 0 10px 20px rgba(0,0,0,0.8); }
+.photo-img { width: 100%; height: 150px; background-color: #222; border: 2px dashed #444; display: flex; justify-content: center; align-items: center; color: #888; font-size: 0.8rem; text-align: center; }
+.photo-caption { position: absolute; bottom: -20px; left: 0; width: 100%; text-align: center; color: #000; font-size: 0.7rem; font-weight: bold; }
+
+/* 畫廊專屬滾動動畫 */
+@keyframes gallery-marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+/* --- 模塊 5：遊戲操作說明 --- */
+.instructions-section { background-color: var(--panel-bg); border: 4px solid var(--score-green); padding: 30px; box-shadow: 0 0 20px rgba(51, 255, 51, 0.2); }
+.inst-title { color: var(--score-green); margin-bottom: 30px; font-size: 2rem; text-align: center; text-shadow: 2px 2px 0 #000; }
+.inst-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.controls-panel, .rules-panel { background: rgba(0, 0, 0, 0.6); border: 4px solid #555; padding: 20px; }
+.panel-heading { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; color: var(--primary-color); font-size: 1.3rem; border-bottom: 2px solid #555; padding-bottom: 10px; }
+
+.d-pad { display: grid; grid-template-columns: 60px 60px 60px; grid-template-rows: 60px 60px; gap: 10px; justify-content: center; margin: 20px 0; }
+.d-pad .nes-btn { padding: 0; display: flex; justify-content: center; align-items: center; height: 100%; width: 100%; }
+.d-pad .btn-up { grid-column: 2; grid-row: 1; }
+.d-pad .btn-left { grid-column: 1; grid-row: 2; }
+.d-pad .btn-down { grid-column: 2; grid-row: 2; }
+.d-pad .btn-right { grid-column: 3; grid-row: 2; }
+
+.rules-list { list-style: none; padding: 0; }
+.rules-list li { margin-bottom: 20px; display: flex; align-items: flex-start; gap: 15px; font-size: 0.95rem; color: #ddd; }
+.rules-list .icon-box { min-width: 40px; text-align: center; }
+
+/* --- 模塊 6：接關畫面 CTA --- */
+.continue-section { text-align: center; padding: 20px 0 60px; }
+.continue-text { font-size: 2.5rem; color: var(--ghost-red); margin-bottom: 20px; text-shadow: 3px 3px 0 #000; }
+.countdown { font-size: 4rem; color: #fff; margin-bottom: 40px; animation: blink 1s infinite; }
+.play-btn { font-size: 1.5rem; padding: 20px 50px; box-shadow: 0 8px 0 #8b0000; width: 100%; max-width: 400px; }
+.play-btn:active { box-shadow: 0 0 0 #8b0000; transform: translateY(8px); }
+
+/* --- 頁尾 --- */
+.footer { background-color: #000; border-top: 4px solid var(--wall-color); text-align: center; padding: 40px 20px; color: #666; font-size: 0.9rem; }
+
+/* 動畫 */
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+@media (max-width: 768px) {
+    .hero-title { font-size: 2.2rem; }
+    .nav-links { display: none; }
+    .inst-grid { grid-template-columns: 1fr; }
+}
+    
