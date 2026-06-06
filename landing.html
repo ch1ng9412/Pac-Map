@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PacMap</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="static/pacmap.png?v=1"/>
-    <link rel="icon" type="image/png" sizes="16x16" href="static/pacmap.png?v=1"/>
-    
+    <link rel="icon" type="image/png" sizes="32x32" href="static/pacmap.png?v=1" />
+    <link rel="icon" type="image/png" sizes="16x16" href="static/pacmap.png?v=1" />
+
     <link href="https://unpkg.com/nes.css@2.3.0/css/nes.min.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <link rel="stylesheet" href="css/landing.css" />
 </head>
+
 <body>
 
     <div class="bg-fx-layer">
@@ -20,9 +23,10 @@
         <div class="bg-entity bg-pac" style="top: 20%; left: -200px;"></div>
         <div class="bg-entity bg-gho gho-1" style="top: 20%; left: -300px;"></div>
         <div class="bg-entity bg-gho gho-2" style="top: 20%; left: -400px;"></div>
-        
+
         <div class="bg-entity bg-pac" style="top: 70%; left: -200px; animation-direction: reverse;"></div>
-        <div class="bg-entity bg-gho gho-1" style="top: 70%; left: -300px; animation-direction: reverse; animation-delay: 0s;"></div>
+        <div class="bg-entity bg-gho gho-1"
+            style="top: 70%; left: -300px; animation-direction: reverse; animation-delay: 0s;"></div>
     </div>
 
     <nav class="navbar">
@@ -32,10 +36,14 @@
         </div>
         <div class="nav-links">
             <a href="tel:+886908138213" title="Phone: +886 908138213"><i class="fas fa-phone-square"></i></a>
-            <a href="mailto:ian9404120927@gmail.com" title="Email: ian9404120927@gmail.com"><i class="fas fa-envelope-square"></i></a>
-            <a href="https://www.facebook.com/chi.yi.ning.2025/" target="_blank" title="Facebook"><i class="fab fa-facebook-square"></i></a>
-            <a href="https://github.com/ch1ng9412" target="_blank" title="GitHub"><i class="fab fa-github-square"></i></a>
-            <a href="www.linkedin.com/in/yi-ning-chih-9b468429a" target="_blank" title="linkedin"><i class="fab fa-linkedin"></i></a>
+            <a href="mailto:ian9404120927@gmail.com" title="Email: ian9404120927@gmail.com"><i
+                    class="fas fa-envelope-square"></i></a>
+            <a href="https://www.facebook.com/chi.yi.ning.2025/" target="_blank" title="Facebook"><i
+                    class="fab fa-facebook-square"></i></a>
+            <a href="https://github.com/ch1ng9412" target="_blank" title="GitHub"><i
+                    class="fab fa-github-square"></i></a>
+            <a href="www.linkedin.com/in/yi-ning-chih-9b468429a" target="_blank" title="linkedin"><i
+                    class="fab fa-linkedin"></i></a>
         </div>
     </nav>
 
@@ -44,16 +52,18 @@
         <!-- 模塊 1：英雄區塊 -->
         <header class="hero-section" id="about">
             <h1 class="hero-title">PAC-MAP<br>CITY SURVIVAL</h1>
-            <p style="color: var(--wall-color); font-size: 1.2rem; margin-bottom: 20px; letter-spacing: 2px;">NEON ARCADE EDITION</p>
-            
+            <p style="color: var(--wall-color); font-size: 1.2rem; margin-bottom: 20px; letter-spacing: 2px;">NEON
+                ARCADE EDITION</p>
+
             <div class="img-placeholder hero-banner">
                 <video autoplay loop muted playsinline class="hero-video">
                     <source src="static/gameplay.mp4" type="video/mp4">
                     您的瀏覽器不支援影片播放。
             </div>
-            
+
             <div class="intro-box">
-                <h3 style="color: var(--primary-color); margin-bottom: 15px;"><i class="nes-icon trophy"></i> SYSTEM INIT</h3>
+                <h3 style="color: var(--primary-color); margin-bottom: 15px;"><i class="nes-icon trophy"></i> SYSTEM
+                    INIT</h3>
                 <p style="text-align: left; color: #ccc;">
                     這不是一般的導航。基於真實開放街圖數據（OpenStreetMap），你的日常街道已轉化為危機四伏的街機迷宮！面對環境災難與縮圈危機，你必須依靠對城市的記憶來求生。
                 </p>
@@ -62,7 +72,8 @@
 
         <!-- 模塊 2：自動循環滾動 SDG 11 卡片 (全螢幕寬度) -->
         <section id="sdg" class="full-width-section">
-            <h2 style="color: var(--primary-color); text-align: center; margin-bottom: 20px; text-shadow: 2px 2px 0 #000;">
+            <h2
+                style="color: var(--primary-color); text-align: center; margin-bottom: 20px; text-shadow: 2px 2px 0 #000;">
                 <i class="nes-icon is-medium coin"></i> SDG 11 ARCHIVE
             </h2>
 
@@ -101,7 +112,7 @@
                             <div class="sdg-card-footer">▸ GREEN LUNGS</div>
                         </div>
                     </div>
-                    
+
                     <!-- 第二組內容 (用於無縫接軌) -->
                     <div class="sdg-marquee-content">
                         <div class="sdg-card">
@@ -141,64 +152,73 @@
 
         <!-- 模塊 3：SDG 11 城市紀實畫廊 -->
         <section id="gallery" class="gallery-section">
-        <h2 class="gallery-title"><i class="nes-icon is-large like"></i> URBAN GALLERY</h2>
-        <div class="gallery-wrapper">
-        <div class="gallery-container">
-            <!-- 第一組相片 -->
-            <div class="gallery-content">
-                <div class="photo-frame">
-                    <img src="static/city-lungs.jpeg" alt="CITY LUNGS" class="photo-img">
-                    <div class="photo-caption">CITY LUNGS</div>
-                </div>
-                <div class="photo-frame">
-                    <img src="static/heritage.jpeg" alt="HERITAGE" class="photo-img">
-                    <div class="photo-caption">HERITAGE</div>
-                </div>
-                <div class="photo-frame">
-                    <img src="static/eco-transit.jpeg" alt="ECO TRANSIT" class="photo-img">
-                    <div class="photo-caption">ECO TRANSIT</div>
-                </div>
-                <div class="photo-frame">
-                    <img src="static/inslusion.jpeg" alt="INCLUSION" class="photo-img">
-                    <div class="photo-caption">INCLUSION</div>
+            <h2 class="gallery-title"><i class="nes-icon is-large like"></i> URBAN GALLERY</h2>
+            <div class="gallery-wrapper">
+                <div class="gallery-container">
+                    <!-- 第一組相片 -->
+                    <div class="gallery-content">
+                        <div class="photo-frame">
+                            <img src="static/city-lungs.jpeg" alt="CITY LUNGS" class="photo-img">
+                            <div class="photo-caption">CITY LUNGS</div>
+                        </div>
+                        <div class="photo-frame">
+                            <img src="static/heritage.jpeg" alt="HERITAGE" class="photo-img">
+                            <div class="photo-caption">HERITAGE</div>
+                        </div>
+                        <div class="photo-frame">
+                            <img src="static/eco-transit.jpeg" alt="ECO TRANSIT" class="photo-img">
+                            <div class="photo-caption">ECO TRANSIT</div>
+                        </div>
+                        <div class="photo-frame">
+                            <img src="static/inslusion.jpeg" alt="INCLUSION" class="photo-img">
+                            <div class="photo-caption">INCLUSION</div>
+                        </div>
+                        <div class="photo-frame">
+                            <img src="static/museum.jpeg" alt="MUESEUM" class="photo-img">
+                            <div class="photo-caption">MUSEEUM</div>
+                        </div>
+                    </div>
+
+                    <!-- 第二組相片 (複製第一組，用於實現無縫循環滾動) -->
+                    <div class="gallery-content">
+                        <div class="photo-frame">
+                            <img src="static/city-lungs.jpeg" alt="CITY LUNGS" class="photo-img">
+                            <div class="photo-caption">CITY LUNGS</div>
+                        </div>
+                        <div class="photo-frame">
+                            <img src="static/heritage.jpeg" alt="HERITAGE" class="photo-img">
+                            <div class="photo-caption">HERITAGE</div>
+                        </div>
+                        <div class="photo-frame">
+                            <img src="static/eco-transit.jpeg" alt="ECO TRANSIT" class="photo-img">
+                            <div class="photo-caption">ECO TRANSIT</div>
+                        </div>
+                        <div class="photo-frame">
+                            <img src="static/inslusion.jpeg" alt="INCLUSION" class="photo-img">
+                            <div class="photo-caption">INCLUSION</div>
+                        </div>
+                        <div class="photo-frame">
+                            <img src="static/museum.jpeg" alt="MUESEUM" class="photo-img">
+                            <div class="photo-caption">MUSEEUM</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <!-- 第二組相片 (複製第一組，用於實現無縫循環滾動) -->
-            <div class="gallery-content">
-                <div class="photo-frame">
-                    <img src="static/city-lungs.jpeg" alt="CITY LUNGS" class="photo-img">
-                    <div class="photo-caption">CITY LUNGS</div>
-                </div>
-                <div class="photo-frame">
-                    <img src="static/heritage.jpeg" alt="HERITAGE" class="photo-img">
-                    <div class="photo-caption">HERITAGE</div>
-                </div>
-                <div class="photo-frame">
-                    <img src="static/eco-transit.jpeg" alt="ECO TRANSIT" class="photo-img">
-                    <div class="photo-caption">ECO TRANSIT</div>
-                </div>
-                <div class="photo-frame">
-                    <img src="static/inslusion.jpeg" alt="INCLUSION" class="photo-img">
-                    <div class="photo-caption">INCLUSION</div>
-                </div>
-            </div>
-        </div>
-    </div>
         </section>
 
         <!-- 模塊 4：核心生存機制 -->
         <section id="mechanics" class="mechanics-section">
-            <h2 style="color: #fff; font-size: 2rem; margin-bottom: 10px; text-shadow: 2px 2px 0 var(--wall-color);">SURVIVAL MECHANICS</h2>
+            <h2 style="color: #fff; font-size: 2rem; margin-bottom: 10px; text-shadow: 2px 2px 0 var(--wall-color);">
+                SURVIVAL MECHANICS</h2>
             <p style="color: var(--primary-color); margin-bottom: 30px;">掌握地圖物件，提高生存機率</p>
-            
+
             <div class="mechanics-grid">
                 <div class="mechanic-card">
                     <div class="mechanic-icon-wrapper"><i class="nes-icon heart is-large"></i></div>
                     <h3>生命補給</h3>
                     <p>尋找地圖上的<span style="color:var(--ghost-pink);">真實餐廳與超商</span>，進入設施即可收集物資並恢復受損的生命值。請隨時注意周遭的補給站！</p>
                 </div>
-                
+
                 <div class="mechanic-card">
                     <div class="mechanic-icon-wrapper"><i class="nes-icon star is-large"></i></div>
                     <h3 style="color: var(--wall-color);">文化庇護</h3>
@@ -208,7 +228,8 @@
                 <div class="mechanic-card">
                     <div class="mechanic-icon-wrapper"><i class="nes-icon close is-large"></i></div>
                     <h3 style="color: var(--ghost-red);">危機躲避</h3>
-                    <p>環境幽靈會在主要幹道上巡邏。善用背包道具或搭乘<span style="color:var(--score-green);">大眾運輸節點（捷運站）</span>來進行瞬間傳送，擺脫致命追擊。</p>
+                    <p>環境幽靈會在主要幹道上巡邏。善用背包道具或搭乘<span style="color:var(--score-green);">大眾運輸節點（捷運站）</span>來進行瞬間傳送，擺脫致命追擊。
+                    </p>
                 </div>
             </div>
         </section>
@@ -216,8 +237,9 @@
         <!-- 模塊 5：遊戲操作說明 -->
         <section id="instructions" class="instructions-section">
             <!-- 標題旁加入 FontAwesome 的 gamepad controller icon -->
-            <h2 class="inst-title"><i class="fas fa-gamepad" style="color: var(--score-green); margin-right: 15px;"></i>HOW TO PLAY</h2>
-            
+            <h2 class="inst-title"><i class="fas fa-gamepad"
+                    style="color: var(--score-green); margin-right: 15px;"></i>HOW TO PLAY</h2>
+
             <div class="inst-grid">
                 <div class="controls-panel">
                     <div class="panel-heading"><i class="nes-icon like"></i> 玩家操作</div>
@@ -256,7 +278,7 @@
         <!-- 模塊 6：接關畫面 CTA -->
         <section class="continue-section">
             <div class="continue-text">CONTINUE ?</div>
-            
+
             <a href="index.html" class="nes-btn is-error play-btn">
                 INSERT COIN
             </a>
@@ -275,4 +297,5 @@
     </footer>
 
 </body>
+
 </html>
